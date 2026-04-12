@@ -82,7 +82,8 @@
 
     #pixel-selector{
       position:absolute;z-index:20;pointer-events:none;display:none;box-sizing:border-box;
-      border:1px solid #000;background:transparent;transform:none
+      border:1px solid rgba(255,255,255,.96);box-shadow:0 0 0 1px rgba(0,0,0,.65),0 0 8px rgba(0,0,0,1);
+      mix-blend-mode:difference;transform:none
     }
 
     .pixel-pop{
@@ -241,18 +242,18 @@
       width:min(92vw,450px);background:linear-gradient(180deg,rgba(20,20,20,.98),rgba(14,14,14,.98));
       border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:var(--shadow)
     }
-    .modal-content.wide{width:min(94vw,680px)}
+    .modal-content.wide{width:min(94vw,680px);max-height:calc(100vh - 36px);overflow:auto}
     .modal-content h2{font-size:1.08rem;margin-bottom:8px;color:var(--accent);letter-spacing:.2px}
     .modal-content p{color:var(--dim);font-size:.76rem;line-height:1.55;margin-bottom:16px}
     .field-label{
       display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--dim);font-size:.7rem;font-weight:700;
       letter-spacing:.35px;margin-bottom:8px;text-transform:uppercase
     }
-    input[type="password"],input[type="number"],input[type="text"]{
+    input[type="password"],input[type="number"],input[type="text"],select{
       width:100%;background:#050505;border:1px solid var(--border);padding:13px 14px;border-radius:10px;color:#fff;outline:none;margin-bottom:14px;
       transition:border-color .15s ease,box-shadow .15s ease,background .15s ease
     }
-    input[type="password"]:focus,input[type="number"]:focus,input[type="text"]:focus{
+    input[type="password"]:focus,input[type="number"]:focus,input[type="text"]:focus,select:focus{
       border-color:rgba(41,121,255,.65);box-shadow:0 0 0 3px rgba(41,121,255,.14)
     }
     input[type="checkbox"]{width:18px;height:18px;accent-color:var(--accent)}
@@ -282,19 +283,23 @@
     .username-badge strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .split-line{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);margin:14px 0}
     .small-note{font-size:.68rem;color:var(--dim);line-height:1.5}
+    .ban-panel{display:grid;gap:10px}
+    .ban-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.85fr);gap:10px}
+    .ban-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .ban-panel select{width:100%;background:#050505;border:1px solid var(--border);padding:13px 14px;border-radius:10px;color:#fff;outline:none;min-width:0;appearance:none}
+    .ban-panel select option{background:#050505;color:#fff}
+    .ban-status{font-size:.72rem;color:var(--dim);line-height:1.5;font-family:"Courier New",monospace}
+    #ui-bottom.hidden-by-ban{display:none !important}
 
     #mobile-quickbar{
-      display:none;position:fixed;left:12px;top:50%;transform:translateY(-50%);
-      z-index:2400;gap:8px;pointer-events:auto;flex-direction:column
+      display:none;position:fixed;left:50%;bottom:90px;transform:translateX(-50%);
+      z-index:2400;gap:8px;pointer-events:auto
     }
     .quick-btn{
       width:46px;height:46px;border-radius:14px;border:1px solid var(--border);background:rgba(18,18,18,.92);
       color:var(--text);display:grid;place-items:center;box-shadow:var(--shadow);cursor:pointer
     }
     .quick-btn.active{border-color:rgba(41,121,255,.5);color:var(--accent);background:rgba(41,121,255,.12)}
-    @media (max-width: 768px){
-      #ui-bottom.mobile-hidden{display:none !important}
-    }
 
     @media (min-width: 769px){
       #sidebar-right .glass-module{flex:0 0 auto}
@@ -336,17 +341,16 @@
       .stats-module{min-height:220px}
       .activity-list{min-height:180px}
       .leaderboard-list{min-height:180px}
-      #ui-bottom{bottom:8px;width:min(82vw,240px);padding:0 4px}
-      .palette-container{border-radius:14px;transform:scale(.88);transform-origin:bottom center}
-      .palette-topline{padding:7px 8px 0;gap:8px}
-      .palette-topline small{font-size:.58rem}
-      .palette-grid{grid-template-columns:repeat(6,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
+      #ui-bottom{bottom:10px;width:min(88vw,300px);padding:0 6px}
+      .palette-container{border-radius:14px}
+      .palette-topline{padding:8px 10px 0;gap:8px}
+      .palette-topline small{font-size:.6rem}
+      .palette-grid{grid-template-columns:repeat(8,1fr);gap:3px;padding:10px 10px 10px}
       .color-box{border-radius:5px}
-      .cooldown-wrap{padding:0 8px 8px}
-      .cooldown-caption{margin-bottom:5px;font-size:.66rem}
+      .cooldown-wrap{padding:0 10px 10px}
+      .cooldown-caption{margin-bottom:6px;font-size:.68rem}
       #admin-entry{right:12px;bottom:76px;width:42px;height:42px}
-      .modal-content{width:100%;max-height:calc(100vh - 24px);overflow:auto;padding:18px}
-      .modal-content.wide{width:min(96vw,540px)}
+      .modal-content{width:100%;padding:18px}
       .btn-grid{grid-template-columns:1fr}
       .stats-module{font-size:.84rem}
       .leaderboard-row,.activity-item{font-size:.78rem}
@@ -354,19 +358,15 @@
       #mobile-quickbar{display:flex}
     }
 
-    @media (max-width: 600px){
-      #mobile-quickbar{left:10px;top:calc(var(--header-h) + 10px);transform:none}
-    }
-
     @media (max-width: 420px){
       .top-btn span.label{display:none}
       .top-btn{width:38px;padding:0}
       .top-btn svg{width:18px;height:18px}
       .quick-btn{width:42px;height:42px;border-radius:13px}
-      .palette-topline{padding:7px 8px 0}
-      .palette-topline small{font-size:.58rem}
-      .palette-grid{grid-template-columns:repeat(5,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
-      .cooldown-wrap{padding:0 8px 8px}
+      .palette-topline{padding:8px 10px 0}
+      .palette-topline small{font-size:.62rem}
+      .palette-grid{grid-template-columns:repeat(5,1fr);gap:3px;padding:8px 8px 9px}
+      .cooldown-wrap{padding:0 10px 10px}
     }
   </style>
 </head>
@@ -533,7 +533,7 @@
     <button class="quick-btn" id="quick-center" title="Centro">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
     </button>
-    <button class="quick-btn" id="quick-palette" title="Mostrar u ocultar la paleta">
+    <button class="quick-btn" id="quick-palette" title="Paleta">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 3 3 0 0 0-3-3h-1a2 2 0 0 1-2-2V6a3 3 0 0 0-3-3Z"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="15.5" cy="10.5" r="1"/></svg>
     </button>
   </div>
@@ -619,6 +619,37 @@
 
       <div class="split-line"></div>
 
+      <div class="ban-panel">
+        <div class="field-label">
+          <span>Banear usuarios online</span>
+          <span id="ban-online-count">0 online</span>
+        </div>
+        <div class="ban-grid">
+          <select id="ban-user-select">
+            <option value="">Cargando usuarios online...</option>
+          </select>
+          <select id="ban-duration">
+            <option value="5m">5 minutos</option>
+            <option value="15m">15 minutos</option>
+            <option value="30m">30 minutos</option>
+            <option value="1h">1 hora</option>
+            <option value="8h">8 horas</option>
+            <option value="1d">1 día</option>
+            <option value="1m">1 mes</option>
+            <option value="1y">1 año</option>
+            <option value="perm">Permanente</option>
+          </select>
+        </div>
+        <input type="text" id="ban-reason" placeholder="Razón obligatoria del baneo" maxlength="120" autocomplete="off">
+        <div class="ban-actions">
+          <button class="action-btn btn-danger" id="ban-user-btn">Banear usuario</button>
+          <button class="action-btn btn-soft" id="unban-user-btn">Anular baneo</button>
+        </div>
+        <div id="ban-status" class="ban-status">Selecciona un usuario online y escribe una razón.</div>
+      </div>
+
+      <div class="split-line"></div>
+
       <div class="field-label">
         <span>Frecuencia de captura (segundos)</span>
         <span id="tl-frames-info">Video 1250×1250</span>
@@ -670,10 +701,23 @@
     const PRESENCE_PATH = 'presence';
     const USERS_PATH = 'users';
     const USER_STATS_PATH = 'user_stats';
+    const BANS_PATH = 'bans';
+
+    const BAN_DURATION_PRESETS = {
+      '5m': 5 * 60 * 1000,
+      '15m': 15 * 60 * 1000,
+      '30m': 30 * 60 * 1000,
+      '1h': 60 * 60 * 1000,
+      '8h': 8 * 60 * 60 * 1000,
+      '1d': 24 * 60 * 60 * 1000,
+      '1m': 30 * 24 * 60 * 60 * 1000,
+      '1y': 365 * 24 * 60 * 60 * 1000,
+      'perm': Infinity
+    };
 
     const DEFAULT_SETTINGS = {
       timestampEnabled: true,
-      trackingEnabled: false,
+      trackingEnabled: true,
       usernameRequired: true,
       timelapseFps: 12,
       timelapseIntervalSec: 5
@@ -684,7 +728,7 @@
       "#ff9f1c","#ffbf00","#ffe66d","#f6f7f8","#2ec4b6","#00c853","#008f39","#0b6e4f",
       "#00b4d8","#00a6fb","#3a86ff","#1d4ed8","#172554","#6d28d9","#7c3aed","#a855f7",
       "#ff4d8d","#ff2d55","#ff7ab6","#b08968","#7f5539","#9c6644","#4f772d","#70e000",
-      "#a7c957","#386641","#f77f00","#ff6f61","#ffd166","#8338ec","#3a0ca3","#4361ee",
+      "#a7c957","#386641","#f77f00","#fb8500","#ffd166","#8338ec","#3a0ca3","#4361ee",
       "#4cc9f0","#9d4edd","#e63946","#f1fa8c","#06d6a0","#118ab2","#ffd6a5","#6f1d1b"
     ];
 
@@ -710,6 +754,7 @@
       cooldownText: document.getElementById('cooldown-text'),
       cooldownValue: document.getElementById('cooldown-value'),
       paletteStatus: document.getElementById('palette-status'),
+      uiBottom: document.getElementById('ui-bottom'),
       modalUsername: document.getElementById('modal-username'),
       modalLogin: document.getElementById('modal-login'),
       modalDashboard: document.getElementById('modal-dashboard'),
@@ -730,6 +775,13 @@
       tlStatus: document.getElementById('tl-status'),
       toggleTimestamp: document.getElementById('toggle-timestamp'),
       toggleTracking: document.getElementById('toggle-tracking'),
+      banUserSelect: document.getElementById('ban-user-select'),
+      banDurationSelect: document.getElementById('ban-duration'),
+      banReasonInput: document.getElementById('ban-reason'),
+      banUserBtn: document.getElementById('ban-user-btn'),
+      unbanUserBtn: document.getElementById('unban-user-btn'),
+      banStatus: document.getElementById('ban-status'),
+      banOnlineCount: document.getElementById('ban-online-count'),
       statOnline: document.getElementById('stat-online'),
       statTotal: document.getElementById('stat-total'),
       statUnique: document.getElementById('stat-unique'),
@@ -745,7 +797,6 @@
       minimapInfo: document.getElementById('minimap-info'),
       minimapZoom: document.getElementById('minimap-zoom'),
       leaderboardList: document.getElementById('leaderboard-list'),
-      uiBottom: document.getElementById('ui-bottom'),
       quickChat: document.getElementById('quick-chat'),
       quickStats: document.getElementById('quick-stats'),
       quickCenter: document.getElementById('quick-center'),
@@ -793,12 +844,15 @@
       captureBlobParts: [],
       timelapseSnapshotBusy: false,
       audioCtx: null,
-      paletteVisibleMobile: localStorage.getItem('nf_palette_visible_mobile') !== '0',
-      lastMessageTime: 0,
-      lastChatSendAt: 0,
-      lastChatSendText: '',
       popQueue: new Map(),
-      hoverPoint: null
+      chatSendBusy: false,
+      hoverPoint: null,
+      isBanned: false,
+      banInfo: null,
+      banRecords: {},
+      onlineUsers: new Map(),
+      bansListenerAttached: false,
+      banRefreshTimer: null
     };
 
     const boardImageData = ctx.createImageData(RES, RES);
@@ -830,6 +884,214 @@
     function showModal(node) { node.classList.add('visible'); }
     function hideModal(node) { node.classList.remove('visible'); }
     function hideAllModals() { [el.modalUsername, el.modalLogin, el.modalDashboard].forEach(hideModal); }
+
+
+function getBanDurationMs(value) {
+  return BAN_DURATION_PRESETS[value] ?? BAN_DURATION_PRESETS['1h'];
+}
+
+function getBanLabel(value) {
+  const labels = {
+    '5m': '5 minutos',
+    '15m': '15 minutos',
+    '30m': '30 minutos',
+    '1h': '1 hora',
+    '8h': '8 horas',
+    '1d': '1 día',
+    '1m': '1 mes',
+    '1y': '1 año',
+    'perm': 'Permanente'
+  };
+  return labels[value] || '1 hora';
+}
+
+function getUidLabel(uid, username) {
+  const suffix = String(uid || '').slice(-4).toUpperCase();
+  const name = normalizeUsername(username || 'Anónimo') || 'Anónimo';
+  return `${name} · ${suffix}`;
+}
+
+function isBanActive(record) {
+  if (!record) return false;
+  if (record.active === false) return false;
+  if (record.permanent || record.expiresAt === 0 || record.expiresAt === '0') return true;
+  const expiresAt = Number(record.expiresAt || 0);
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+}
+
+function getBanExpiryLabel(record) {
+  if (!record) return '';
+  if (record.permanent || record.expiresAt === 0 || record.expiresAt === '0') return 'Permanente';
+  const expiresAt = Number(record.expiresAt || 0);
+  if (!Number.isFinite(expiresAt) || expiresAt <= 0) return 'Sin caducidad';
+  const remain = Math.max(0, expiresAt - Date.now());
+  const sec = Math.ceil(remain / 1000);
+  const min = Math.floor(sec / 60);
+  const hr = Math.floor(min / 60);
+  const d = Math.floor(hr / 24);
+  if (d > 0) return `Caduca en ${d}d`;
+  if (hr > 0) return `Caduca en ${hr}h`;
+  if (min > 0) return `Caduca en ${min}m`;
+  return `Caduca en ${sec}s`;
+}
+
+function setPaletteVisibility(visible) {
+  el.uiBottom?.classList.toggle('hidden-by-ban', !visible);
+}
+
+function setBanLockUI(isBanned) {
+  el.quickPalette.disabled = !!isBanned;
+  el.quickPalette.style.opacity = isBanned ? '.45' : '';
+  el.quickPalette.title = isBanned ? 'Paleta bloqueada por baneo' : 'Paleta';
+  if (isBanned) {
+    el.paletteStatus.textContent = 'Paleta bloqueada por baneo';
+    el.cooldownText.textContent = 'Baneado';
+    el.cooldownValue.textContent = '0%';
+    el.cooldownBar.style.width = '0%';
+    setPaletteVisibility(false);
+  } else {
+    setPaletteVisibility(true);
+  }
+}
+
+function updateCurrentBanState() {
+  const myUid = ensureUid();
+  const record = state.banRecords?.[myUid] || null;
+  const active = isBanActive(record);
+  state.isBanned = active;
+  state.banInfo = active ? record : null;
+  setBanLockUI(active);
+  if (active && el.banStatus) {
+    const reason = String(record?.reason || 'Sin razón').trim();
+    const until = getBanExpiryLabel(record);
+    el.banStatus.textContent = `Este cliente está baneado: ${reason}. ${until}.`;
+  }
+}
+
+function renderBanPanel() {
+  const users = [...state.onlineUsers.values()].sort((a, b) => {
+    const an = (a.username || '').toLowerCase();
+    const bn = (b.username || '').toLowerCase();
+    return an.localeCompare(bn, 'es');
+  });
+
+  if (el.banOnlineCount) el.banOnlineCount.textContent = `${users.length} online`;
+  if (el.banUserSelect) {
+    const current = el.banUserSelect.value;
+    el.banUserSelect.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = users.length ? 'Selecciona un usuario online' : 'No hay usuarios online';
+    el.banUserSelect.appendChild(placeholder);
+    users.forEach(user => {
+      const opt = document.createElement('option');
+      opt.value = user.uid;
+      const record = state.banRecords?.[user.uid];
+      const active = isBanActive(record);
+      opt.textContent = `${getUidLabel(user.uid, user.username)}${active ? ' · BANEADO' : ''}`;
+      el.banUserSelect.appendChild(opt);
+    });
+    if (current && users.some(u => u.uid === current)) el.banUserSelect.value = current;
+  }
+
+  if (el.banStatus) {
+    if (state.isBanned && state.banInfo) {
+      el.banStatus.textContent = `Este cliente está baneado: ${String(state.banInfo.reason || 'Sin razón').trim()} · ${getBanExpiryLabel(state.banInfo)}.`;
+    } else {
+      const selected = state.onlineUsers.get(el.banUserSelect?.value || '');
+      el.banStatus.textContent = selected
+        ? `Listo para banear a ${getUidLabel(selected.uid, selected.username)}. La razón es obligatoria.`
+        : 'Selecciona un usuario online y escribe una razón.';
+    }
+  }
+
+  if (el.banUserBtn) el.banUserBtn.disabled = !el.banUserSelect?.value || !String(el.banReasonInput?.value || '').trim() || state.isBanned;
+  if (el.unbanUserBtn) el.unbanUserBtn.disabled = !el.banUserSelect?.value;
+}
+
+function syncBanPanelAvailability() {
+  updateCurrentBanState();
+  renderBanPanel();
+}
+
+function attachBansListener() {
+  if (state.bansListenerAttached) return;
+  state.bansListenerAttached = true;
+  db.ref(BANS_PATH).on('value', snap => {
+    state.banRecords = snap.val() || {};
+    syncBanPanelAvailability();
+  });
+  state.banRefreshTimer = setInterval(syncBanPanelAvailability, 15000);
+}
+
+function banSelectedUser() {
+  if (!state.isAuthorized) return;
+  const uid = el.banUserSelect?.value || '';
+  const reason = String(el.banReasonInput?.value || '').trim();
+  const durationKey = el.banDurationSelect?.value || '1h';
+  const user = state.onlineUsers.get(uid);
+
+  if (!uid) {
+    alert('Selecciona un usuario online.');
+    return;
+  }
+  if (!user) {
+    alert('Ese usuario ya no está online.');
+    renderBanPanel();
+    return;
+  }
+  if (!reason) {
+    el.banReasonInput?.focus();
+    alert('La razón del baneo es obligatoria.');
+    return;
+  }
+
+  const durationMs = getBanDurationMs(durationKey);
+  const now = Date.now();
+  const banRecord = {
+    uid,
+    username: user.username || 'Anónimo',
+    reason: reason.slice(0, 120),
+    durationKey,
+    durationLabel: getBanLabel(durationKey),
+    bannedBy: state.username || 'admin',
+    bannedByUid: ensureUid(),
+    createdAt: now,
+    expiresAt: durationKey === 'perm' ? 0 : now + durationMs,
+    permanent: durationKey === 'perm',
+    active: true
+  };
+
+  db.ref(`${BANS_PATH}/${uid}`).set(banRecord)
+    .then(() => {
+      el.banStatus.textContent = `Baneado ${getUidLabel(uid, user.username)} · ${banRecord.reason} · ${getBanExpiryLabel(banRecord)}.`;
+      el.banReasonInput.value = '';
+      syncBanPanelAvailability();
+    })
+    .catch(err => {
+      console.error(err);
+      alert('No se pudo aplicar el baneo.');
+    });
+}
+
+function unbanSelectedUser() {
+  if (!state.isAuthorized) return;
+  const uid = el.banUserSelect?.value || '';
+  if (!uid) {
+    alert('Selecciona un usuario online.');
+    return;
+  }
+
+  db.ref(`${BANS_PATH}/${uid}`).remove()
+    .then(() => {
+      el.banStatus.textContent = 'Baneo anulado.';
+      syncBanPanelAvailability();
+    })
+    .catch(err => {
+      console.error(err);
+      alert('No se pudo anular el baneo.');
+    });
+}
 
     function hexToRgba(hex){
       const n = hex.replace('#','').trim();
@@ -988,7 +1250,6 @@
       state.activeColor = color;
       updatePaletteSelectionUI();
       el.paletteStatus.textContent = `Color seleccionado: ${color}`;
-      playClickSound();
     }
 
     function updatePaletteSelectionUI() {
@@ -1042,32 +1303,27 @@
 
     function getCanvasCoords(clientX, clientY) {
       const rect = el.canvas.getBoundingClientRect();
-      const localX = clientX - rect.left;
-      const localY = clientY - rect.top;
-      const x = Math.floor((localX * RES) / rect.width);
-      const y = Math.floor((localY * RES) / rect.height);
-      return { x, y, rect };
+      const cell = rect.width / RES;
+      const x = Math.floor((clientX - rect.left) / cell);
+      const y = Math.floor((clientY - rect.top) / cell);
+      return { x, y, rect, cell };
     }
 
     function updateCoordsOverlay(clientX, clientY) {
-      const { x, y, rect } = getCanvasCoords(clientX, clientY);
+      const { x, y, rect, cell } = getCanvasCoords(clientX, clientY);
       if (x >= 0 && x < RES && y >= 0 && y < RES) {
-        const viewportRect = el.viewport.getBoundingClientRect();
-        const cellW = rect.width / RES;
-        const cellH = rect.height / RES;
-        const left = Math.floor((rect.left - viewportRect.left) + x * cellW);
-        const top = Math.floor((rect.top - viewportRect.top) + y * cellH);
-        const sizeW = Math.max(1, Math.ceil(cellW));
-        const sizeH = Math.max(1, Math.ceil(cellH));
+        const left = Math.round(rect.left + x * cell);
+        const top = Math.round(rect.top + y * cell);
+        const size = Math.max(1, Math.round(cell));
         state.hoverPoint = { clientX, clientY, x, y };
         el.pixelSelector.style.display = 'block';
         el.pixelSelector.style.left = `${left}px`;
         el.pixelSelector.style.top = `${top}px`;
-        el.pixelSelector.style.width = `${sizeW}px`;
-        el.pixelSelector.style.height = `${sizeH}px`;
+        el.pixelSelector.style.width = `${size}px`;
+        el.pixelSelector.style.height = `${size}px`;
         el.coordsInfo.style.display = 'block';
-        el.coordsInfo.style.left = `${Math.min(window.innerWidth - 120, clientX + 15)}px`;
-        el.coordsInfo.style.top = `${Math.min(window.innerHeight - 30, clientY + 15)}px`;
+        el.coordsInfo.style.left = `${clientX + 15}px`;
+        el.coordsInfo.style.top = `${clientY + 15}px`;
         el.coordsInfo.innerText = `X:${x} Y:${y}`;
       } else {
         state.hoverPoint = null;
@@ -1083,11 +1339,10 @@
 
     function addRecentActivity(entry) {
       if (!entry) return;
-      const username = normalizeUsername(entry.username || entry.user || '');
-      if (!username) return;
       if (el.activityList.firstElementChild?.classList.contains('small-note')) el.activityList.innerHTML = '';
       const item = document.createElement('div');
       item.className = 'activity-item';
+      const username = entry.username || entry.user || 'Pixel';
       const color = entry.color || '#ffffff';
       const x = Number.isFinite(entry.x) ? entry.x : '?';
       const y = Number.isFinite(entry.y) ? entry.y : '?';
@@ -1097,7 +1352,7 @@
           <span class="a-user">${escapeHtmlText(username)}</span>
           <span class="a-time">${escapeHtmlText(formatShortTime(ts))}</span>
         </div>
-        <div class="a-detail">Colocado en <b>(${x}, ${y})</b> · <span style="color:${escapeHtmlText(color)};font-weight:800;">${escapeHtmlText(color)}</span></div>
+        <div class="a-detail">Pixel en <b>(${x}, ${y})</b> · <span style="color:${escapeHtmlText(color)};font-weight:800;">${escapeHtmlText(color)}</span></div>
       `;
       el.activityList.prepend(item);
       while (el.activityList.children.length > 12) el.activityList.removeChild(el.activityList.lastElementChild);
@@ -1164,16 +1419,26 @@
       ref.update({ username: state.username || 'Anónimo', lastSeen: Date.now(), online: true });
       ref.onDisconnect().update({ online: false, lastSeen: Date.now() });
       db.ref(USERS_PATH).on('value', snap => {
+        const data = snap.val() || {};
         state.uniqueCount = snap.numChildren() || 0;
         el.statUnique.textContent = formatNumber(state.uniqueCount);
+        state.onlineUsers.clear();
+        Object.entries(data).forEach(([uid, value]) => {
+          if (!value || value.online !== true) return;
+          state.onlineUsers.set(uid, {
+            uid,
+            username: value.username || 'Anónimo',
+            lastSeen: Number(value.lastSeen) || 0
+          });
+        });
+        renderBanPanel();
       });
     }
 
     function syncSettings() {
       db.ref(SETTINGS_PATH).on('value', snap => {
         const incoming = snap.val() || {};
-        const trackingOn = !!state.isAuthorized && !!incoming.trackingEnabled;
-        state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: trackingOn };
+        state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming };
         el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
         el.toggleTracking.checked = !!state.settings.trackingEnabled;
         el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
@@ -1227,12 +1492,14 @@
 
       const pending = state.popQueue.get(key);
       const isLocalEcho = !!pending && pending.color === color && (Date.now() - pending.ts) < 5000;
-      const localName = isLocalEcho ? pending.username : '';
-
-      announcePixel(x, y, color, localName, isLocalEcho);
 
       if (isLocalEcho) {
+        showPixelPop(x, y, pending.username, color);
+        playPopSound();
         state.popQueue.delete(key);
+      } else {
+        showPixelPop(x, y, 'Pixel', color);
+        playPopSound();
       }
       return true;
     }
@@ -1354,13 +1621,6 @@
         div.appendChild(text);
         el.chatArea.appendChild(div);
         el.chatArea.scrollTop = el.chatArea.scrollHeight;
-
-        const messageTs = Number(m.time) || Date.now();
-        const isOwnMessage = m.uid && m.uid === ensureUid();
-        const isNewMessage = messageTs > state.lastMessageTime;
-        state.lastMessageTime = Math.max(state.lastMessageTime, messageTs);
-
-        if (!isOwnMessage && isNewMessage) playMessageSound();
       });
     }
 
@@ -1377,35 +1637,6 @@
     function closeSidebar() {
       el.sidebar.classList.remove('show');
       el.mobileMenuBtn.classList.remove('active');
-    }
-
-    function isMobileLayout() {
-      return window.matchMedia('(max-width: 768px)').matches;
-    }
-
-    function syncPaletteVisibilityUI() {
-      const mobile = isMobileLayout();
-      const visible = !mobile || state.paletteVisibleMobile;
-      if (el.uiBottom) el.uiBottom.classList.toggle('mobile-hidden', mobile && !state.paletteVisibleMobile);
-      if (el.quickPalette) {
-        el.quickPalette.classList.toggle('active', mobile ? state.paletteVisibleMobile : true);
-        el.quickPalette.setAttribute('aria-pressed', String(visible));
-        el.quickPalette.title = mobile
-          ? (state.paletteVisibleMobile ? 'Ocultar paleta' : 'Mostrar paleta')
-          : 'Paleta';
-      }
-    }
-
-    function setMobilePaletteVisible(visible, persist = true) {
-      state.paletteVisibleMobile = !!visible;
-      if (persist) {
-        try { localStorage.setItem('nf_palette_visible_mobile', state.paletteVisibleMobile ? '1' : '0'); } catch {}
-      }
-      syncPaletteVisibilityUI();
-    }
-
-    function toggleMobilePalette() {
-      setMobilePaletteVisible(!state.paletteVisibleMobile);
     }
 
     function toggleSidebar() {
@@ -1441,102 +1672,12 @@
       } catch {}
     }
 
-    function playClickSound() {
-      try {
-        unlockAudio();
-        if (!state.audioCtx) return;
-        const t = state.audioCtx.currentTime;
-        const osc = state.audioCtx.createOscillator();
-        const gain = state.audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(780, t);
-        osc.frequency.exponentialRampToValueAtTime(420, t + 0.05);
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.03, t + 0.008);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
-        osc.connect(gain);
-        gain.connect(state.audioCtx.destination);
-        osc.start(t);
-        osc.stop(t + 0.065);
-      } catch {}
-    }
-
-    function playLocalPixelSound() {
-      try {
-        unlockAudio();
-        if (!state.audioCtx) return;
-        const t = state.audioCtx.currentTime;
-        const osc = state.audioCtx.createOscillator();
-        const gain = state.audioCtx.createGain();
-        const filter = state.audioCtx.createBiquadFilter();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(240, t);
-        osc.frequency.exponentialRampToValueAtTime(150, t + 0.06);
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.06, t + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
-        filter.type = 'lowpass';
-        filter.frequency.value = 900;
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(state.audioCtx.destination);
-        osc.start(t);
-        osc.stop(t + 0.12);
-      } catch {}
-    }
-
-    function playMessageSound() {
-      try {
-        unlockAudio();
-        if (!state.audioCtx) return;
-        const t = state.audioCtx.currentTime;
-        const osc = state.audioCtx.createOscillator();
-        const gain = state.audioCtx.createGain();
-        const filter = state.audioCtx.createBiquadFilter();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(620, t);
-        osc.frequency.exponentialRampToValueAtTime(980, t + 0.08);
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.05, t + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
-        filter.type = 'highpass';
-        filter.frequency.value = 220;
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(state.audioCtx.destination);
-        osc.start(t);
-        osc.stop(t + 0.16);
-      } catch {}
-    }
-
-    function playSendSound() {
-      try {
-        unlockAudio();
-        if (!state.audioCtx) return;
-        const t = state.audioCtx.currentTime;
-        const osc = state.audioCtx.createOscillator();
-        const gain = state.audioCtx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(520, t);
-        osc.frequency.exponentialRampToValueAtTime(760, t + 0.06);
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.04, t + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-        osc.connect(gain);
-        gain.connect(state.audioCtx.destination);
-        osc.start(t);
-        osc.stop(t + 0.13);
-      } catch {}
-    }
-
     function showPixelPop(x, y, username, color) {
-      const name = normalizeUsername(username || '');
-      if (!name) return;
       const rect = el.canvas.getBoundingClientRect();
       const cell = rect.width / RES;
       const popup = document.createElement('div');
       popup.className = 'pixel-pop';
-      popup.textContent = name;
+      popup.textContent = username || 'Pixel';
       const px = rect.left + (x + 0.5) * cell;
       const py = rect.top + (y + 0.15) * cell;
       popup.style.left = `${clamp(px, 8, window.innerWidth - 8)}px`;
@@ -1548,17 +1689,20 @@
     }
 
     function announcePixel(x, y, color, username, localEcho) {
-      const label = normalizeUsername(username || '');
-      const trackingOn = !!state.settings.trackingEnabled && !!state.isAuthorized;
-      if (trackingOn && label) {
-        showPixelPop(x, y, label, color);
+      const label = localEcho && username ? username : 'Pixel';
+      showPixelPop(x, y, label, color);
+      playPopSound();
+      if (state.settings.trackingEnabled || localEcho) {
         addRecentActivity({ x, y, color, username: label, ts: Date.now() });
-        playPopSound();
       }
     }
 
     function handlePixelCommit(input) {
       if (!state.paintReady) return;
+      if (state.isBanned) {
+        syncBanPanelAvailability();
+        return;
+      }
       if (!state.username) { showModal(el.modalUsername); return; }
       const { x, y } = getCanvasCoords(input.clientX, input.clientY);
       if (x < 0 || x >= RES || y < 0 || y >= RES) return;
@@ -1581,7 +1725,6 @@
         state.myPixels += 1;
         localStorage.setItem('nf_my_pixels', String(state.myPixels));
         el.statMine.textContent = formatNumber(state.myPixels);
-        if (!state.settings.trackingEnabled || !state.isAuthorized) playLocalPixelSound();
         triggerCooldown();
       }).catch(err => {
         state.popQueue.delete(key);
@@ -1615,25 +1758,24 @@
     }
 
     function sendChatMessage() {
+      if (state.chatSendBusy) return;
       if (!state.username) { showModal(el.modalUsername); return; }
       const content = el.chatInput.value.trim();
       if (!content) return;
-      const now = Date.now();
-      if (now - state.lastChatSendAt < 650 && state.lastChatSendText === content) return;
-      state.lastChatSendAt = now;
-      state.lastChatSendText = content;
+      state.chatSendBusy = true;
       const msg = {
         content: content.slice(0, 80),
         username: state.username,
         uid: ensureUid(),
-        time: now
+        time: Date.now()
       };
       db.ref(MESSAGES_PATH).push(msg).then(() => {
         el.chatInput.value = '';
-        playSendSound();
         db.ref(`${USER_STATS_PATH}/${ensureUid()}/messages`).transaction(v => (v || 0) + 1);
         db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: state.username, lastSeen: Date.now() });
-      }).catch(err => console.error('Error enviando mensaje:', err));
+      }).catch(err => console.error('Error enviando mensaje:', err)).finally(() => {
+        state.chatSendBusy = false;
+      });
     }
 
     function saveSettingsToFirebase(settingsPatch) {
@@ -1653,6 +1795,7 @@
       ensureUid();
       updateUsernameBadge();
       hideModal(el.modalUsername);
+      updateCurrentBanState();
       db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: name, createdAt: Date.now(), lastSeen: Date.now(), online: true });
       el.chatInput.disabled = false;
       el.chatInput.focus();
@@ -1668,6 +1811,7 @@
       el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
       el.toggleTracking.checked = !!state.settings.trackingEnabled;
       el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
+      renderBanPanel();
       showModal(el.modalDashboard);
     }
 
@@ -1679,16 +1823,8 @@
       if (el.adminKeyInput.value === "Isaias2013Cerrado") {
         state.isAuthorized = true;
         el.adminEntry.classList.add('active');
-        db.ref(SETTINGS_PATH).once('value').then(s => {
-          const incoming = s.val() || {};
-          state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: !!incoming.trackingEnabled };
-          el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
-          el.toggleTracking.checked = !!state.settings.trackingEnabled;
-          el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
-          updateTopStats();
-          hideAllModals();
-          openAdminDashboard();
-        });
+        hideAllModals();
+        openAdminDashboard();
         el.adminKeyInput.value = '';
       } else {
         alert("Acceso Denegado.");
@@ -1749,7 +1885,6 @@
 
     function boot() {
       buildPalette();
-      syncPaletteVisibilityUI();
       updateUsernameBadge();
       updateCooldownUI(0, true);
       clearRecentActivity();
@@ -1766,6 +1901,13 @@
       el.quickChat.addEventListener('click', () => openSidebar('chat'));
       el.quickStats.addEventListener('click', () => openSidebar('stats'));
       el.quickCenter.addEventListener('click', centerCanvas);
+      el.quickPalette.addEventListener('click', () => {
+        if (state.isBanned) {
+          syncBanPanelAvailability();
+          return;
+        }
+        document.getElementById('ui-bottom').scrollIntoView({ behavior:'smooth', block:'start' });
+      });
 
       el.usernameInput.addEventListener('input', syncUiWithUsername);
       el.usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmUsername(); });
@@ -1788,6 +1930,11 @@
       });
       el.saveSettingsBtn.addEventListener('click', saveAdminSettings);
       el.exportStatsBtn.addEventListener('click', () => { updateTopStats(); refreshLeaderboard(); });
+      el.banUserSelect.addEventListener('change', renderBanPanel);
+      el.banDurationSelect.addEventListener('change', renderBanPanel);
+      el.banReasonInput.addEventListener('input', renderBanPanel);
+      el.banUserBtn.addEventListener('click', banSelectedUser);
+      el.unbanUserBtn.addEventListener('click', unbanSelectedUser);
       el.tlToggleBtn.addEventListener('click', toggleTimelapseCapture);
 
       el.toggleTimestamp.addEventListener('change', () => {
@@ -1804,7 +1951,7 @@
         const v = clamp(parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec, 1, 120);
         el.tlFreqInput.value = String(v);
       });
-      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
+      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); sendChatMessage(); } });
       el.minimap.addEventListener('click', e => {
         const rect = el.minimap.getBoundingClientRect();
         const x = clamp(((e.clientX - rect.left) / rect.width) * RES, 0, RES - 1);
@@ -1984,6 +2131,10 @@
           promise: db.ref(USERS_PATH).once('value').then(s => { state.uniqueCount = s.numChildren() || 0; el.statUnique.textContent = formatNumber(state.uniqueCount); addLoadingDone(1); }).catch(() => addLoadingDone(1))
         },
         {
+          name:'ban',
+          promise: db.ref(`${BANS_PATH}/${ensureUid()}`).once('value').then(s => { state.banRecords[ensureUid()] = s.val() || null; addLoadingDone(1); }).catch(() => addLoadingDone(1))
+        },
+        {
           name:'messages',
           promise: db.ref(MESSAGES_PATH).limitToLast(20).once('value').then(s => {
             el.chatArea.innerHTML = '';
@@ -2001,8 +2152,6 @@
               el.chatArea.appendChild(div);
             });
             el.chatArea.scrollTop = el.chatArea.scrollHeight;
-            const maxTs = Object.values(data).reduce((acc, m) => Math.max(acc, Number(m && m.time) || 0), 0);
-            state.lastMessageTime = Math.max(state.lastMessageTime, maxTs);
             addLoadingDone(1);
           }).catch(() => addLoadingDone(1))
         }
@@ -2032,13 +2181,14 @@
       syncSettings();
       syncPresence();
       syncUsers();
+      attachBansListener();
+      updateCurrentBanState();
       refreshLeaderboard();
       updateTopStats();
     }
 
     function startSession() {
       buildPalette();
-      syncPaletteVisibilityUI();
       updateUsernameBadge();
       updateCooldownUI(0, true);
       clearRecentActivity();
@@ -2229,6 +2379,7 @@
             lastSeen: Date.now(),
             online: true
           });
+          updateCurrentBanState();
         }
       });
       window.addEventListener('beforeunload', () => {
@@ -2240,7 +2391,6 @@
 
     window.addEventListener('resize', () => {
       normalizeSidebarForMobile();
-      syncPaletteVisibilityUI();
       centerCanvas();
       applyZoomPointerFix();
     });
@@ -2376,23 +2526,18 @@
 
       const pending = state.popQueue.get(key);
       const isLocalEcho = !!pending && pending.color === color && (Date.now() - pending.ts) < 5000;
-      const localName = isLocalEcho ? pending.username : '';
-
-      announcePixel(x, y, color, localName, isLocalEcho);
-
       if (isLocalEcho) {
+        showPixelPop(x, y, pending.username, color);
+        playPopSound();
         state.popQueue.delete(key);
+      } else {
+        showPixelPop(x, y, 'Pixel', color);
+        playPopSound();
       }
       return true;
     }
 
     function initUiHooks() {
-      document.addEventListener('pointerdown', e => {
-        const target = e.target.closest('button, input[type="checkbox"]');
-        if (!target || target.disabled || target.classList.contains('color-box')) return;
-        playClickSound();
-      }, true);
-
       el.mobileMenuBtn.addEventListener('click', toggleSidebar);
       el.chatBtn.addEventListener('click', () => openSidebar('chat'));
       el.statsBtn.addEventListener('click', () => openSidebar('stats'));
@@ -2403,11 +2548,7 @@
       el.quickStats.addEventListener('click', () => openSidebar('stats'));
       el.quickCenter.addEventListener('click', centerCanvas);
       el.quickPalette.addEventListener('click', () => {
-        if (isMobileLayout()) {
-          toggleMobilePalette();
-        } else {
-          el.uiBottom.scrollIntoView({ behavior:'smooth', block:'start' });
-        }
+        document.getElementById('ui-bottom').scrollIntoView({ behavior:'smooth', block:'start' });
       });
 
       el.usernameInput.addEventListener('input', syncUiWithUsername);
@@ -2444,7 +2585,7 @@
         const v = clamp(parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec, 1, 120);
         el.tlFreqInput.value = String(v);
       });
-      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
+      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); sendChatMessage(); } });
 
       const activePointers = new Map();
 
