@@ -333,17 +333,17 @@
       .stats-module{min-height:220px}
       .activity-list{min-height:180px}
       .leaderboard-list{min-height:180px}
-      #ui-bottom{bottom:10px;width:min(88vw,300px);padding:0 6px}
-      .palette-container{border-radius:14px}
-      .palette-topline{padding:8px 10px 0;gap:8px}
-      .palette-topline small{font-size:.6rem}
-      .palette-grid{grid-template-columns:repeat(8,1fr);gap:3px;padding:10px 10px 10px}
+      #ui-bottom{bottom:8px;width:min(82vw,240px);padding:0 4px}
+      .palette-container{border-radius:14px;transform:scale(.88);transform-origin:bottom center}
+      .palette-topline{padding:7px 8px 0;gap:8px}
+      .palette-topline small{font-size:.58rem}
+      .palette-grid{grid-template-columns:repeat(6,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
       .color-box{border-radius:5px}
-      .cooldown-wrap{padding:0 10px 10px}
-      .cooldown-caption{margin-bottom:6px;font-size:.68rem}
+      .cooldown-wrap{padding:0 8px 8px}
+      .cooldown-caption{margin-bottom:5px;font-size:.66rem}
       #admin-entry{right:12px;bottom:76px;width:42px;height:42px}
       .modal-content{width:100%;max-height:calc(100vh - 24px);overflow:auto;padding:18px}
-      .modal-content.wide{width:min(96vw,560px)}
+      .modal-content.wide{width:min(96vw,540px)}
       .btn-grid{grid-template-columns:1fr}
       .stats-module{font-size:.84rem}
       .leaderboard-row,.activity-item{font-size:.78rem}
@@ -360,10 +360,10 @@
       .top-btn{width:38px;padding:0}
       .top-btn svg{width:18px;height:18px}
       .quick-btn{width:42px;height:42px;border-radius:13px}
-      .palette-topline{padding:8px 10px 0}
-      .palette-topline small{font-size:.62rem}
-      .palette-grid{grid-template-columns:repeat(5,1fr);gap:3px;padding:8px 8px 9px}
-      .cooldown-wrap{padding:0 10px 10px}
+      .palette-topline{padding:7px 8px 0}
+      .palette-topline small{font-size:.58rem}
+      .palette-grid{grid-template-columns:repeat(5,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
+      .cooldown-wrap{padding:0 8px 8px}
     }
   </style>
 </head>
@@ -790,6 +790,8 @@
       timelapseSnapshotBusy: false,
       audioCtx: null,
       lastMessageTime: 0,
+      lastChatSendAt: 0,
+      lastChatSendText: '',
       popQueue: new Map(),
       hoverPoint: null
     };
@@ -1165,7 +1167,8 @@
     function syncSettings() {
       db.ref(SETTINGS_PATH).on('value', snap => {
         const incoming = snap.val() || {};
-        state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming };
+        const trackingOn = !!state.isAuthorized && !!incoming.trackingEnabled;
+        state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: trackingOn };
         el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
         el.toggleTracking.checked = !!state.settings.trackingEnabled;
         el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
@@ -1424,6 +1427,30 @@
       } catch {}
     }
 
+    function playLocalPixelSound() {
+      try {
+        unlockAudio();
+        if (!state.audioCtx) return;
+        const t = state.audioCtx.currentTime;
+        const osc = state.audioCtx.createOscillator();
+        const gain = state.audioCtx.createGain();
+        const filter = state.audioCtx.createBiquadFilter();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(240, t);
+        osc.frequency.exponentialRampToValueAtTime(150, t + 0.06);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.06, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+        filter.type = 'lowpass';
+        filter.frequency.value = 900;
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(state.audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + 0.12);
+      } catch {}
+    }
+
     function playMessageSound() {
       try {
         unlockAudio();
@@ -1448,6 +1475,26 @@
       } catch {}
     }
 
+    function playSendSound() {
+      try {
+        unlockAudio();
+        if (!state.audioCtx) return;
+        const t = state.audioCtx.currentTime;
+        const osc = state.audioCtx.createOscillator();
+        const gain = state.audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(520, t);
+        osc.frequency.exponentialRampToValueAtTime(760, t + 0.06);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.04, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+        osc.connect(gain);
+        gain.connect(state.audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + 0.13);
+      } catch {}
+    }
+
     function showPixelPop(x, y, username, color) {
       const name = normalizeUsername(username || '');
       if (!name) return;
@@ -1468,12 +1515,10 @@
 
     function announcePixel(x, y, color, username, localEcho) {
       const label = normalizeUsername(username || '');
-      const trackingOn = !!state.settings.trackingEnabled;
+      const trackingOn = !!state.settings.trackingEnabled && !!state.isAuthorized;
       if (trackingOn && label) {
         showPixelPop(x, y, label, color);
         addRecentActivity({ x, y, color, username: label, ts: Date.now() });
-      }
-      if (localEcho || trackingOn) {
         playPopSound();
       }
     }
@@ -1502,6 +1547,7 @@
         state.myPixels += 1;
         localStorage.setItem('nf_my_pixels', String(state.myPixels));
         el.statMine.textContent = formatNumber(state.myPixels);
+        if (!state.settings.trackingEnabled || !state.isAuthorized) playLocalPixelSound();
         triggerCooldown();
       }).catch(err => {
         state.popQueue.delete(key);
@@ -1538,14 +1584,19 @@
       if (!state.username) { showModal(el.modalUsername); return; }
       const content = el.chatInput.value.trim();
       if (!content) return;
+      const now = Date.now();
+      if (now - state.lastChatSendAt < 650 && state.lastChatSendText === content) return;
+      state.lastChatSendAt = now;
+      state.lastChatSendText = content;
       const msg = {
         content: content.slice(0, 80),
         username: state.username,
         uid: ensureUid(),
-        time: Date.now()
+        time: now
       };
       db.ref(MESSAGES_PATH).push(msg).then(() => {
         el.chatInput.value = '';
+        playSendSound();
         db.ref(`${USER_STATS_PATH}/${ensureUid()}/messages`).transaction(v => (v || 0) + 1);
         db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: state.username, lastSeen: Date.now() });
       }).catch(err => console.error('Error enviando mensaje:', err));
@@ -1594,8 +1645,16 @@
       if (el.adminKeyInput.value === "Isaias2013Cerrado") {
         state.isAuthorized = true;
         el.adminEntry.classList.add('active');
-        hideAllModals();
-        openAdminDashboard();
+        db.ref(SETTINGS_PATH).once('value').then(s => {
+          const incoming = s.val() || {};
+          state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: !!incoming.trackingEnabled };
+          el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
+          el.toggleTracking.checked = !!state.settings.trackingEnabled;
+          el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
+          updateTopStats();
+          hideAllModals();
+          openAdminDashboard();
+        });
         el.adminKeyInput.value = '';
       } else {
         alert("Acceso Denegado.");
@@ -1713,7 +1772,7 @@
         const v = clamp(parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec, 1, 120);
         el.tlFreqInput.value = String(v);
       });
-      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendChatMessage(); });
+      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
       el.minimap.addEventListener('click', e => {
         const rect = el.minimap.getBoundingClientRect();
         const x = clamp(((e.clientX - rect.left) / rect.width) * RES, 0, RES - 1);
@@ -2347,7 +2406,7 @@
         const v = clamp(parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec, 1, 120);
         el.tlFreqInput.value = String(v);
       });
-      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendChatMessage(); });
+      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
 
       const activePointers = new Map();
 
