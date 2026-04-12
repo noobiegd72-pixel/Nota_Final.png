@@ -2,1115 +2,981 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0a0a0b">
-    <title>Nota_Final.png | Motor de Píxel Colaborativo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nota_Final.png</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
     <style>
-        /* ================================================================================================
-           1. ARQUITECTURA DE DISEÑO (CSS VARIABLES)
-           ================================================================================================
-        */
         :root {
-            /* Paleta de Colores de Fondo */
-            --color-bg-deep: #050506;
-            --color-bg-ui: #0f0f11;
-            --color-bg-ui-hover: #161619;
-            --color-bg-accent: #1c1c1f;
-            
-            /* Colores de Marca y Estados */
-            --color-accent: #3d5afe;
-            --color-accent-glow: rgba(61, 90, 254, 0.4);
-            --color-success: #00e676;
-            --color-error: #ff5252;
-            --color-warning: #ffd740;
-            --color-white: #ffffff;
-            --color-gray-100: #f0f0f5;
-            --color-gray-400: #8a8a93;
-            --color-gray-700: #2d2d31;
-            --color-border: #242428;
-
-            /* Tipografía y Espaciado */
-            --font-main: 'Inter', -apple-system, system-ui, sans-serif;
-            --font-mono: 'JetBrains Mono', 'Fira Code', 'Monaco', monospace;
-            --header-height: 60px;
-            --sidebar-width: 340px;
-            --radius-sm: 6px;
-            --radius-md: 12px;
-            --radius-lg: 20px;
-            
-            /* Animaciones */
-            --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-            --trans-fast: 0.15s;
-            --trans-med: 0.3s;
+            --bg-dark: #0a0a0a;
+            --panel-dark: #121212;
+            --text-main: #e0e0e0;
+            --text-dim: #777777;
+            --accent: #2979ff;
+            --border: #222222;
+            --error: #ff5252;
+            --success: #00e676;
         }
 
-        /* ================================================================================================
-           2. RESET Y ESTILOS GLOBALES
-           ================================================================================================
-        */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            outline: none;
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            -webkit-tap-highlight-color: transparent;
         }
 
-        html, body {
-            width: 100%;
-            height: 100%;
-            background-color: var(--color-bg-deep);
-            color: var(--color-gray-100);
-            font-family: var(--font-main);
-            overflow: hidden; /* Obligatorio para el sistema de navegación manual */
-            touch-action: none; /* Desactiva el scroll nativo en favor del Pan JS */
-            position: fixed; /* Previene el "bounce" de iOS */
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+            touch-action: none;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
         }
 
-        button {
-            cursor: pointer;
-            border: none;
-            font-family: inherit;
-        }
-
-        input {
-            font-family: inherit;
-        }
-
-        /* ================================================================================================
-           3. SISTEMA DE CARGA (LOADER)
-           ================================================================================================
-        */
-        #global-loader {
+        /* Pantalla de Carga Estilo Terminal */
+        #loader {
             position: fixed;
             inset: 0;
-            background-color: var(--color-bg-deep);
-            z-index: 10000;
+            background: var(--bg-dark);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            transition: opacity 0.8s var(--ease-in-out), visibility 0.8s;
+            z-index: 5000;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        #global-loader.fade-out {
-            opacity: 0;
-            visibility: hidden;
+        .loader-content {
+            text-align: center;
         }
 
         .loader-spinner {
-            width: 50px;
-            height: 50px;
-            border: 2px solid var(--color-gray-700);
-            border-top: 2px solid var(--color-accent);
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--border);
+            border-top: 2px solid var(--accent);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-bottom: 20px;
-            box-shadow: 0 0 15px var(--color-accent-glow);
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .loader-status-text {
-            font-family: var(--font-mono);
-            font-size: 0.7rem;
-            color: var(--color-gray-400);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        /* ================================================================================================
-           4. ESCENARIO DE DIBUJO (VIEWPORT & CANVAS)
-           ================================================================================================
-        */
-        #drawing-viewport {
+        /* Contenedor del Canvas (Viewport) */
+        #viewport {
             width: 100vw;
             height: 100vh;
+            cursor: crosshair;
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: crosshair;
             background-image: 
-                radial-gradient(circle, var(--color-gray-700) 0.5px, transparent 0.5px);
-            background-size: 30px 30px;
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center center;
             overflow: hidden;
-            position: relative;
         }
 
-        canvas#pixel-canvas {
-            image-rendering: pixelated; /* Mantiene la nitidez de los píxeles */
+        canvas {
+            image-rendering: pixelated;
             background-color: #ffffff;
-            box-shadow: 0 0 120px rgba(0,0,0,0.9);
-            transform-origin: 0 0; /* Crítico para el cálculo de zoom */
-            border: 1px solid #000;
-            transition: none; /* Las transformaciones se manejan por JS directamente */
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            transform-origin: 0 0;
+            user-select: none;
+            -webkit-user-drag: none;
         }
 
-        /* OVERLAY DE SELECCIÓN (EL PIXEL SNAPPING) */
-        #selection-grid-snapper {
+        /* Selector de Píxel Dinámico */
+        #pixel-selector {
             position: absolute;
-            pointer-events: none; /* No intercepta clicks */
-            z-index: 150;
+            pointer-events: none;
+            z-index: 10;
             display: none;
-            box-sizing: border-box;
-            border: 1px solid #ffffff;
-            outline: 1px solid #000000;
+            border: 1px solid white;
+            box-shadow: 0 0 4px rgba(0,0,0,1);
             mix-blend-mode: difference;
         }
 
-        #pixel-tooltip {
-            position: fixed;
-            pointer-events: none;
-            z-index: 160;
-            background: rgba(0,0,0,0.85);
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-family: var(--font-mono);
-            font-size: 10px;
-            color: #fff;
-            border: 1px solid var(--color-border);
-            display: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-
-        /* ================================================================================================
-           5. INTERFAZ SUPERIOR (HEADER)
-           ================================================================================================
-        */
-        header#main-nav {
+        /* Interfaz Superior */
+        header {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            height: var(--header-height);
-            background: rgba(10, 10, 11, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--color-border);
-            z-index: 1000;
+            height: 60px;
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
-            justify-content: space-between;
             padding: 0 25px;
-        }
-
-        .brand-logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .brand-logo h1 {
-            font-size: 1.1rem;
-            font-weight: 900;
-            letter-spacing: -0.5px;
-            text-transform: lowercase;
-            color: var(--color-white);
-        }
-
-        .brand-logo span {
-            font-family: var(--font-mono);
-            font-size: 0.6rem;
-            padding: 3px 6px;
-            background: var(--color-bg-accent);
-            border: 1px solid var(--color-border);
-            border-radius: 4px;
-            color: var(--color-gray-400);
-        }
-
-        .server-stats {
-            display: flex;
-            align-items: center;
-            gap: 30px;
-        }
-
-        .stat-box {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-
-        .stat-label {
-            font-size: 0.55rem;
-            font-weight: 800;
-            color: var(--color-gray-400);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .stat-value {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--color-white);
-            font-family: var(--font-mono);
-        }
-
-        /* ================================================================================================
-           6. COMPONENTES DE INTERFAZ LATERAL (SIDEBAR)
-           ================================================================================================
-        */
-        #app-sidebar {
-            position: fixed;
-            right: 20px;
-            top: calc(var(--header-height) + 20px);
-            bottom: 150px;
-            width: var(--sidebar-width);
-            z-index: 900;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            transition: transform var(--trans-med) var(--ease-in-out);
-        }
-
-        .glass-panel {
-            background: rgba(15, 15, 17, 0.8);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
-        }
-
-        .panel-header {
-            padding: 12px 18px;
-            background: rgba(255,255,255,0.02);
-            border-bottom: 1px solid var(--color-border);
-            display: flex;
+            z-index: 1000;
             justify-content: space-between;
-            align-items: center;
         }
 
-        .panel-title {
-            font-size: 0.65rem;
+        .brand h1 {
+            font-size: 1rem;
+            letter-spacing: 1px;
             font-weight: 800;
-            color: var(--color-gray-400);
             text-transform: uppercase;
-            letter-spacing: 1.5px;
         }
 
-        /* SISTEMA DE CHAT */
-        #chat-container {
-            flex: 1;
+        .header-controls {
             display: flex;
-            flex-direction: column;
-            min-height: 0;
+            align-items: center;
+            gap: 20px;
         }
 
-        #chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 18px;
+        .global-stats {
             display: flex;
-            flex-direction: column;
-            gap: 12px;
-            scrollbar-width: thin;
-            scrollbar-color: var(--color-gray-700) transparent;
-        }
-
-        .message-entry {
-            font-size: 0.82rem;
-            line-height: 1.5;
-            animation: slideInMsg 0.2s ease-out;
-        }
-
-        @keyframes slideInMsg {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .message-entry .author {
-            color: var(--color-accent);
-            font-weight: 700;
-            margin-right: 6px;
-        }
-
-        .message-entry .system-text {
-            color: var(--color-warning);
-            font-style: italic;
+            gap: 25px;
             font-size: 0.75rem;
+            font-family: 'Courier New', Courier, monospace;
+            color: var(--text-dim);
         }
 
-        #chat-input-box {
-            padding: 12px;
-            background: rgba(0,0,0,0.2);
-            border-top: 1px solid var(--color-border);
+        .global-stats b { color: var(--accent); }
+
+        #mobile-menu-btn {
+            display: none;
+            background: var(--panel-dark);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.75rem;
+            transition: 0.2s;
         }
 
-        #chat-input {
-            width: 100%;
-            background: #000;
-            border: 1px solid var(--color-border);
-            border-radius: 8px;
-            padding: 10px 14px;
-            color: #fff;
-            font-size: 0.8rem;
-            transition: border-color var(--trans-fast);
+        #mobile-menu-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
         }
 
-        #chat-input:focus {
-            border-color: var(--color-accent);
-        }
-
-        /* ================================================================================================
-           7. SISTEMA DE PALETA Y COOLDOWN (DOCK)
-           ================================================================================================
-        */
-        #ui-dock {
+        /* Interfaz Inferior: Paleta y Cooldown */
+        #ui-bottom {
             position: fixed;
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            width: 90%;
-            max-width: 700px;
-            z-index: 2000;
+            z-index: 1000;
+            width: 100%;
+            max-width: 500px;
+            padding: 0 20px;
         }
 
         .palette-container {
-            background: var(--color-bg-ui);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-lg);
-            padding: 18px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            background: var(--panel-dark);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        .color-grid {
+        .palette-grid {
             display: grid;
             grid-template-columns: repeat(16, 1fr);
-            gap: 8px;
-            margin-bottom: 20px;
+            gap: 5px;
+            margin-bottom: 15px;
         }
 
-        .swatch {
+        .color-box {
             aspect-ratio: 1;
-            border-radius: 5px;
+            border-radius: 3px;
             cursor: pointer;
-            border: 2px solid transparent;
-            transition: all var(--trans-fast) var(--ease-in-out);
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: transform 0.1s;
         }
 
-        .swatch:hover {
-            transform: translateY(-4px) scale(1.1);
+        .color-box:hover { transform: translateY(-2px); }
+        .color-box.active { 
+            border: 2px solid white; 
+            transform: scale(1.15); 
+            z-index: 2;
+            box-shadow: 0 0 10px rgba(255,255,255,0.3);
         }
 
-        .swatch.active {
-            border-color: #fff;
-            transform: scale(1.2);
-            z-index: 10;
-            box-shadow: 0 0 20px rgba(255,255,255,0.3);
-        }
-
-        /* BARRA DE PROGRESO DE COOLDOWN */
-        .cooldown-track {
+        .cooldown-wrapper {
             width: 100%;
-            height: 8px;
+            height: 4px;
             background: #000;
-            border-radius: 4px;
+            border-radius: 2px;
             overflow: hidden;
-            border: 1px solid var(--color-border);
-            position: relative;
         }
 
-        #cooldown-progress {
-            width: 100%;
+        #cooldown-timer {
             height: 100%;
-            background: linear-gradient(90deg, var(--color-accent), #00d2ff);
-            transition: width 0.05s linear;
+            width: 100%;
+            background: var(--accent);
+            transition: width 0.1s linear;
         }
 
-        /* ================================================================================================
-           8. MODALES DE SISTEMA
-           ================================================================================================
-        */
+        /* Paneles Laterales */
+        #sidebar-right {
+            position: fixed;
+            right: 20px;
+            top: 80px;
+            bottom: 150px;
+            width: 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 900;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-module {
+            background: rgba(18, 18, 18, 0.8);
+            backdrop-filter: blur(5px);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .chat-module {
+            flex: 1;
+            min-height: 200px;
+        }
+
+        .module-header {
+            padding: 10px 15px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            color: var(--text-dim);
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mobile-close-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--error);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+
+        #chat-area {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            touch-action: pan-y; /* Permite scroll táctil */
+        }
+
+        .msg { line-height: 1.4; border-left: 2px solid var(--accent); padding-left: 8px; word-wrap: break-word; }
+        .msg b { color: var(--accent); font-size: 0.7rem; margin-right: 5px; }
+
+        #chat-input {
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--border);
+            padding: 12px;
+            color: white;
+            outline: none;
+            font-size: 0.8rem;
+        }
+
+        .stats-module {
+            padding: 15px;
+            font-size: 0.75rem;
+            line-height: 1.8;
+        }
+
+        .stats-module div {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dotted #333;
+        }
+
+        .stats-module span { color: var(--text-dim); }
+
+        /* Botón Admin y Modales */
+        #admin-entry {
+            position: fixed;
+            bottom: 30px;
+            right: 25px;
+            width: 45px;
+            height: 45px;
+            background: var(--panel-dark);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1001;
+            opacity: 0.3;
+            transition: 0.3s;
+        }
+
+        #admin-entry:hover { opacity: 1; border-color: var(--accent); }
+
         .modal-overlay {
+            display: none;
             position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.95);
-            backdrop-filter: blur(15px);
-            z-index: 9000;
-            display: none;
+            z-index: 2000;
             justify-content: center;
             align-items: center;
-            padding: 20px;
         }
 
-        .modal-card {
-            background: var(--color-bg-ui);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-lg);
-            width: 100%;
-            max-width: 420px;
-            padding: 40px;
-            text-align: center;
-            box-shadow: 0 30px 70px rgba(0,0,0,0.8);
-            animation: modalPop 0.4s var(--ease-in-out);
+        .modal-content {
+            background: var(--panel-dark);
+            padding: 35px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid var(--border);
         }
 
-        @keyframes modalPop {
-            from { opacity: 0; transform: scale(0.9) translateY(30px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
+        .modal-content h2 { font-size: 1.2rem; margin-bottom: 25px; color: var(--accent); }
 
-        .modal-card h2 {
-            font-size: 1.6rem;
-            margin-bottom: 12px;
-            font-weight: 800;
-            letter-spacing: -1px;
-        }
-
-        .modal-card p {
-            color: var(--color-gray-400);
-            font-size: 0.95rem;
-            line-height: 1.6;
-            margin-bottom: 30px;
-        }
-
-        .input-wrapper {
-            margin-bottom: 25px;
-            text-align: left;
-        }
-
-        .input-wrapper label {
-            display: block;
-            font-size: 0.65rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            color: var(--color-accent);
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-        }
-
-        .main-input {
+        input[type="password"], input[type="number"], input[type="text"] {
             width: 100%;
             background: #000;
-            border: 1px solid var(--color-border);
-            padding: 15px 20px;
-            border-radius: 12px;
-            color: #fff;
-            font-size: 1.1rem;
-            transition: all 0.3s;
-        }
-
-        .main-input:focus {
-            border-color: var(--color-accent);
-            box-shadow: 0 0 0 4px var(--color-accent-glow);
-        }
-
-        .action-button {
-            width: 100%;
-            padding: 16px;
-            border-radius: 12px;
-            background: var(--color-accent);
-            color: #fff;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.2s;
-        }
-
-        .action-button:hover {
-            background: #536dfe;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px var(--color-accent-glow);
-        }
-
-        /* ================================================================================================
-           9. RESPONSIVE Y MOBILE OVERRIDES
-           ================================================================================================
-        */
-        @media (max-width: 850px) {
-            #app-sidebar {
-                position: fixed;
-                right: -100%;
-                top: var(--header-height);
-                bottom: 0;
-                width: 100%;
-                margin: 0;
-                border-radius: 0;
-                background: var(--color-bg-deep);
-                padding: 15px;
-            }
-
-            #app-sidebar.active {
-                right: 0;
-            }
-
-            .stat-box.hide-mobile {
-                display: none;
-            }
-
-            .color-grid {
-                grid-template-columns: repeat(8, 1fr);
-            }
-
-            #mobile-nav-toggle {
-                display: flex !important;
-            }
-        }
-
-        #mobile-nav-toggle {
-            display: none;
-            background: var(--color-bg-accent);
-            border: 1px solid var(--color-border);
-            color: #fff;
-            padding: 8px 15px;
+            border: 1px solid var(--border);
+            padding: 14px;
             border-radius: 8px;
-            font-weight: 800;
+            color: white;
+            margin-bottom: 20px;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--accent); }
+
+        .btn-stack { display: flex; flex-direction: column; gap: 10px; }
+
+        .action-btn {
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        .btn-main { background: var(--accent); color: white; }
+        .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-danger { background: #b71c1c; color: white; }
+
+        #coords-info {
+            position: fixed;
+            pointer-events: none;
+            background: rgba(0,0,0,0.8);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-family: monospace;
             font-size: 0.7rem;
+            z-index: 1500;
+            display: none;
+            border: 1px solid var(--border);
+        }
+
+        /* Responsive Mobile */
+        @media (max-width: 768px) {
+            header { padding: 0 15px; }
+            .brand h1 { font-size: 0.9rem; }
+            #mobile-menu-btn { display: block; }
+            
+            /* Compactar estadísticas del header */
+            .global-stats { gap: 10px; font-size: 0.65rem; }
+            #session-clock { display: none; } /* Ocultar reloj en móvil para ahorrar espacio */
+            
+            /* Convertir panel lateral en un menú desplegable (Drawer) */
+            #sidebar-right {
+                top: 60px;
+                bottom: 0;
+                right: -320px; /* Oculto por defecto */
+                width: 300px;
+                max-width: 100vw;
+                height: calc(100vh - 60px);
+                background: rgba(12, 12, 12, 0.98);
+                backdrop-filter: blur(20px);
+                border-left: 1px solid var(--border);
+                padding: 15px;
+                z-index: 2000;
+            }
+
+            #sidebar-right.show { right: 0; }
+            
+            .mobile-close-btn { display: block; }
+            
+            .glass-module { background: transparent; border: none; }
+            .module-header { background: transparent; padding: 10px 5px; }
+            
+            /* Ajustes de paleta */
+            #ui-bottom { bottom: 15px; padding: 0 10px; }
+            .palette-grid { grid-template-columns: repeat(8, 1fr); gap: 4px; }
+            
+            #admin-entry { bottom: 85px; right: 15px; width: 40px; height: 40px; }
         }
     </style>
 </head>
 <body>
 
-    <div id="global-loader">
-        <div class="loader-spinner"></div>
-        <div class="loader-status-text" id="loader-log">Inicializando Sistema</div>
-    </div>
-
-    <div id="modal-identity" class="modal-overlay" style="display: flex;">
-        <div class="modal-card">
-            <h2>Acceso al Lienzo</h2>
-            <p>Define tu identidad para interactuar con la comunidad y registrar tus contribuciones.</p>
-            <div class="input-wrapper">
-                <label>Nombre de Usuario</label>
-                <input type="text" id="user-field" class="main-input" placeholder="Ej: PixelMaster_24" maxlength="15">
-            </div>
-            <button id="btn-login" class="action-button">Entrar al Sistema</button>
+    <div id="loader">
+        <div class="loader-content">
+            <div class="loader-spinner"></div>
+            <p style="font-family: monospace; font-size: 0.7rem; letter-spacing: 2px;">SINCRONIZANDO LIENZO</p>
         </div>
     </div>
 
-    <div id="pixel-tooltip">X:0 Y:0</div>
+    <div id="coords-info">X:0 Y:0</div>
 
-    <header id="main-nav">
-        <div class="brand-logo">
-            <h1>Nota_Final.png</h1>
-            <span>v5.0.0-CORE</span>
-        </div>
-        
-        <div class="server-stats">
-            <div class="stat-box hide-mobile">
-                <span class="stat-label">Estado</span>
-                <span class="stat-value" id="ping-text" style="color: var(--color-success);">SINCRO</span>
+    <header>
+        <div class="brand"><h1>Nota_Final.png</h1></div>
+        <div class="header-controls">
+            <div class="global-stats">
+                <span>👥 <b id="stat-online">0</b></span>
+                <span>📍 <b id="stat-total">0</b></span>
+                <span id="session-clock">00:00:00</span>
             </div>
-            <div class="stat-box">
-                <span class="stat-label">Usuarios</span>
-                <span class="stat-value" id="online-users">0</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-label">Entradas</span>
-                <span class="stat-value" id="total-pixels">0</span>
-            </div>
-            <button id="mobile-nav-toggle">MÓDULOS</button>
+            <button id="mobile-menu-btn">💬 Menú</button>
         </div>
     </header>
 
-    <main id="drawing-viewport">
-        <div id="selection-grid-snapper"></div>
-        <canvas id="pixel-canvas" width="200" height="200"></canvas>
-    </main>
+    <div id="viewport">
+        <div id="pixel-selector"></div>
+        <canvas id="canvas" width="125" height="125"></canvas>
+    </div>
 
-    <aside id="app-sidebar">
-        <div class="glass-panel" style="flex: 1;" id="chat-container">
-            <div class="panel-header">
-                <span class="panel-title">Comunicaciones Globales</span>
+    <div id="sidebar-right">
+        <div class="glass-module chat-module">
+            <div class="module-header">
+                Mensajes Recientes
+                <button class="mobile-close-btn" onclick="toggleMobileMenu()">✖</button>
             </div>
-            <div id="chat-messages">
-                </div>
-            <div id="chat-input-box">
-                <input type="text" id="chat-input" placeholder="Enviar mensaje..." maxlength="80">
+            <div id="chat-area"></div>
+            <input type="text" id="chat-input" placeholder="Enviar mensaje..." maxlength="50">
+        </div>
+        <div class="glass-module">
+            <div class="module-header">Datos de Sesión</div>
+            <div class="stats-module">
+                <div><span>Tus aportes:</span> <b id="stat-mine">0</b></div>
+                <div><span>Resolución:</span> <b>125x125 px</b></div>
+                <div><span>Cooldown:</span> <b>1.0s</b></div>
+                <div><span>Estado:</span> <b style="color:var(--success)">Conectado</b></div>
             </div>
         </div>
+    </div>
 
-        <div class="glass-panel">
-            <div class="panel-header">
-                <span class="panel-title">Sesión Técnica</span>
-            </div>
-            <div style="padding: 15px; font-size: 0.75rem; color: var(--color-gray-400); line-height: 1.8;">
-                USUARIO: <b id="display-name" style="color:white">---</b><br>
-                LIENZO: <b style="color:white">200 x 200 Px</b><br>
-                TASA REFRESCO: <b style="color:var(--color-success)">Realtime</b><br>
-                COOLDOWN: <b style="color:var(--color-accent)">0.5s</b>
-            </div>
-        </div>
-    </aside>
-
-    <div id="ui-dock">
+    <div id="ui-bottom">
         <div class="palette-container">
-            <div class="color-grid" id="palette-grid">
-                </div>
-            <div class="cooldown-track">
-                <div id="cooldown-progress"></div>
+            <div class="palette-grid" id="palette-render"></div>
+            <div class="cooldown-wrapper">
+                <div id="cooldown-timer"></div>
             </div>
+        </div>
+    </div>
+
+    <div id="admin-entry">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V17M12 7V13M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"/></svg>
+    </div>
+
+    <div id="modal-login" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Autenticación</h2>
+            <input type="password" id="admin-key" placeholder="Introducir Contraseña de Administración">
+            <div class="btn-stack">
+                <button class="action-btn btn-main" onclick="attemptLogin()">Verificar</button>
+                <button class="action-btn btn-ghost" onclick="hideModals()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-dashboard" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Panel de Control</h2>
+            <button class="action-btn btn-danger" onclick="executeWipe()">Formatear Todo el Lienzo</button>
+            <div style="margin: 20px 0; border-top: 1px solid var(--border); padding-top: 20px;">
+                <p style="font-size: 0.7rem; margin-bottom: 10px; color: var(--text-dim);">Configurar Timelapse</p>
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" id="tl-freq" value="5" style="margin:0" placeholder="Segs">
+                    <button class="action-btn btn-main" id="tl-toggle" onclick="handleTimelapse()">Iniciar</button>
+                </div>
+                <div id="tl-status" style="font-size: 0.6rem; color: var(--accent); margin-top: 10px; font-family: monospace;"></div>
+            </div>
+            <button class="action-btn btn-ghost" onclick="hideModals()" style="width:100%">Cerrar</button>
         </div>
     </div>
 
     <script>
         /**
-         * @constant NF_CONFIG
-         * Configuración maestra de parámetros técnicos y de base de datos.
+         * CONFIGURACIÓN CORE Y FIREBASE
          */
-        const NF_CONFIG = {
-            DATABASE: {
-                apiKey: "AIzaSyAtTbxuzHMQqSpQt9ZHZP1a0qZykY_NvWA",
-                authDomain: "notafinalpng.firebaseapp.com",
-                projectId: "notafinalpng",
-                storageBucket: "notafinalpng.firebasestorage.app",
-                messagingSenderId: "212333550718",
-                appId: "1:212333550718:web:05d1b04dc2a1de2a88cc2f"
-            },
-            ENGINE: {
-                CANVAS_RESOLUTION: 200,
-                COOLDOWN_MS: 500, // Ajustado a 0.5 segundos según requerimiento
-                ZOOM_MIN: 0.3,
-                ZOOM_MAX: 100,
-                DEFAULT_ZOOM: 5.0
-            },
-            THEME: {
-                PALETTE: [
-                    "#000000", "#ffffff", "#aaaaaa", "#555555", "#fed3cf", "#f14131", "#ffa300", "#ffec00", 
-                    "#00e436", "#00811f", "#00beff", "#0000ea", "#827193", "#e305ff", "#ff8bce", "#803c15",
-                    "#222222", "#d4d7d9", "#9c0000", "#ff4500", "#ffa800", "#ffd635", "#00a368", "#7eed56",
-                    "#2450a4", "#3690ea", "#51e9f4", "#811e9f", "#b44ac0", "#ff3881", "#9c6926", "#6d482f"
-                ]
-            }
+        const firebaseConfig = { 
+            apiKey: "AIzaSyAtTbxuzHMQqSpQt9ZHZP1a0qZykY_NvWA", 
+            authDomain: "notafinalpng.firebaseapp.com", 
+            projectId: "notafinalpng", 
+            storageBucket: "notafinalpng.firebasestorage.app", 
+            messagingSenderId: "212333550718", 
+            appId: "1:212333550718:web:05d1b04dc2a1de2a88cc2f" 
         };
 
-        /**
-         * @object STATE
-         * Gestión de estado reactivo y memoria de sesión.
-         */
-        const STATE = {
-            initialized: false,
-            paintingEnabled: true,
-            currentUser: "Anónimo",
-            selectedColor: "#000000",
-            
-            // Transformación de Cámara
-            zoom: NF_CONFIG.ENGINE.DEFAULT_ZOOM,
-            panX: 0,
-            panY: 0,
-            
-            // Gestión de Inputs
-            activePointers: 0,
-            isDragging: false,
-            dragOccurred: false,
-            lastPoint: { x: 0, y: 0 },
-            
-            // Estadísticas
-            totalPixels: 0,
-            onlineCount: 0
-        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const viewport = document.getElementById('viewport');
+        const selector = document.getElementById('pixel-selector');
+        const RES = 125;
+
+        // Variables de Estado de Cámara
+        let scale = 4.0;
+        let originX = (window.innerWidth / 2) - (RES * scale / 2);
+        let originY = (window.innerHeight / 2) - (RES * scale / 2);
+        
+        // Flags de Interacción
+        let isMoving = false;
+        let wasDragged = false;
+        let lastX, lastY;
+        let pinchDist = null;
+        
+        // Variables de Juego
+        let paintReady = true;
+        let activeColor = "#000000";
+        let isAuthorized = false;
+        let myPixels = 0;
+
+        const colorPalette = [
+            "#000000", "#ffffff", "#aaaaaa", "#555555", "#fed3cf", "#f14131", "#ffa300", "#ffec00", 
+            "#00e436", "#00811f", "#00beff", "#0000ea", "#827193", "#e305ff", "#ff8bce", "#803c15",
+            "#222222", "#d4d7d9", "#9c0000", "#ff4500", "#ffa800", "#ffd635", "#00a368", "#7eed56",
+            "#2450a4", "#3690ea", "#51e9f4", "#811e9f", "#b44ac0", "#ff3881", "#9c6926", "#6d482f"
+        ];
 
         /**
-         * @object DOM_CACHE
-         * Nodos del DOM cacheados para evitar búsquedas repetitivas y mejorar FPS.
+         * LÓGICA UI MÓVIL
          */
-        const DOM = {
-            canvas: document.getElementById('pixel-canvas'),
-            ctx: document.getElementById('pixel-canvas').getContext('2d', { alpha: false }),
-            loader: document.getElementById('global-loader'),
-            loaderLog: document.getElementById('loader-log'),
-            snapper: document.getElementById('selection-grid-snapper'),
-            tooltip: document.getElementById('pixel-tooltip'),
-            modalIdentity: document.getElementById('modal-identity'),
-            userIn: document.getElementById('user-field'),
-            chatMsgBox: document.getElementById('chat-messages'),
-            chatIn: document.getElementById('chat-input'),
-            cooldownBar: document.getElementById('cooldown-progress'),
-            palette: document.getElementById('palette-grid')
-        };
+        const mobileBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar-right');
 
-        /**
-         * INICIALIZADOR DE FIREBASE
-         */
-        firebase.initializeApp(NF_CONFIG.DATABASE);
-        const database = firebase.database();
+        mobileBtn.addEventListener('click', toggleMobileMenu);
 
-        /**
-         * @function bootstrap
-         * Punto de entrada principal para el arranque del sistema.
-         */
-        async function bootstrap() {
-            logSystem("Iniciando protocolos de conexión...");
-            
-            setupIdentity();
-            setupPalette();
-            setupInteractions();
-            centerCamera();
-            
-            // Vincular observadores de Firebase
-            connectRealtimeDatabase();
-            
-            // Simular carga de recursos críticos
-            setTimeout(() => {
-                DOM.loader.classList.add('fade-out');
-                STATE.initialized = true;
-                logSystem("Sistema Operativo.");
-            }, 1200);
+        function toggleMobileMenu() {
+            sidebar.classList.toggle('show');
+            mobileBtn.classList.toggle('active');
         }
 
-        /**
-         * @function logSystem
-         * Mensajería interna para el loader.
-         */
-        function logSystem(msg) {
-            DOM.loaderLog.innerText = msg;
-            console.log(`[CORE] ${msg}`);
-        }
+        // Evitar que interactuar con el menú dibuje o mueva la cámara
+        sidebar.addEventListener('touchstart', e => e.stopPropagation(), {passive: false});
+        sidebar.addEventListener('touchmove', e => e.stopPropagation(), {passive: false});
+        sidebar.addEventListener('mousedown', e => e.stopPropagation());
+        sidebar.addEventListener('mousemove', e => e.stopPropagation());
+        sidebar.addEventListener('wheel', e => e.stopPropagation(), {passive: false});
+
 
         /**
-         * @function setupIdentity
-         * Verifica el almacenamiento local para persistencia de usuario.
+         * INICIALIZACIÓN DE SISTEMA
          */
-        function setupIdentity() {
-            const saved = localStorage.getItem('nota_final_id');
-            if (saved) {
-                STATE.currentUser = saved;
-                DOM.modalIdentity.style.display = 'none';
-                document.getElementById('display-name').innerText = saved;
-            }
-
-            document.getElementById('btn-login').onclick = () => {
-                const val = DOM.userIn.value.trim();
-                if (val.length >= 2) {
-                    STATE.currentUser = val;
-                    localStorage.setItem('nota_final_id', val);
-                    DOM.modalIdentity.style.display = 'none';
-                    document.getElementById('display-name').innerText = val;
-                    sendChatMessage("SISTEMA", `${val} se ha sincronizado.`, true);
-                } else {
-                    alert("Nombre demasiado corto.");
-                }
-            };
-        }
-
-        /**
-         * @function setupPalette
-         * Renderiza los nodos de selección de color.
-         */
-        function setupPalette() {
-            NF_CONFIG.THEME.PALETTE.forEach(color => {
-                const node = document.createElement('div');
-                node.className = 'swatch';
-                node.style.backgroundColor = color;
-                if (color === STATE.selectedColor) node.classList.add('active');
+        function boot() {
+            // Renderizar Paleta
+            const container = document.getElementById('palette-render');
+            colorPalette.forEach(c => {
+                const box = document.createElement('div');
+                box.className = 'color-box';
+                box.style.backgroundColor = c;
+                if(c === activeColor) box.classList.add('active');
                 
-                node.onclick = () => {
-                    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
-                    node.classList.add('active');
-                    STATE.selectedColor = color;
+                box.onclick = () => {
+                    document.querySelectorAll('.color-box').forEach(b => b.classList.remove('active'));
+                    box.classList.add('active');
+                    activeColor = c;
                 };
-                DOM.palette.appendChild(node);
-            });
-        }
-
-        /**
-         * @function centerCamera
-         * Posicionamiento inicial del lienzo en el centro del Viewport.
-         */
-        function centerCamera() {
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-            const res = NF_CONFIG.ENGINE.CANVAS_RESOLUTION;
-            
-            STATE.panX = (vw / 2) - (res * STATE.zoom / 2);
-            STATE.panY = (vh / 2) - (res * STATE.zoom / 2);
-            
-            updateTransform();
-        }
-
-        /**
-         * @function updateTransform
-         * Aplica los valores de Pan y Zoom al elemento Canvas.
-         */
-        function updateTransform() {
-            DOM.canvas.style.transform = `translate(${STATE.panX}px, ${STATE.panY}px) scale(${STATE.zoom})`;
-        }
-
-        /**
-         * @function handleSnapping
-         * SISTEMA DE REDONDEO AL PÍXEL MÁS CERCANO (REVISADO)
-         * Resuelve la posición del cursor respecto al lienzo transformado.
-         */
-        function handleSnapping(eX, eY) {
-            if (!STATE.initialized) return;
-
-            // 1. Obtener coordenadas relativas al lienzo considerando el Pan
-            const relativeX = (eX - STATE.panX) / STATE.zoom;
-            const relativeY = (eY - STATE.panY) / STATE.zoom;
-
-            // 2. Redondear a la rejilla entera (Píxel Exacto)
-            const pX = Math.floor(relativeX);
-            const pY = Math.floor(relativeY);
-
-            // 3. Validar si el puntero está dentro de los límites
-            const limit = NF_CONFIG.ENGINE.CANVAS_RESOLUTION;
-            if (pX >= 0 && pX < limit && pY >= 0 && pY < limit) {
-                // Visualizar el Snapper
-                DOM.snapper.style.display = 'block';
-                DOM.snapper.style.width = STATE.zoom + 'px';
-                DOM.snapper.style.height = STATE.zoom + 'px';
-                
-                // Cálculo visual final: Posición absoluta en pantalla
-                const visualX = STATE.panX + (pX * STATE.zoom);
-                const visualY = STATE.panY + (pY * STATE.zoom);
-                
-                DOM.snapper.style.left = visualX + 'px';
-                DOM.snapper.style.top = visualY + 'px';
-
-                // Tooltip
-                DOM.tooltip.style.display = 'block';
-                DOM.tooltip.style.left = (eX + 15) + 'px';
-                DOM.tooltip.style.top = (eY + 15) + 'px';
-                DOM.tooltip.innerText = `Pos: ${pX}, ${pY}`;
-                
-                return { x: pX, y: pY };
-            } else {
-                DOM.snapper.style.display = 'none';
-                DOM.tooltip.style.display = 'none';
-                return null;
-            }
-        }
-
-        /**
-         * @function setupInteractions
-         * Manejador de eventos híbrido (Ratón y Táctil).
-         */
-        function setupInteractions() {
-            
-            // --- RATÓN: ZOOM (Scroll) ---
-            window.addEventListener('wheel', (e) => {
-                if (DOM.modalIdentity.style.display !== 'none') return;
-                e.preventDefault();
-
-                const delta = e.deltaY > 0 ? 0.92 : 1.08;
-                const oldZoom = STATE.zoom;
-                STATE.zoom = Math.min(Math.max(STATE.zoom * delta, NF_CONFIG.ENGINE.ZOOM_MIN), NF_CONFIG.ENGINE.ZOOM_MAX);
-
-                // Zoom centrado en el puntero
-                STATE.panX -= (e.clientX - STATE.panX) * (STATE.zoom / oldZoom - 1);
-                STATE.panY -= (e.clientY - STATE.panY) * (STATE.zoom / oldZoom - 1);
-
-                updateTransform();
-                handleSnapping(e.clientX, e.clientY);
-            }, { passive: false });
-
-            // --- RATÓN: PAN & CLICK ---
-            window.addEventListener('mousedown', (e) => {
-                STATE.isDragging = true;
-                STATE.dragOccurred = false;
-                STATE.lastPoint = { x: e.clientX, y: e.clientY };
+                container.appendChild(box);
             });
 
-            window.addEventListener('mousemove', (e) => {
-                if (STATE.isDragging) {
-                    const dx = e.clientX - STATE.lastPoint.x;
-                    const dy = e.clientY - STATE.lastPoint.y;
-                    
-                    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) STATE.dragOccurred = true;
-
-                    STATE.panX += dx;
-                    STATE.panY += dy;
-                    STATE.lastPoint = { x: e.clientX, y: e.clientY };
-                    updateTransform();
+            // Sincronización de Datos Inicial
+            db.ref('board').once('value', snapshot => {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, RES, RES);
+                const data = snapshot.val();
+                if(data) {
+                    for(let key in data) {
+                        const [x, y] = key.split('_');
+                        ctx.fillStyle = data[key];
+                        ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
+                    }
                 }
-                handleSnapping(e.clientX, e.clientY);
+                updateCounters();
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 600);
             });
 
-            window.addEventListener('mouseup', (e) => {
-                if (STATE.isDragging && !STATE.dragOccurred) {
-                    const coords = handleSnapping(e.clientX, e.clientY);
-                    if (coords) paintPixel(coords.x, coords.y);
-                }
-                STATE.isDragging = false;
+            // Listeners Realtime
+            db.ref('board').on('child_added', updatePixel);
+            db.ref('board').on('child_changed', updatePixel);
+            db.ref('board').on('child_removed', () => {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0,0, RES, RES);
+                updateCounters();
             });
 
-            // --- TÁCTIL: MULTI-GESTER ---
-            let initialDist = 0;
-            window.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    STATE.isDragging = true;
-                    STATE.dragOccurred = false;
-                    STATE.lastPoint = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    handleSnapping(e.touches[0].clientX, e.touches[0].clientY);
-                } else if (e.touches.length === 2) {
-                    initialDist = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                }
-            }, { passive: false });
-
-            window.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                if (e.touches.length === 1 && STATE.isDragging) {
-                    const dx = e.touches[0].clientX - STATE.lastPoint.x;
-                    const dy = e.touches[0].clientY - STATE.lastPoint.y;
-                    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) STATE.dragOccurred = true;
-
-                    STATE.panX += dx;
-                    STATE.panY += dy;
-                    STATE.lastPoint = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    updateTransform();
-                    handleSnapping(e.touches[0].clientX, e.touches[0].clientY);
-                } else if (e.touches.length === 2) {
-                    // Pinch to zoom
-                    const currentDist = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    const delta = currentDist / initialDist;
-                    const oldZoom = STATE.zoom;
-                    
-                    STATE.zoom = Math.min(Math.max(STATE.zoom * delta, NF_CONFIG.ENGINE.ZOOM_MIN), NF_CONFIG.ENGINE.ZOOM_MAX);
-
-                    const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                    const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                    
-                    STATE.panX -= (centerX - STATE.panX) * (STATE.zoom / oldZoom - 1);
-                    STATE.panY -= (centerY - STATE.panY) * (STATE.zoom / oldZoom - 1);
-
-                    initialDist = currentDist;
-                    updateTransform();
-                }
-            }, { passive: false });
-
-            window.addEventListener('touchend', (e) => {
-                if (STATE.isDragging && !STATE.dragOccurred) {
-                    const coords = handleSnapping(STATE.lastPoint.x, STATE.lastPoint.y);
-                    if (coords) paintPixel(coords.x, coords.y);
-                }
-                STATE.isDragging = false;
+            // Gestión de Presencia
+            const presenceRef = db.ref('presence').push(true);
+            presenceRef.onDisconnect().remove();
+            db.ref('presence').on('value', s => {
+                // Formato con comas para usuarios también
+                document.getElementById('stat-online').innerText = (s.numChildren() || 0).toLocaleString('en-US');
             });
 
-            // Chat & UI
-            DOM.chatIn.onkeydown = (e) => {
-                if (e.key === 'Enter' && DOM.chatIn.value.trim()) {
-                    sendChatMessage(STATE.currentUser, DOM.chatIn.value);
-                    DOM.chatIn.value = "";
-                }
-            };
-
-            document.getElementById('mobile-nav-toggle').onclick = () => {
-                document.getElementById('app-sidebar').classList.toggle('active');
-            };
-        }
-
-        /**
-         * @function paintPixel
-         * Registra la acción de dibujo en la base de datos remota.
-         */
-        function paintPixel(x, y) {
-            if (!STATE.paintingEnabled) return;
-
-            database.ref(`board/${x}_${y}`).set(STATE.selectedColor);
-            
-            // Iniciar Cooldown de 0.5s
-            STATE.paintingEnabled = false;
+            // Reloj de Sesión
             const start = Date.now();
-            const duration = NF_CONFIG.ENGINE.COOLDOWN_MS;
+            setInterval(() => {
+                const s = Math.floor((Date.now() - start) / 1000);
+                const h = String(Math.floor(s / 3600)).padStart(2, '0');
+                const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+                const sec = String(s % 60).padStart(2, '0');
+                document.getElementById('session-clock').innerText = `${h}:${m}:${sec}`;
+            }, 1000);
 
-            const updateBar = setInterval(() => {
-                const elapsed = Date.now() - start;
-                const progress = (elapsed / duration) * 100;
-                DOM.cooldownBar.style.width = (100 - progress) + "%";
-                
-                if (elapsed >= duration) {
-                    clearInterval(updateBar);
-                    STATE.paintingEnabled = true;
-                    DOM.cooldownBar.style.width = "100%";
-                }
-            }, 20);
+            refreshCamera();
         }
 
-        /**
-         * @function connectRealtimeDatabase
-         * Configura los triggers de sincronización con Firebase.
-         */
-        function connectRealtimeDatabase() {
-            // Escuchar cambios en el tablero
-            database.ref('board').on('child_added', (snap) => {
-                const [x, y] = snap.key.split('_');
-                DOM.ctx.fillStyle = snap.val();
-                DOM.ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
-                updateStats();
-            });
+        function updatePixel(s) {
+            const [x, y] = s.key.split('_');
+            ctx.fillStyle = s.val();
+            ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
+            updateCounters();
+        }
 
-            database.ref('board').on('child_changed', (snap) => {
-                const [x, y] = snap.key.split('_');
-                DOM.ctx.fillStyle = snap.val();
-                DOM.ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
-            });
-
-            // Escuchar Chat
-            database.ref('chat').limitToLast(50).on('child_added', (snap) => {
-                renderChatMessage(snap.val());
-            });
-
-            // Presencia
-            const presence = database.ref('presence').push(true);
-            presence.onDisconnect().remove();
-            database.ref('presence').on('value', (snap) => {
-                document.getElementById('online-users').innerText = snap.numChildren();
+        function updateCounters() {
+            db.ref('board').once('value', s => {
+                // Aplica formato de separador de miles con comas (en-US)
+                const total = s.numChildren() || 0;
+                document.getElementById('stat-total').innerText = total.toLocaleString('en-US');
             });
         }
 
         /**
-         * @function sendChatMessage
-         * Empuja un mensaje al historial de Firebase.
+         * LÓGICA DE CÁMARA (ZOOM Y PANNING)
          */
-        function sendChatMessage(user, text, isSystem = false) {
-            database.ref('chat').push({
-                user: user,
-                text: text,
-                system: isSystem,
-                time: Date.now()
-            });
+        function refreshCamera() {
+            canvas.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
         }
 
-        /**
-         * @function renderChatMessage
-         * Inyecta un nodo de mensaje en el feed de la UI.
-         */
-        function renderChatMessage(data) {
-            const entry = document.createElement('div');
-            entry.className = 'message-entry';
-            if (data.system) {
-                entry.innerHTML = `<span class="system-text">[!] ${data.text}</span>`;
-            } else {
-                entry.innerHTML = `<span class="author">${data.user}:</span><span>${data.text}</span>`;
+        // Mouse Wheel Zoom
+        window.addEventListener('wheel', e => {
+            if(sidebar.contains(e.target)) return; // Ignorar zoom si el cursor está en el menú
+            e.preventDefault();
+            const factor = e.deltaY > 0 ? 0.85 : 1.15;
+            applyZoom(factor, e.clientX, e.clientY);
+        }, { passive: false });
+
+        function applyZoom(factor, centerX, centerY) {
+            const oldScale = scale;
+            scale = Math.min(Math.max(scale * factor, 0.4), 80);
+            
+            if (scale !== oldScale) {
+                originX -= (centerX - originX) * (scale / oldScale - 1);
+                originY -= (centerY - originY) * (scale / oldScale - 1);
+                refreshCamera();
             }
-            DOM.chatMsgBox.appendChild(entry);
-            DOM.chatMsgBox.scrollTop = DOM.chatMsgBox.scrollHeight;
+        }
+
+        // Interacciones Mouse
+        viewport.addEventListener('mousedown', e => {
+            isMoving = true;
+            wasDragged = false;
+            lastX = e.clientX;
+            lastY = e.clientY;
+        });
+
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const px = Math.floor((e.clientX - rect.left) / scale);
+            const py = Math.floor((e.clientY - rect.top) / scale);
+
+            if (isMoving) {
+                const dist = Math.hypot(e.clientX - lastX, e.clientY - lastY);
+                if(dist > 3) wasDragged = true;
+
+                originX += e.clientX - lastX;
+                originY += e.clientY - lastY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                refreshCamera();
+            }
+
+            // UI de Selección y Coordenadas
+            if(px >= 0 && px < RES && py >= 0 && py < RES) {
+                selector.style.display = 'block';
+                selector.style.left = (rect.left + px * scale) + 'px';
+                selector.style.top = (rect.top + py * scale) + 'px';
+                selector.style.width = scale + 'px';
+                selector.style.height = scale + 'px';
+                
+                const cInfo = document.getElementById('coords-info');
+                cInfo.style.display = 'block';
+                cInfo.style.left = (e.clientX + 15) + 'px';
+                cInfo.style.top = (e.clientY + 15) + 'px';
+                cInfo.innerText = `X:${px} Y:${py}`;
+            } else {
+                selector.style.display = 'none';
+                document.getElementById('coords-info').style.display = 'none';
+            }
+        });
+
+        window.addEventListener('mouseup', e => {
+            if (!wasDragged && isMoving) {
+                commitPixel(e);
+            }
+            isMoving = false;
+        });
+
+        /**
+         * SOPORTE TÁCTIL AVANZADO (MOBILE)
+         */
+        viewport.addEventListener('touchstart', e => {
+            if(e.touches.length === 2) {
+                pinchDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX, 
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+            } else if(e.touches.length === 1) {
+                isMoving = true;
+                wasDragged = false;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+            }
+        }, { passive: false });
+
+        viewport.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if(e.touches.length === 2 && pinchDist) {
+                const currentDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX, 
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                const factor = currentDist / pinchDist;
+                const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                
+                applyZoom(factor, midX, midY);
+                pinchDist = currentDist;
+            } else if(isMoving && e.touches.length === 1) {
+                wasDragged = true;
+                originX += e.touches[0].clientX - lastX;
+                originY += e.touches[0].clientY - lastY;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+                refreshCamera();
+            }
+        }, { passive: false });
+
+        viewport.addEventListener('touchend', e => {
+            if (!wasDragged && isMoving && e.touches.length === 0) {
+                const touch = e.changedTouches[0];
+                commitPixel(touch);
+            }
+            isMoving = false;
+            pinchDist = null;
+        });
+
+        /**
+         * MECÁNICA DE PINTADO
+         */
+        function commitPixel(input) {
+            if(!paintReady) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((input.clientX - rect.left) / scale);
+            const y = Math.floor((input.clientY - rect.top) / scale);
+
+            if(x >= 0 && x < RES && y >= 0 && y < RES) {
+                db.ref(`board/${x}_${y}`).set(activeColor);
+                myPixels++;
+                // Formato con comas para los píxeles propios
+                document.getElementById('stat-mine').innerText = myPixels.toLocaleString('en-US');
+                triggerCooldown();
+            }
+        }
+
+        function triggerCooldown() {
+            paintReady = false;
+            let start = Date.now();
+            const time = 1000; // 1 segundo
+            const bar = document.getElementById('cooldown-timer');
+            
+            const frame = () => {
+                const now = Date.now();
+                const diff = now - start;
+                const p = (diff / time) * 100;
+                bar.style.width = (100 - p) + "%";
+
+                if(diff < time) {
+                    requestAnimationFrame(frame);
+                } else {
+                    paintReady = true;
+                    bar.style.width = "100%";
+                }
+            };
+            requestAnimationFrame(frame);
         }
 
         /**
-         * @function updateStats
-         * Recalcula los metadatos del lienzo.
+         * SISTEMA DE CHAT
          */
-        function updateStats() {
-            database.ref('board').once('value', (snap) => {
-                document.getElementById('total-pixels').innerText = snap.numChildren().toLocaleString();
-            });
+        const chatInput = document.getElementById('chat-input');
+        chatInput.addEventListener('keydown', e => {
+            if(e.key === 'Enter' && chatInput.value.trim() !== "") {
+                db.ref('messages').push({
+                    content: chatInput.value.substring(0, 50),
+                    time: Date.now()
+                });
+                chatInput.value = "";
+            }
+        });
+
+        db.ref('messages').limitToLast(15).on('child_added', s => {
+            const m = s.val();
+            const div = document.createElement('div');
+            div.className = 'msg';
+            div.innerHTML = `<b>USR_${s.key.substring(1,4)}:</b> ${m.content}`;
+            const box = document.getElementById('chat-area');
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        });
+
+        /**
+         * ADMINISTRACIÓN Y TIMELAPSE
+         */
+        document.getElementById('admin-entry').onclick = () => {
+            if(!isAuthorized) document.getElementById('modal-login').style.display = 'flex';
+            else document.getElementById('modal-dashboard').style.display = 'flex';
+        };
+
+        function hideModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
         }
 
-        // --- ARRANQUE ---
-        window.onload = bootstrap;
-        window.onresize = () => { if (STATE.initialized) centerCamera(); };
+        function attemptLogin() {
+            const p = document.getElementById('admin-key').value;
+            if(p === "Isaias2013Cerrado") {
+                isAuthorized = true;
+                hideModals();
+                document.getElementById('modal-dashboard').style.display = 'flex';
+                document.getElementById('admin-entry').style.opacity = '1';
+                document.getElementById('admin-entry').style.color = 'var(--accent)';
+            } else {
+                alert("Acceso Denegado.");
+            }
+        }
 
+        function executeWipe() {
+            if(confirm("¿ELIMINAR TODO EL LIENZO? Esta acción no se puede deshacer.")) {
+                db.ref('board').remove();
+                hideModals();
+            }
+        }
+
+        // Timelapse Engine
+        let isCapturing = false;
+        let frames = [];
+        let captureHandle = null;
+
+        function handleTimelapse() {
+            if(!isCapturing) {
+                isCapturing = true;
+                frames = [];
+                const interval = parseInt(document.getElementById('tl-freq').value) * 1000;
+                document.getElementById('tl-toggle').innerText = "DETENER";
+                document.getElementById('tl-toggle').classList.replace('btn-main', 'btn-danger');
+                
+                captureHandle = setInterval(() => {
+                    const snap = document.createElement('canvas');
+                    snap.width = RES; snap.height = RES;
+                    const sctx = snap.getContext('2d');
+                    sctx.drawImage(canvas, 0, 0);
+
+                    // Estampa de Tiempo Completa
+                    sctx.fillStyle = "rgba(0,0,0,0.7)";
+                    sctx.fillRect(0, RES - 12, RES, 12);
+                    sctx.fillStyle = "#ffffff";
+                    sctx.font = "6px monospace";
+                    const now = new Date();
+                    const str = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+                    sctx.fillText(str, 2, RES - 4);
+
+                    frames.push(snap.toDataURL('image/webp'));
+                    document.getElementById('tl-status').innerText = `Capturas: ${frames.length}`;
+                }, interval);
+            } else {
+                finalizeTimelapse();
+            }
+        }
+
+        async function finalizeTimelapse() {
+            clearInterval(captureHandle);
+            isCapturing = false;
+            document.getElementById('tl-toggle').innerText = "PROCESANDO...";
+            
+            const videoCanvas = document.createElement('canvas');
+            videoCanvas.width = RES; videoCanvas.height = RES;
+            const vctx = videoCanvas.getContext('2d');
+            
+            const stream = videoCanvas.captureStream(12);
+            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            const blobs = [];
+            
+            recorder.ondataavailable = e => blobs.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(blobs, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `timelapse_res_${Date.now()}.webm`;
+                link.click();
+                
+                document.getElementById('tl-toggle').innerText = "INICIAR";
+                document.getElementById('tl-toggle').classList.replace('btn-danger', 'btn-main');
+                document.getElementById('tl-status').innerText = "Exportación lista.";
+            };
+
+            recorder.start();
+            for(let f of frames) {
+                await new Promise(r => {
+                    const img = new Image();
+                    img.onload = () => {
+                        vctx.clearRect(0,0,RES,RES);
+                        vctx.drawImage(img, 0, 0);
+                        setTimeout(r, 80); // Velocidad de reproducción
+                    };
+                    img.src = f;
+                });
+            }
+            recorder.stop();
+        }
+
+        // Ejecutar Boot
+        boot();
     </script>
 </body>
 </html>
