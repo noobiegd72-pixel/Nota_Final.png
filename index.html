@@ -11,20 +11,22 @@
     <style>
         :root {
             --bg-dark: #0a0a0a;
-            --panel-dark: #141414;
-            --text-main: #d0d0d0;
-            --text-dim: #666666;
+            --panel-dark: #121212;
+            --text-main: #e0e0e0;
+            --text-dim: #777777;
             --accent: #2979ff;
             --border: #222222;
             --error: #ff5252;
+            --success: #00e676;
         }
 
         * { 
             margin: 0; 
             padding: 0; 
             box-sizing: border-box; 
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         body {
@@ -34,9 +36,10 @@
             touch-action: none;
             height: 100vh;
             width: 100vw;
+            position: fixed;
         }
 
-        /* Pantalla de Carga */
+        /* Pantalla de Carga Estilo Terminal */
         #loader {
             position: fixed;
             inset: 0;
@@ -45,23 +48,27 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 2000;
-            transition: opacity 0.5s ease;
+            z-index: 5000;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .loader-content {
+            text-align: center;
         }
 
         .loader-spinner {
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
             border: 2px solid var(--border);
             border-top: 2px solid var(--accent);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-bottom: 15px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Contenedor del Canvas */
+        /* Contenedor del Canvas (Viewport) */
         #viewport {
             width: 100vw;
             height: 100vh;
@@ -69,257 +76,309 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
-            background-size: 20px 20px;
+            background-image: 
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center center;
+            overflow: hidden;
         }
 
         canvas {
             image-rendering: pixelated;
             background-color: #ffffff;
-            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
             transform-origin: 0 0;
             user-select: none;
+            -webkit-user-drag: none;
         }
 
-        /* Borde de selección de píxel */
+        /* Selector de Píxel Dinámico */
         #pixel-selector {
             position: absolute;
-            width: 1px;
-            height: 1px;
-            border: 0.1px solid rgba(0,0,0,0.5);
-            box-shadow: 0 0 0 0.5px white;
             pointer-events: none;
             z-index: 10;
             display: none;
+            border: 1px solid white;
+            box-shadow: 0 0 4px rgba(0,0,0,1);
+            mix-blend-mode: difference;
         }
 
         /* Interfaz Superior */
         header {
             position: fixed;
-            top: 0; left: 0; right: 0;
-            height: 50px;
-            background: rgba(10, 10, 10, 0.9);
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(10px);
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
-            padding: 0 20px;
-            z-index: 100;
+            padding: 0 25px;
+            z-index: 1000;
             justify-content: space-between;
         }
 
-        .title-group h1 { font-size: 0.9rem; font-weight: bold; }
-
-        .stats-top {
-            display: flex;
-            gap: 15px;
-            font-size: 0.7rem;
-            color: var(--text-dim);
+        .brand h1 {
+            font-size: 1rem;
+            letter-spacing: 1px;
+            font-weight: 800;
             text-transform: uppercase;
         }
 
-        .stats-top b { color: var(--text-main); }
-
-        /* Paleta Inferior */
-        #ui-bottom {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-            width: 100%;
-            max-width: 450px;
-            padding: 0 15px;
+        .global-stats {
+            display: flex;
+            gap: 25px;
+            font-size: 0.75rem;
+            font-family: 'Courier New', Courier, monospace;
+            color: var(--text-dim);
         }
 
-        .palette-card {
+        .global-stats b { color: var(--accent); }
+
+        /* Interfaz Inferior: Paleta y Cooldown */
+        #ui-bottom {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 100%;
+            max-width: 500px;
+            padding: 0 20px;
+        }
+
+        .palette-container {
             background: var(--panel-dark);
-            padding: 10px;
-            border-radius: 10px;
+            padding: 15px;
+            border-radius: 12px;
             border: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
         .palette-grid {
             display: grid;
             grid-template-columns: repeat(16, 1fr);
-            gap: 3px;
+            gap: 5px;
+            margin-bottom: 15px;
         }
 
-        .color-swatch {
-            aspect-ratio: 1/1;
-            border-radius: 2px;
+        .color-box {
+            aspect-ratio: 1;
+            border-radius: 3px;
             cursor: pointer;
-            border: 1px solid transparent;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: transform 0.1s;
         }
 
-        .color-swatch.active { border-color: white; transform: scale(1.1); }
+        .color-box:hover { transform: translateY(-2px); }
+        .color-box.active { 
+            border: 2px solid white; 
+            transform: scale(1.15); 
+            z-index: 2;
+            box-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
 
-        .cooldown-bar {
-            height: 3px;
-            background: #111;
-            border-radius: 1px;
+        .cooldown-wrapper {
+            width: 100%;
+            height: 4px;
+            background: #000;
+            border-radius: 2px;
             overflow: hidden;
         }
 
-        #cooldown-progress {
+        #cooldown-timer {
             height: 100%;
             width: 100%;
             background: var(--accent);
             transition: width 0.1s linear;
         }
 
-        /* Paneles */
-        #side-right {
+        /* Paneles Laterales */
+        #sidebar-right {
             position: fixed;
-            right: 15px; top: 65px;
-            width: 240px;
+            right: 20px;
+            top: 80px;
+            bottom: 150px;
+            width: 260px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            z-index: 90;
+            gap: 15px;
+            z-index: 900;
         }
 
-        .panel {
-            background: rgba(15, 15, 15, 0.85);
-            border-radius: 8px;
+        .glass-module {
+            background: rgba(18, 18, 18, 0.8);
+            backdrop-filter: blur(5px);
             border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
         }
 
-        .panel-label { 
-            padding: 8px 12px; 
-            font-size: 0.6rem; 
-            color: var(--text-dim); 
-            background: rgba(0,0,0,0.3);
+        .module-header {
+            padding: 10px 15px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            color: var(--text-dim);
+            background: rgba(255,255,255,0.03);
             border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        #chat-log {
-            height: 150px;
+        #chat-area {
+            flex: 1;
+            padding: 12px;
             overflow-y: auto;
-            padding: 10px;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
+            max-height: 250px;
         }
 
-        .chat-msg span { color: var(--accent); font-weight: bold; }
+        .msg { line-height: 1.4; border-left: 2px solid var(--accent); padding-left: 8px; }
+        .msg b { color: var(--accent); font-size: 0.7rem; margin-right: 5px; }
 
         #chat-input {
-            width: 100%;
             background: transparent;
             border: none;
             border-top: 1px solid var(--border);
-            padding: 10px;
+            padding: 12px;
             color: white;
             outline: none;
+            font-size: 0.8rem;
+        }
+
+        .stats-module {
+            padding: 15px;
             font-size: 0.75rem;
+            line-height: 1.8;
         }
 
-        #extra-stats {
-            padding: 10px;
-            font-size: 0.7rem;
-            line-height: 1.5;
-            color: var(--text-dim);
+        .stats-module div {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dotted #333;
         }
 
-        #extra-stats b { color: var(--text-main); }
+        .stats-module span { color: var(--text-dim); }
 
-        /* Admin */
-        #admin-trigger {
+        /* Botón Admin y Modales */
+        #admin-entry {
             position: fixed;
-            bottom: 20px; right: 20px;
-            width: 35px; height: 35px;
+            bottom: 30px;
+            right: 25px;
+            width: 45px;
+            height: 45px;
             background: var(--panel-dark);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            opacity: 0.4;
+            z-index: 1001;
+            opacity: 0.3;
+            transition: 0.3s;
         }
 
-        .modal {
+        #admin-entry:hover { opacity: 1; border-color: var(--accent); }
+
+        .modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.9);
-            z-index: 1000;
+            background: rgba(0,0,0,0.95);
+            z-index: 2000;
             justify-content: center;
             align-items: center;
         }
 
-        .modal-box {
+        .modal-content {
             background: var(--panel-dark);
-            padding: 25px;
-            border-radius: 12px;
+            padding: 35px;
+            border-radius: 15px;
             width: 90%;
-            max-width: 350px;
+            max-width: 400px;
             border: 1px solid var(--border);
         }
 
-        .modal-box h2 { font-size: 1rem; margin-bottom: 15px; }
-        
+        .modal-content h2 { font-size: 1.2rem; margin-bottom: 25px; color: var(--accent); }
+
         input[type="password"], input[type="number"], input[type="text"] {
             width: 100%;
             background: #000;
             border: 1px solid var(--border);
-            padding: 10px;
-            border-radius: 5px;
+            padding: 14px;
+            border-radius: 8px;
             color: white;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            outline: none;
         }
 
-        .btn {
-            width: 100%;
-            padding: 10px;
-            border-radius: 5px;
+        input:focus { border-color: var(--accent); }
+
+        .btn-stack { display: flex; flex-direction: column; gap: 10px; }
+
+        .action-btn {
+            padding: 14px;
+            border-radius: 8px;
             border: none;
             cursor: pointer;
             font-weight: bold;
-            margin-bottom: 8px;
+            transition: 0.2s;
+            text-transform: uppercase;
+            font-size: 0.75rem;
         }
 
-        .btn-primary { background: var(--accent); color: white; }
-        .btn-danger { background: var(--error); color: white; }
-        .btn-close { background: #333; color: white; }
+        .btn-main { background: var(--accent); color: white; }
+        .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-danger { background: #b71c1c; color: white; }
 
-        #coords-display {
+        #coords-info {
             position: fixed;
             pointer-events: none;
-            background: black;
-            padding: 2px 5px;
-            font-size: 0.6rem;
-            z-index: 150;
+            background: rgba(0,0,0,0.8);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.7rem;
+            z-index: 1500;
             display: none;
+            border: 1px solid var(--border);
         }
 
-        @media (max-width: 600px) {
-            #side-right { display: none; }
+        /* Responsive Mobile */
+        @media (max-width: 768px) {
+            #sidebar-right { display: none; }
+            .global-stats span:not(:first-child) { display: none; }
+            .palette-grid { grid-template-columns: repeat(8, 1fr); }
+            #ui-bottom { bottom: 20px; }
         }
     </style>
 </head>
 <body>
 
     <div id="loader">
-        <div class="loader-spinner"></div>
-        <div style="font-size: 0.6rem; color: var(--text-dim);">ENTRANDO...</div>
+        <div class="loader-content">
+            <div class="loader-spinner"></div>
+            <p style="font-family: monospace; font-size: 0.7rem; letter-spacing: 2px;">SINCRONIZANDO LIENZO</p>
+        </div>
     </div>
 
-    <div id="coords-display">0,0</div>
+    <div id="coords-info">X:0 Y:0</div>
 
     <header>
-        <div class="title-group">
-            <h1>Nota_Final.png</h1>
-        </div>
-        <div class="stats-top">
-            <span>Gente: <b id="user-count">1</b></span>
-            <span>Pintados: <b id="pixel-count">0</b></span>
-            <span id="session-timer">00:00</span>
+        <div class="brand"><h1>Nota_Final.png</h1></div>
+        <div class="global-stats">
+            <span>Usuarios: <b id="stat-online">0</b></span>
+            <span>Total Píxeles: <b id="stat-total">0</b></span>
+            <span id="session-clock">00:00:00</span>
         </div>
     </header>
 
@@ -328,54 +387,67 @@
         <canvas id="canvas" width="125" height="125"></canvas>
     </div>
 
-    <div id="side-right">
-        <div class="panel">
-            <div class="panel-label">CHAT</div>
-            <div id="chat-log"></div>
-            <input type="text" id="chat-input" placeholder="Escribir..." maxlength="50">
+    <div id="sidebar-right">
+        <div class="glass-module">
+            <div class="module-header">Mensajes Recientes</div>
+            <div id="chat-area"></div>
+            <input type="text" id="chat-input" placeholder="Enviar mensaje..." maxlength="50">
         </div>
-        <div class="panel">
-            <div class="panel-label">ESTADÍSTICAS</div>
-            <div id="extra-stats">
-                Píxeles tuyos: <b id="my-pixels">0</b><br>
-                Última acción: <b id="last-action">Ninguna</b><br>
-                Lienzo: <b>125 x 125</b>
+        <div class="glass-module">
+            <div class="module-header">Datos de Sesión</div>
+            <div class="stats-module">
+                <div><span>Tus aportes:</span> <b id="stat-mine">0</b></div>
+                <div><span>Resolución:</span> <b>125x125 px</b></div>
+                <div><span>Cooldown:</span> <b>1.0s</b></div>
+                <div><span>Estado:</span> <b style="color:var(--success)">Conectado</b></div>
             </div>
         </div>
     </div>
 
     <div id="ui-bottom">
-        <div class="palette-card">
-            <div class="palette-grid" id="palette"></div>
-            <div class="cooldown-bar"><div id="cooldown-progress"></div></div>
+        <div class="palette-container">
+            <div class="palette-grid" id="palette-render"></div>
+            <div class="cooldown-wrapper">
+                <div id="cooldown-timer"></div>
+            </div>
         </div>
     </div>
 
-    <div id="admin-trigger">⚙️</div>
+    <div id="admin-entry">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V17M12 7V13M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"/></svg>
+    </div>
 
-    <div id="modal-auth" class="modal">
-        <div class="modal-box">
-            <h2>Panel</h2>
-            <input type="password" id="admin-pass" placeholder="Contraseña">
-            <button class="btn btn-primary" onclick="authAdmin()">Entrar</button>
-            <button class="btn btn-close" onclick="closeModals()">Salir</button>
+    <div id="modal-login" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Autenticación</h2>
+            <input type="password" id="admin-key" placeholder="Introducir Contraseña de Administración">
+            <div class="btn-stack">
+                <button class="action-btn btn-main" onclick="attemptLogin()">Verificar</button>
+                <button class="action-btn btn-ghost" onclick="hideModals()">Cancelar</button>
+            </div>
         </div>
     </div>
 
-    <div id="modal-admin" class="modal">
-        <div class="modal-box">
-            <h2>Admin</h2>
-            <button class="btn btn-danger" onclick="clearCanvas()">Borrar lienzo</button>
-            <hr style="border: 0; border-top: 1px solid var(--border); margin: 15px 0;">
-            <p style="font-size: 0.7rem; margin-bottom: 10px;">Timelapse:</p>
-            <input type="number" id="tl-interval" value="5" min="1">
-            <button class="btn btn-primary" id="tl-btn" onclick="toggleTimelapse()">Grabar</button>
-            <button class="btn btn-close" onclick="closeModals()">Cerrar</button>
+    <div id="modal-dashboard" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Panel de Control</h2>
+            <button class="action-btn btn-danger" onclick="executeWipe()">Formatear Todo el Lienzo</button>
+            <div style="margin: 20px 0; border-top: 1px solid var(--border); padding-top: 20px;">
+                <p style="font-size: 0.7rem; margin-bottom: 10px; color: var(--text-dim);">Configurar Timelapse</p>
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" id="tl-freq" value="5" style="margin:0" placeholder="Segs">
+                    <button class="action-btn btn-main" id="tl-toggle" onclick="handleTimelapse()">Iniciar</button>
+                </div>
+                <div id="tl-status" style="font-size: 0.6rem; color: var(--accent); margin-top: 10px; font-family: monospace;"></div>
+            </div>
+            <button class="action-btn btn-ghost" onclick="hideModals()" style="width:100%">Cerrar</button>
         </div>
     </div>
 
     <script>
-        // FIREBASE
+        /**
+         * CONFIGURACIÓN CORE Y FIREBASE
+         */
         const firebaseConfig = { 
             apiKey: "AIzaSyAtTbxuzHMQqSpQt9ZHZP1a0qZykY_NvWA", 
             authDomain: "notafinalpng.firebaseapp.com", 
@@ -384,309 +456,418 @@
             messagingSenderId: "212333550718", 
             appId: "1:212333550718:web:05d1b04dc2a1de2a88cc2f" 
         };
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // CONFIG
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d', { alpha: false });
         const viewport = document.getElementById('viewport');
         const selector = document.getElementById('pixel-selector');
-        const CANVAS_SIZE = 125;
-        
-        let scale = 4.0;
-        let originX = (window.innerWidth / 2) - (CANVAS_SIZE * scale / 2);
-        let originY = (window.innerHeight / 2) - (CANVAS_SIZE * scale / 2);
-        
-        let isDragging = false;
-        let hasMoved = false; // Nueva flag para detectar arrastre
-        let lastX, lastY;
-        let canPaint = true;
-        let selectedColor = "#000000";
-        let isAdmin = false;
-        let myPixelCount = 0;
+        const RES = 125;
 
-        const colors = [
+        // Variables de Estado de Cámara
+        let scale = 4.0;
+        let originX = (window.innerWidth / 2) - (RES * scale / 2);
+        let originY = (window.innerHeight / 2) - (RES * scale / 2);
+        
+        // Flags de Interacción
+        let isMoving = false;
+        let wasDragged = false;
+        let lastX, lastY;
+        let pinchDist = null;
+        
+        // Variables de Juego
+        let paintReady = true;
+        let activeColor = "#000000";
+        let isAuthorized = false;
+        let myPixels = 0;
+
+        const colorPalette = [
             "#000000", "#ffffff", "#aaaaaa", "#555555", "#fed3cf", "#f14131", "#ffa300", "#ffec00", 
             "#00e436", "#00811f", "#00beff", "#0000ea", "#827193", "#e305ff", "#ff8bce", "#803c15",
             "#222222", "#d4d7d9", "#9c0000", "#ff4500", "#ffa800", "#ffd635", "#00a368", "#7eed56",
             "#2450a4", "#3690ea", "#51e9f4", "#811e9f", "#b44ac0", "#ff3881", "#9c6926", "#6d482f"
         ];
 
-        function init() {
-            const paletteGrid = document.getElementById('palette');
-            colors.forEach(c => {
-                const div = document.createElement('div');
-                div.className = 'color-swatch';
-                div.style.backgroundColor = c;
-                if(c === selectedColor) div.classList.add('active');
-                div.onclick = () => {
-                    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-                    div.classList.add('active');
-                    selectedColor = c;
+        /**
+         * INICIALIZACIÓN DE SISTEMA
+         */
+        function boot() {
+            // Renderizar Paleta
+            const container = document.getElementById('palette-render');
+            colorPalette.forEach(c => {
+                const box = document.createElement('div');
+                box.className = 'color-box';
+                box.style.backgroundColor = c;
+                if(c === activeColor) box.classList.add('active');
+                
+                box.onclick = () => {
+                    document.querySelectorAll('.color-box').forEach(b => b.classList.remove('active'));
+                    box.classList.add('active');
+                    activeColor = c;
                 };
-                paletteGrid.appendChild(div);
+                container.appendChild(box);
             });
 
-            db.ref('board').once('value', snap => {
+            // Sincronización de Datos Inicial
+            db.ref('board').once('value', snapshot => {
                 ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0,0, CANVAS_SIZE, CANVAS_SIZE);
-                const data = snap.val();
+                ctx.fillRect(0, 0, RES, RES);
+                const data = snapshot.val();
                 if(data) {
-                    Object.keys(data).forEach(key => {
+                    for(let key in data) {
                         const [x, y] = key.split('_');
                         ctx.fillStyle = data[key];
                         ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
-                    });
+                    }
                 }
-                updatePixelCount();
+                updateCounters();
                 document.getElementById('loader').style.opacity = '0';
-                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 600);
             });
 
-            db.ref('board').on('child_added', drawFromSnap);
-            db.ref('board').on('child_changed', drawFromSnap);
+            // Listeners Realtime
+            db.ref('board').on('child_added', updatePixel);
+            db.ref('board').on('child_changed', updatePixel);
             db.ref('board').on('child_removed', () => {
                 ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0,0, CANVAS_SIZE, CANVAS_SIZE);
+                ctx.fillRect(0,0, RES, RES);
             });
 
-            const userRef = db.ref('presence').push(true);
-            userRef.onDisconnect().remove();
-            db.ref('presence').on('value', snap => {
-                document.getElementById('user-count').innerText = snap.numChildren();
+            // Gestión de Presencia
+            const presenceRef = db.ref('presence').push(true);
+            presenceRef.onDisconnect().remove();
+            db.ref('presence').on('value', s => {
+                document.getElementById('stat-online').innerText = s.numChildren();
             });
 
-            let startTime = Date.now();
+            // Reloj de Sesión
+            const start = Date.now();
             setInterval(() => {
-                const diff = Math.floor((Date.now() - startTime) / 1000);
-                const m = String(Math.floor(diff / 60)).padStart(2, '0');
-                const s = String(diff % 60).padStart(2, '0');
-                document.getElementById('session-timer').innerText = `${m}:${s}`;
+                const s = Math.floor((Date.now() - start) / 1000);
+                const h = String(Math.floor(s / 3600)).padStart(2, '0');
+                const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+                const sec = String(s % 60).padStart(2, '0');
+                document.getElementById('session-clock').innerText = `${h}:${m}:${sec}`;
             }, 1000);
 
-            applyTransform();
+            refreshCamera();
         }
 
-        function drawFromSnap(snap) {
-            const [x, y] = snap.key.split('_');
-            ctx.fillStyle = snap.val();
+        function updatePixel(s) {
+            const [x, y] = s.key.split('_');
+            ctx.fillStyle = s.val();
             ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
-            updatePixelCount();
+            updateCounters();
         }
 
-        function updatePixelCount() {
-            db.ref('board').once('value', snap => {
-                document.getElementById('pixel-count').innerText = snap.numChildren();
+        function updateCounters() {
+            db.ref('board').once('value', s => {
+                document.getElementById('stat-total').innerText = s.numChildren() || 0;
             });
         }
 
-        function applyTransform() {
+        /**
+         * LÓGICA DE CÁMARA (ZOOM Y PANNING)
+         */
+        function refreshCamera() {
             canvas.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
-            updateSelector();
         }
 
-        function updateSelector() {
-            selector.style.width = `${scale}px`;
-            selector.style.height = `${scale}px`;
-        }
-
+        // Mouse Wheel Zoom
         window.addEventListener('wheel', e => {
             e.preventDefault();
-            const oldScale = scale;
-            scale = Math.min(Math.max(scale + (e.deltaY > 0 ? -0.4 : 0.4), 0.5), 50);
-            if (scale !== oldScale) {
-                originX -= (e.clientX - originX) * (scale / oldScale - 1);
-                originY -= (e.clientY - originY) * (scale / oldScale - 1);
-            }
-            applyTransform();
+            const factor = e.deltaY > 0 ? 0.85 : 1.15;
+            applyZoom(factor, e.clientX, e.clientY);
         }, { passive: false });
 
+        function applyZoom(factor, centerX, centerY) {
+            const oldScale = scale;
+            scale = Math.min(Math.max(scale * factor, 0.4), 80);
+            
+            if (scale !== oldScale) {
+                originX -= (centerX - originX) * (scale / oldScale - 1);
+                originY -= (centerY - originY) * (scale / oldScale - 1);
+                refreshCamera();
+            }
+        }
+
+        // Interacciones Mouse
         viewport.addEventListener('mousedown', e => {
-            isDragging = true;
-            hasMoved = false; // Reset al empezar
+            isMoving = true;
+            wasDragged = false;
             lastX = e.clientX;
             lastY = e.clientY;
         });
 
         window.addEventListener('mousemove', e => {
             const rect = canvas.getBoundingClientRect();
-            const cx = Math.floor((e.clientX - rect.left) / scale);
-            const cy = Math.floor((e.clientY - rect.top) / scale);
+            const px = Math.floor((e.clientX - rect.left) / scale);
+            const py = Math.floor((e.clientY - rect.top) / scale);
 
-            if (isDragging) {
-                const dx = Math.abs(e.clientX - lastX);
-                const dy = Math.abs(e.clientY - lastY);
-                if(dx > 2 || dy > 2) hasMoved = true; // Si se mueve más de 2px, es arrastre
+            if (isMoving) {
+                const dist = Math.hypot(e.clientX - lastX, e.clientY - lastY);
+                if(dist > 3) wasDragged = true;
 
                 originX += e.clientX - lastX;
                 originY += e.clientY - lastY;
                 lastX = e.clientX;
                 lastY = e.clientY;
-                applyTransform();
+                refreshCamera();
             }
 
-            if(cx >= 0 && cx < CANVAS_SIZE && cy >= 0 && cy < CANVAS_SIZE) {
+            // UI de Selección y Coordenadas
+            if(px >= 0 && px < RES && py >= 0 && py < RES) {
                 selector.style.display = 'block';
-                selector.style.left = (rect.left + cx * scale) + 'px';
-                selector.style.top = (rect.top + cy * scale) + 'px';
+                selector.style.left = (rect.left + px * scale) + 'px';
+                selector.style.top = (rect.top + py * scale) + 'px';
                 selector.style.width = scale + 'px';
                 selector.style.height = scale + 'px';
                 
-                const disp = document.getElementById('coords-display');
-                disp.style.display = 'block';
-                disp.style.left = (e.clientX + 10) + 'px';
-                disp.style.top = (e.clientY + 10) + 'px';
-                disp.innerText = `${cx},${cy}`;
+                const cInfo = document.getElementById('coords-info');
+                cInfo.style.display = 'block';
+                cInfo.style.left = (e.clientX + 15) + 'px';
+                cInfo.style.top = (e.clientY + 15) + 'px';
+                cInfo.innerText = `X:${px} Y:${py}`;
             } else {
                 selector.style.display = 'none';
-                document.getElementById('coords-display').style.display = 'none';
+                document.getElementById('coords-info').style.display = 'none';
             }
         });
 
         window.addEventListener('mouseup', e => {
-            if (!hasMoved) { // Solo pinta si no se arrastró el mapa
-                handleCanvasClick(e);
+            if (!wasDragged && isMoving) {
+                commitPixel(e);
             }
-            isDragging = false;
+            isMoving = false;
         });
 
-        function handleCanvasClick(e) {
-            if(!canPaint) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / scale);
-            const y = Math.floor((e.clientY - rect.top) / scale);
+        /**
+         * SOPORTE TÁCTIL AVANZADO (MOBILE)
+         */
+        viewport.addEventListener('touchstart', e => {
+            if(e.touches.length === 2) {
+                pinchDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX, 
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+            } else if(e.touches.length === 1) {
+                isMoving = true;
+                wasDragged = false;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+            }
+        }, { passive: false });
 
-            if(x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
-                db.ref(`board/${x}_${y}`).set(selectedColor);
-                myPixelCount++;
-                document.getElementById('my-pixels').innerText = myPixelCount;
-                document.getElementById('last-action').innerText = `${x},${y}`;
-                startCooldown();
+        viewport.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if(e.touches.length === 2 && pinchDist) {
+                const currentDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX, 
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                const factor = currentDist / pinchDist;
+                const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                
+                applyZoom(factor, midX, midY);
+                pinchDist = currentDist;
+            } else if(isMoving && e.touches.length === 1) {
+                wasDragged = true;
+                originX += e.touches[0].clientX - lastX;
+                originY += e.touches[0].clientY - lastY;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+                refreshCamera();
+            }
+        }, { passive: false });
+
+        viewport.addEventListener('touchend', e => {
+            if (!wasDragged && isMoving && e.touches.length === 0) {
+                const touch = e.changedTouches[0];
+                commitPixel(touch);
+            }
+            isMoving = false;
+            pinchDist = null;
+        });
+
+        /**
+         * MECÁNICA DE PINTADO
+         */
+        function commitPixel(input) {
+            if(!paintReady) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((input.clientX - rect.left) / scale);
+            const y = Math.floor((input.clientY - rect.top) / scale);
+
+            if(x >= 0 && x < RES && y >= 0 && y < RES) {
+                db.ref(`board/${x}_${y}`).set(activeColor);
+                myPixels++;
+                document.getElementById('stat-mine').innerText = myPixels;
+                triggerCooldown();
             }
         }
 
-        function startCooldown() {
-            canPaint = false;
+        function triggerCooldown() {
+            paintReady = false;
             let start = Date.now();
-            let duration = 1000; // 1 segundo
-            const bar = document.getElementById('cooldown-progress');
+            const time = 1000; // 1 segundo
+            const bar = document.getElementById('cooldown-timer');
             
-            const interval = setInterval(() => {
-                let elapsed = Date.now() - start;
-                let progress = (elapsed / duration) * 100;
-                bar.style.width = (100 - progress) + "%";
-                if(elapsed >= duration) {
-                    clearInterval(interval);
-                    canPaint = true;
+            const frame = () => {
+                const now = Date.now();
+                const diff = now - start;
+                const p = (diff / time) * 100;
+                bar.style.width = (100 - p) + "%";
+
+                if(diff < time) {
+                    requestAnimationFrame(frame);
+                } else {
+                    paintReady = true;
                     bar.style.width = "100%";
                 }
-            }, 30);
+            };
+            requestAnimationFrame(frame);
         }
 
-        // CHAT
-        const chatIn = document.getElementById('chat-input');
-        chatIn.addEventListener('keydown', e => {
-            if(e.key === 'Enter' && chatIn.value.trim() !== "") {
-                db.ref('messages').push({ text: chatIn.value.substring(0, 50) });
-                chatIn.value = "";
+        /**
+         * SISTEMA DE CHAT
+         */
+        const chatInput = document.getElementById('chat-input');
+        chatInput.addEventListener('keydown', e => {
+            if(e.key === 'Enter' && chatInput.value.trim() !== "") {
+                db.ref('messages').push({
+                    content: chatInput.value.substring(0, 50),
+                    time: Date.now()
+                });
+                chatInput.value = "";
             }
         });
 
-        db.ref('messages').limitToLast(20).on('child_added', snap => {
+        db.ref('messages').limitToLast(15).on('child_added', s => {
+            const m = s.val();
             const div = document.createElement('div');
-            div.className = 'chat-msg';
-            div.innerHTML = `<span>ID_${snap.key.substring(1,4)}:</span> ${snap.val().text}`;
-            const log = document.getElementById('chat-log');
-            log.appendChild(div);
-            log.scrollTop = log.scrollHeight;
+            div.className = 'msg';
+            div.innerHTML = `<b>USR_${s.key.substring(1,4)}:</b> ${m.content}`;
+            const box = document.getElementById('chat-area');
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
         });
 
-        // ADMIN
-        document.getElementById('admin-trigger').onclick = () => {
-            if(!isAdmin) document.getElementById('modal-auth').style.display = 'flex';
-            else document.getElementById('modal-admin').style.display = 'flex';
+        /**
+         * ADMINISTRACIÓN Y TIMELAPSE
+         */
+        document.getElementById('admin-entry').onclick = () => {
+            if(!isAuthorized) document.getElementById('modal-login').style.display = 'flex';
+            else document.getElementById('modal-dashboard').style.display = 'flex';
         };
 
-        function authAdmin() {
-            if(document.getElementById('admin-pass').value === "Isaias2013Cerrado") {
-                isAdmin = true;
-                closeModals();
-                document.getElementById('modal-admin').style.display = 'flex';
-                document.getElementById('admin-trigger').style.opacity = '1';
-            } else alert("Error");
+        function hideModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
         }
 
-        function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
-        function clearCanvas() { if(confirm("¿Borrar?")) db.ref('board').remove(); }
-
-        // TIMELAPSE
-        let recording = false;
-        let tlFrames = [];
-        let tlTimer = null;
-
-        function toggleTimelapse() {
-            if(!recording) {
-                recording = true; tlFrames = [];
-                const interval = parseInt(document.getElementById('tl-interval').value) * 1000;
-                document.getElementById('tl-btn').innerText = "PARAR";
-                tlTimer = setInterval(() => {
-                    const tmp = document.createElement('canvas');
-                    tmp.width = CANVAS_SIZE; tmp.height = CANVAS_SIZE;
-                    const tctx = tmp.getContext('2d');
-                    tctx.drawImage(canvas, 0, 0);
-                    
-                    // Stamp con fecha
-                    tctx.fillStyle = "rgba(0,0,0,0.5)";
-                    tctx.fillRect(0, CANVAS_SIZE - 12, CANVAS_SIZE, 12);
-                    tctx.fillStyle = "white";
-                    tctx.font = "6px Arial";
-                    tctx.fillText(new Date().toLocaleString(), 2, CANVAS_SIZE - 4);
-                    
-                    tlFrames.push(tmp.toDataURL('image/webp'));
-                }, interval);
+        function attemptLogin() {
+            const p = document.getElementById('admin-key').value;
+            if(p === "Isaias2013Cerrado") {
+                isAuthorized = true;
+                hideModals();
+                document.getElementById('modal-dashboard').style.display = 'flex';
+                document.getElementById('admin-entry').style.opacity = '1';
+                document.getElementById('admin-entry').style.color = 'var(--accent)';
             } else {
-                stopAndExport();
+                alert("Acceso Denegado.");
             }
         }
 
-        async function stopAndExport() {
-            clearInterval(tlTimer);
-            recording = false;
-            document.getElementById('tl-btn').innerText = "OK...";
+        function executeWipe() {
+            if(confirm("¿ELIMINAR TODO EL LIENZO? Esta acción no se puede deshacer.")) {
+                db.ref('board').remove();
+                hideModals();
+            }
+        }
+
+        // Timelapse Engine
+        let isCapturing = false;
+        let frames = [];
+        let captureHandle = null;
+
+        function handleTimelapse() {
+            if(!isCapturing) {
+                isCapturing = true;
+                frames = [];
+                const interval = parseInt(document.getElementById('tl-freq').value) * 1000;
+                document.getElementById('tl-toggle').innerText = "DETENER";
+                document.getElementById('tl-toggle').classList.replace('btn-main', 'btn-danger');
+                
+                captureHandle = setInterval(() => {
+                    const snap = document.createElement('canvas');
+                    snap.width = RES; snap.height = RES;
+                    const sctx = snap.getContext('2d');
+                    sctx.drawImage(canvas, 0, 0);
+
+                    // Estampa de Tiempo Completa
+                    sctx.fillStyle = "rgba(0,0,0,0.7)";
+                    sctx.fillRect(0, RES - 12, RES, 12);
+                    sctx.fillStyle = "#ffffff";
+                    sctx.font = "6px monospace";
+                    const now = new Date();
+                    const str = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+                    sctx.fillText(str, 2, RES - 4);
+
+                    frames.push(snap.toDataURL('image/webp'));
+                    document.getElementById('tl-status').innerText = `Capturas: ${frames.length}`;
+                }, interval);
+            } else {
+                finalizeTimelapse();
+            }
+        }
+
+        async function finalizeTimelapse() {
+            clearInterval(captureHandle);
+            isCapturing = false;
+            document.getElementById('tl-toggle').innerText = "PROCESANDO...";
             
-            const streamCanvas = document.createElement('canvas');
-            streamCanvas.width = CANVAS_SIZE; streamCanvas.height = CANVAS_SIZE;
-            const sCtx = streamCanvas.getContext('2d');
-            const stream = streamCanvas.captureStream(10);
+            const videoCanvas = document.createElement('canvas');
+            videoCanvas.width = RES; videoCanvas.height = RES;
+            const vctx = videoCanvas.getContext('2d');
+            
+            const stream = videoCanvas.captureStream(12);
             const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-            const chunks = [];
+            const blobs = [];
             
-            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.ondataavailable = e => blobs.push(e.data);
             recorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `timelapse_${Date.now()}.webm`;
-                a.click();
-                document.getElementById('tl-btn').innerText = "GRABAR";
+                const blob = new Blob(blobs, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `timelapse_res_${Date.now()}.webm`;
+                link.click();
+                
+                document.getElementById('tl-toggle').innerText = "INICIAR";
+                document.getElementById('tl-toggle').classList.replace('btn-danger', 'btn-main');
+                document.getElementById('tl-status').innerText = "Exportación lista.";
             };
 
             recorder.start();
-            for(let frame of tlFrames) {
-                await new Promise(res => {
+            for(let f of frames) {
+                await new Promise(r => {
                     const img = new Image();
                     img.onload = () => {
-                        sCtx.drawImage(img, 0, 0);
-                        setTimeout(res, 100);
+                        vctx.clearRect(0,0,RES,RES);
+                        vctx.drawImage(img, 0, 0);
+                        setTimeout(r, 80); // Velocidad de reproducción
                     };
-                    img.src = frame;
+                    img.src = f;
                 });
             }
             recorder.stop();
         }
 
-        init();
+        // Ejecutar Boot
+        boot();
     </script>
 </body>
 </html>
