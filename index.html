@@ -2,156 +2,165 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Nota_Final.png | Motor de Lienzo Global</title>
+    <meta name="theme-color" content="#0a0a0b">
+    <title>Nota_Final.png | Motor de Píxel Colaborativo</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
     <style>
-        /* ========================================================================
-        1. DEFINICIÓN DE VARIABLES Y TEMAS (CSS VARIABLES)
-        ========================================================================
+        /* ================================================================================================
+           1. ARQUITECTURA DE DISEÑO (CSS VARIABLES)
+           ================================================================================================
         */
         :root {
-            /* Paleta Primaria: Interfaz Dark */
-            --hex-bg-base: #050505;
-            --hex-bg-panel: #111112;
-            --hex-bg-panel-light: #1a1a1c;
-            --hex-border: #28282b;
-            --hex-border-active: #3f3f44;
+            /* Paleta de Colores de Fondo */
+            --color-bg-deep: #050506;
+            --color-bg-ui: #0f0f11;
+            --color-bg-ui-hover: #161619;
+            --color-bg-accent: #1c1c1f;
             
-            /* Colores de Acento y Estado */
-            --hex-accent: #3d5afe;
-            --hex-accent-glow: rgba(61, 90, 254, 0.4);
-            --hex-text-main: #f0f0f5;
-            --hex-text-muted: #80808a;
-            --hex-success: #00e676;
-            --hex-error: #ff5252;
-            --hex-warning: #ffd740;
+            /* Colores de Marca y Estados */
+            --color-accent: #3d5afe;
+            --color-accent-glow: rgba(61, 90, 254, 0.4);
+            --color-success: #00e676;
+            --color-error: #ff5252;
+            --color-warning: #ffd740;
+            --color-white: #ffffff;
+            --color-gray-100: #f0f0f5;
+            --color-gray-400: #8a8a93;
+            --color-gray-700: #2d2d31;
+            --color-border: #242428;
 
-            /* Configuración de Layout */
-            --header-h: 64px;
-            --sidebar-w: 320px;
-            --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-            --radius-md: 10px;
-            --radius-lg: 16px;
+            /* Tipografía y Espaciado */
+            --font-main: 'Inter', -apple-system, system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Monaco', monospace;
+            --header-height: 60px;
+            --sidebar-width: 340px;
+            --radius-sm: 6px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            
+            /* Animaciones */
+            --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+            --trans-fast: 0.15s;
+            --trans-med: 0.3s;
         }
 
-        /* ========================================================================
-        2. RESET Y ESTILOS BASE
-        ========================================================================
+        /* ================================================================================================
+           2. RESET Y ESTILOS GLOBALES
+           ================================================================================================
         */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            outline: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             -webkit-tap-highlight-color: transparent;
-            user-select: none; /* Prevenir selección accidental en UI */
         }
 
         html, body {
             width: 100%;
             height: 100%;
-            background-color: var(--hex-bg-base);
-            color: var(--hex-text-main);
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden; /* Crucial para el sistema de Pan/Zoom */
-            touch-action: none; /* Desactiva gestos nativos del navegador */
-            position: fixed; /* Evita pull-to-refresh en móviles */
+            background-color: var(--color-bg-deep);
+            color: var(--color-gray-100);
+            font-family: var(--font-main);
+            overflow: hidden; /* Obligatorio para el sistema de navegación manual */
+            touch-action: none; /* Desactiva el scroll nativo en favor del Pan JS */
+            position: fixed; /* Previene el "bounce" de iOS */
         }
 
-        /* ========================================================================
-        3. SISTEMA DE CARGA (LOADER) - ARREGLO DE "INICIANDO PROTOCOLOS"
-        ========================================================================
+        button {
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+        }
+
+        input {
+            font-family: inherit;
+        }
+
+        /* ================================================================================================
+           3. SISTEMA DE CARGA (LOADER)
+           ================================================================================================
         */
-        #app-loader {
+        #global-loader {
             position: fixed;
             inset: 0;
-            background: var(--hex-bg-base);
+            background-color: var(--color-bg-deep);
             z-index: 10000;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            transition: opacity 0.8s var(--ease-standard), visibility 0.8s;
+            transition: opacity 0.8s var(--ease-in-out), visibility 0.8s;
         }
 
-        #app-loader.hidden {
+        #global-loader.fade-out {
             opacity: 0;
             visibility: hidden;
         }
 
-        .loader-ring {
-            width: 80px;
-            height: 80px;
-            border: 3px solid var(--hex-bg-panel);
-            border-top: 3px solid var(--hex-accent);
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 2px solid var(--color-gray-700);
+            border-top: 2px solid var(--color-accent);
             border-radius: 50%;
-            animation: rotate-loader 1s infinite linear;
-            margin-bottom: 30px;
-            box-shadow: 0 0 20px var(--hex-accent-glow);
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
+            box-shadow: 0 0 15px var(--color-accent-glow);
         }
 
-        @keyframes rotate-loader {
-            from { transform: rotate(0deg); }
+        @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        .loader-log {
-            font-family: monospace;
-            font-size: 0.75rem;
-            color: var(--hex-text-muted);
+        .loader-status-text {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--color-gray-400);
             letter-spacing: 2px;
             text-transform: uppercase;
-            text-align: center;
         }
 
-        .loader-log span {
-            display: block;
-            margin-top: 8px;
-            color: var(--hex-accent);
-            animation: pulse-text 1.5s infinite;
-        }
-
-        @keyframes pulse-text {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
-        }
-
-        /* ========================================================================
-        4. VIEWPORT Y CANVAS (EL LIENZO)
-        ========================================================================
+        /* ================================================================================================
+           4. ESCENARIO DE DIBUJO (VIEWPORT & CANVAS)
+           ================================================================================================
         */
-        #viewport-container {
+        #drawing-viewport {
             width: 100vw;
             height: 100vh;
-            background-image: 
-                radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
             display: flex;
             justify-content: center;
             align-items: center;
+            cursor: crosshair;
+            background-image: 
+                radial-gradient(circle, var(--color-gray-700) 0.5px, transparent 0.5px);
+            background-size: 30px 30px;
+            overflow: hidden;
             position: relative;
         }
 
-        canvas#main-canvas {
+        canvas#pixel-canvas {
+            image-rendering: pixelated; /* Mantiene la nitidez de los píxeles */
             background-color: #ffffff;
-            image-rendering: pixelated; /* Evita blur al escalar */
-            image-rendering: crisp-edges;
-            box-shadow: 0 0 100px rgba(0,0,0,0.8);
-            transform-origin: 0 0; /* Punto crítico para el motor de zoom */
-            cursor: crosshair;
+            box-shadow: 0 0 120px rgba(0,0,0,0.9);
+            transform-origin: 0 0; /* Crítico para el cálculo de zoom */
             border: 1px solid #000;
+            transition: none; /* Las transformaciones se manejan por JS directamente */
         }
 
-        /* SISTEMA DE SELECCIÓN PÍXEL-PERFECTO (SNAPPING) */
-        #pixel-snapper {
+        /* OVERLAY DE SELECCIÓN (EL PIXEL SNAPPING) */
+        #selection-grid-snapper {
             position: absolute;
-            pointer-events: none; /* No interfiere con clicks */
-            z-index: 100;
+            pointer-events: none; /* No intercepta clicks */
+            z-index: 150;
             display: none;
             box-sizing: border-box;
             border: 1px solid #ffffff;
@@ -159,489 +168,502 @@
             mix-blend-mode: difference;
         }
 
-        #pixel-coords-overlay {
+        #pixel-tooltip {
             position: fixed;
             pointer-events: none;
-            z-index: 101;
+            z-index: 160;
             background: rgba(0,0,0,0.85);
-            padding: 4px 8px;
+            padding: 4px 10px;
             border-radius: 4px;
-            font-family: monospace;
-            font-size: 11px;
+            font-family: var(--font-mono);
+            font-size: 10px;
             color: #fff;
-            border: 1px solid var(--hex-border);
+            border: 1px solid var(--color-border);
             display: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
-        /* ========================================================================
-        5. INTERFAZ SUPERIOR (NAVBAR)
-        ========================================================================
+        /* ================================================================================================
+           5. INTERFAZ SUPERIOR (HEADER)
+           ================================================================================================
         */
-        #ui-header {
+        header#main-nav {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            height: var(--header-h);
-            background: rgba(10, 10, 12, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--hex-border);
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
+            height: var(--header-height);
+            background: rgba(10, 10, 11, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--color-border);
             z-index: 1000;
-            justify-content: space-between;
-        }
-
-        .logo-area {
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: space-between;
+            padding: 0 25px;
         }
 
-        .logo-area h1 {
-            font-size: 1rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            font-weight: 900;
-            background: linear-gradient(to right, #fff, var(--hex-text-muted));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .header-stats {
+        .brand-logo {
             display: flex;
-            gap: 20px;
-            font-size: 0.7rem;
-            color: var(--hex-text-muted);
-            font-weight: 600;
+            align-items: center;
+            gap: 15px;
         }
 
-        .stat-group b {
-            color: var(--hex-text-main);
-            font-family: monospace;
-            font-size: 0.8rem;
+        .brand-logo h1 {
+            font-size: 1.1rem;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            text-transform: lowercase;
+            color: var(--color-white);
         }
 
-        /* ========================================================================
-        6. BARRA LATERAL (SIDEBAR) - CHAT Y PERFIL
-        ========================================================================
+        .brand-logo span {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            padding: 3px 6px;
+            background: var(--color-bg-accent);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            color: var(--color-gray-400);
+        }
+
+        .server-stats {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .stat-label {
+            font-size: 0.55rem;
+            font-weight: 800;
+            color: var(--color-gray-400);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--color-white);
+            font-family: var(--font-mono);
+        }
+
+        /* ================================================================================================
+           6. COMPONENTES DE INTERFAZ LATERAL (SIDEBAR)
+           ================================================================================================
         */
-        #ui-sidebar {
+        #app-sidebar {
             position: fixed;
             right: 20px;
-            top: calc(var(--header-h) + 20px);
+            top: calc(var(--header-height) + 20px);
             bottom: 150px;
-            width: var(--sidebar-w);
+            width: var(--sidebar-width);
+            z-index: 900;
             display: flex;
             flex-direction: column;
             gap: 15px;
-            z-index: 900;
-            transition: transform 0.4s var(--ease-standard);
+            transition: transform var(--trans-med) var(--ease-in-out);
         }
 
-        .panel-container {
-            background: rgba(17, 17, 18, 0.9);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--hex-border);
+        .glass-panel {
+            background: rgba(15, 15, 17, 0.8);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--color-border);
             border-radius: var(--radius-md);
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
         }
 
         .panel-header {
-            padding: 12px 15px;
-            background: rgba(255,255,255,0.03);
-            border-bottom: 1px solid var(--hex-border);
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-weight: 800;
-            color: var(--hex-text-muted);
+            padding: 12px 18px;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid var(--color-border);
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
 
-        #chat-window {
+        .panel-title {
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: var(--color-gray-400);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        /* SISTEMA DE CHAT */
+        #chat-container {
             flex: 1;
-            height: 300px;
-            overflow-y: auto;
-            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            min-height: 0;
+        }
+
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
             scrollbar-width: thin;
-            scrollbar-color: var(--hex-border) transparent;
+            scrollbar-color: var(--color-gray-700) transparent;
         }
 
-        .chat-msg {
-            font-size: 0.8rem;
-            line-height: 1.4;
-            word-break: break-word;
-            animation: msg-slide 0.3s var(--ease-standard);
+        .message-entry {
+            font-size: 0.82rem;
+            line-height: 1.5;
+            animation: slideInMsg 0.2s ease-out;
         }
 
-        @keyframes msg-slide {
-            from { opacity: 0; transform: translateX(10px); }
-            to { opacity: 1; transform: translateX(0); }
+        @keyframes slideInMsg {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .chat-msg .author {
-            color: var(--hex-accent);
+        .message-entry .author {
+            color: var(--color-accent);
             font-weight: 700;
-            margin-right: 5px;
+            margin-right: 6px;
         }
 
-        .chat-msg.system {
-            color: var(--hex-warning);
+        .message-entry .system-text {
+            color: var(--color-warning);
             font-style: italic;
             font-size: 0.75rem;
         }
 
-        #chat-input-area {
-            padding: 10px;
-            background: #000;
-            border-top: 1px solid var(--hex-border);
+        #chat-input-box {
+            padding: 12px;
+            background: rgba(0,0,0,0.2);
+            border-top: 1px solid var(--color-border);
         }
 
-        #chat-field {
+        #chat-input {
             width: 100%;
-            background: transparent;
-            border: 1px solid var(--hex-border);
-            border-radius: 6px;
-            padding: 8px 12px;
+            background: #000;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 10px 14px;
             color: #fff;
             font-size: 0.8rem;
-            outline: none;
-            transition: border-color 0.2s;
+            transition: border-color var(--trans-fast);
         }
 
-        #chat-field:focus {
-            border-color: var(--hex-accent);
+        #chat-input:focus {
+            border-color: var(--color-accent);
         }
 
-        /* ========================================================================
-        7. CONTROLES INFERIORES (PALETA Y COOLDOWN)
-        ========================================================================
+        /* ================================================================================================
+           7. SISTEMA DE PALETA Y COOLDOWN (DOCK)
+           ================================================================================================
         */
-        #ui-bottom-dock {
+        #ui-dock {
             position: fixed;
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             width: 90%;
-            max-width: 650px;
-            z-index: 1000;
+            max-width: 700px;
+            z-index: 2000;
         }
 
-        .palette-card {
-            background: var(--hex-bg-panel);
-            border: 1px solid var(--hex-border);
+        .palette-container {
+            background: var(--color-bg-ui);
+            border: 1px solid var(--color-border);
             border-radius: var(--radius-lg);
-            padding: 16px;
-            box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+            padding: 18px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
         }
 
-        .palette-grid {
+        .color-grid {
             display: grid;
             grid-template-columns: repeat(16, 1fr);
-            gap: 6px;
-            margin-bottom: 15px;
+            gap: 8px;
+            margin-bottom: 20px;
         }
 
-        .color-swatch {
+        .swatch {
             aspect-ratio: 1;
-            border-radius: 4px;
+            border-radius: 5px;
             cursor: pointer;
             border: 2px solid transparent;
-            transition: all 0.2s var(--ease-standard);
+            transition: all var(--trans-fast) var(--ease-in-out);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+        }
+
+        .swatch:hover {
+            transform: translateY(-4px) scale(1.1);
+        }
+
+        .swatch.active {
+            border-color: #fff;
+            transform: scale(1.2);
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+
+        /* BARRA DE PROGRESO DE COOLDOWN */
+        .cooldown-track {
+            width: 100%;
+            height: 8px;
+            background: #000;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid var(--color-border);
             position: relative;
         }
 
-        .color-swatch:hover {
-            transform: translateY(-3px) scale(1.1);
-        }
-
-        .color-swatch.active {
-            border-color: #fff;
-            transform: scale(1.15);
-            z-index: 2;
-            box-shadow: 0 0 15px rgba(255,255,255,0.4);
-        }
-
-        .cooldown-wrapper {
-            width: 100%;
-            height: 6px;
-            background: #000;
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid var(--hex-border);
-        }
-
-        #cooldown-bar {
+        #cooldown-progress {
             width: 100%;
             height: 100%;
-            background: linear-gradient(to right, var(--hex-accent), #00d2ff);
-            transition: width 0.1s linear;
+            background: linear-gradient(90deg, var(--color-accent), #00d2ff);
+            transition: width 0.05s linear;
         }
 
-        /* ========================================================================
-        8. MODALES Y DIÁLOGOS
-        ========================================================================
+        /* ================================================================================================
+           8. MODALES DE SISTEMA
+           ================================================================================================
         */
-        .modal-mask {
+        .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.92);
-            backdrop-filter: blur(10px);
-            z-index: 5000;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(15px);
+            z-index: 9000;
             display: none;
             justify-content: center;
             align-items: center;
             padding: 20px;
         }
 
-        .modal-box {
-            background: var(--hex-bg-panel);
-            border: 1px solid var(--hex-border);
+        .modal-card {
+            background: var(--color-bg-ui);
+            border: 1px solid var(--color-border);
             border-radius: var(--radius-lg);
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
             padding: 40px;
             text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            animation: modal-enter 0.5s var(--ease-standard);
+            box-shadow: 0 30px 70px rgba(0,0,0,0.8);
+            animation: modalPop 0.4s var(--ease-in-out);
         }
 
-        @keyframes modal-enter {
-            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.9) translateY(30px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        .modal-box h2 {
-            font-size: 1.5rem;
+        .modal-card h2 {
+            font-size: 1.6rem;
             margin-bottom: 12px;
             font-weight: 800;
+            letter-spacing: -1px;
         }
 
-        .modal-box p {
-            color: var(--hex-text-muted);
-            font-size: 0.9rem;
+        .modal-card p {
+            color: var(--color-gray-400);
+            font-size: 0.95rem;
+            line-height: 1.6;
             margin-bottom: 30px;
-            line-height: 1.5;
         }
 
-        .input-group {
+        .input-wrapper {
             margin-bottom: 25px;
             text-align: left;
         }
 
-        .input-group label {
+        .input-wrapper label {
             display: block;
             font-size: 0.65rem;
+            font-weight: 800;
             text-transform: uppercase;
-            font-weight: 700;
-            color: var(--hex-accent);
+            color: var(--color-accent);
             margin-bottom: 8px;
             letter-spacing: 1px;
         }
 
-        .text-input {
+        .main-input {
             width: 100%;
             background: #000;
-            border: 1px solid var(--hex-border);
-            padding: 14px 18px;
-            border-radius: 10px;
+            border: 1px solid var(--color-border);
+            padding: 15px 20px;
+            border-radius: 12px;
             color: #fff;
-            font-size: 1rem;
-            outline: none;
+            font-size: 1.1rem;
             transition: all 0.3s;
         }
 
-        .text-input:focus {
-            border-color: var(--hex-accent);
-            box-shadow: 0 0 0 4px var(--hex-accent-glow);
+        .main-input:focus {
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 4px var(--color-accent-glow);
         }
 
-        .btn-primary {
+        .action-button {
             width: 100%;
-            background: var(--hex-accent);
+            padding: 16px;
+            border-radius: 12px;
+            background: var(--color-accent);
             color: #fff;
-            border: none;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
+            font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 1px;
+            transition: all 0.2s;
         }
 
-        .btn-primary:hover {
+        .action-button:hover {
             background: #536dfe;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px var(--hex-accent-glow);
+            box-shadow: 0 10px 20px var(--color-accent-glow);
         }
 
-        /* ========================================================================
-        9. ESTILOS MÓVILES (RESPONSIVE)
-        ========================================================================
+        /* ================================================================================================
+           9. RESPONSIVE Y MOBILE OVERRIDES
+           ================================================================================================
         */
-        @media (max-width: 800px) {
-            :root {
-                --sidebar-w: 100%;
-            }
-
-            #ui-sidebar {
+        @media (max-width: 850px) {
+            #app-sidebar {
                 position: fixed;
                 right: -100%;
-                top: var(--header-h);
+                top: var(--header-height);
                 bottom: 0;
-                margin: 0;
                 width: 100%;
-                background: var(--hex-bg-base);
-                z-index: 2000;
+                margin: 0;
+                border-radius: 0;
+                background: var(--color-bg-deep);
                 padding: 15px;
-                transition: right 0.4s var(--ease-standard);
             }
 
-            #ui-sidebar.active {
+            #app-sidebar.active {
                 right: 0;
             }
 
-            #ui-bottom-dock {
-                width: calc(100% - 20px);
-                bottom: 15px;
-            }
-
-            .palette-grid {
-                grid-template-columns: repeat(8, 1fr);
-            }
-
-            .stat-group.hide-mobile {
+            .stat-box.hide-mobile {
                 display: none;
             }
 
-            #mobile-menu-trigger {
-                display: block !important;
+            .color-grid {
+                grid-template-columns: repeat(8, 1fr);
+            }
+
+            #mobile-nav-toggle {
+                display: flex !important;
             }
         }
 
-        #mobile-menu-trigger {
+        #mobile-nav-toggle {
             display: none;
-            background: var(--hex-bg-panel-light);
-            border: 1px solid var(--hex-border);
+            background: var(--color-bg-accent);
+            border: 1px solid var(--color-border);
             color: #fff;
             padding: 8px 15px;
-            border-radius: 6px;
-            font-size: 0.7rem;
+            border-radius: 8px;
             font-weight: 800;
-        }
-
-        /* ========================================================================
-        10. UTILIDADES DE ANIMACIÓN
-        ========================================================================
-        */
-        .pulse-red { animation: pulse-error 2s infinite; }
-        @keyframes pulse-error {
-            0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 82, 82, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }
+            font-size: 0.7rem;
         }
     </style>
 </head>
 <body>
 
-    <div id="app-loader">
-        <div class="loader-ring"></div>
-        <div class="loader-log">
-            Estableciendo Conexión
-            <span id="loader-status">Iniciando Protocolos...</span>
-        </div>
+    <div id="global-loader">
+        <div class="loader-spinner"></div>
+        <div class="loader-status-text" id="loader-log">Inicializando Sistema</div>
     </div>
 
-    <div id="modal-id" class="modal-mask" style="display: flex;">
-        <div class="modal-box">
-            <h2>Bienvenido</h2>
-            <p>Introduce un nombre de usuario para identificarte en el lienzo y el chat global.</p>
-            <div class="input-group">
+    <div id="modal-identity" class="modal-overlay" style="display: flex;">
+        <div class="modal-card">
+            <h2>Acceso al Lienzo</h2>
+            <p>Define tu identidad para interactuar con la comunidad y registrar tus contribuciones.</p>
+            <div class="input-wrapper">
                 <label>Nombre de Usuario</label>
-                <input type="text" id="username-field" class="text-input" placeholder="Ej: PixelArt_Fan" maxlength="15">
+                <input type="text" id="user-field" class="main-input" placeholder="Ej: PixelMaster_24" maxlength="15">
             </div>
-            <button class="btn-primary" id="btn-enter">Empezar a Dibujar</button>
+            <button id="btn-login" class="action-button">Entrar al Sistema</button>
         </div>
     </div>
 
-    <div id="pixel-coords-overlay">X:0 Y:0</div>
+    <div id="pixel-tooltip">X:0 Y:0</div>
 
-    <header id="ui-header">
-        <div class="logo-area">
+    <header id="main-nav">
+        <div class="brand-logo">
             <h1>Nota_Final.png</h1>
+            <span>v5.0.0-CORE</span>
         </div>
         
-        <div class="header-stats">
-            <div class="stat-group hide-mobile">
-                SISTEMA: <b id="stat-ping" style="color: var(--hex-success);">ONLINE</b>
+        <div class="server-stats">
+            <div class="stat-box hide-mobile">
+                <span class="stat-label">Estado</span>
+                <span class="stat-value" id="ping-text" style="color: var(--color-success);">SINCRO</span>
             </div>
-            <div class="stat-group">
-                USUARIOS: <b id="stat-online">0</b>
+            <div class="stat-box">
+                <span class="stat-label">Usuarios</span>
+                <span class="stat-value" id="online-users">0</span>
             </div>
-            <div class="stat-group">
-                PÍXELES: <b id="stat-total">0</b>
+            <div class="stat-box">
+                <span class="stat-label">Entradas</span>
+                <span class="stat-value" id="total-pixels">0</span>
             </div>
-            <button id="mobile-menu-trigger">MENU</button>
+            <button id="mobile-nav-toggle">MÓDULOS</button>
         </div>
     </header>
 
-    <main id="viewport-container">
-        <div id="pixel-snapper"></div>
-        <canvas id="main-canvas" width="125" height="125"></canvas>
+    <main id="drawing-viewport">
+        <div id="selection-grid-snapper"></div>
+        <canvas id="pixel-canvas" width="200" height="200"></canvas>
     </main>
 
-    <aside id="ui-sidebar">
-        <div class="panel-container" style="flex: 1;">
+    <aside id="app-sidebar">
+        <div class="glass-panel" style="flex: 1;" id="chat-container">
             <div class="panel-header">
-                Chat Global
-                <span id="close-mobile-menu" style="cursor:pointer; display:none;">Cerrar</span>
+                <span class="panel-title">Comunicaciones Globales</span>
             </div>
-            <div id="chat-window">
+            <div id="chat-messages">
                 </div>
-            <div id="chat-input-area">
-                <input type="text" id="chat-field" placeholder="Escribe un mensaje..." maxlength="60">
+            <div id="chat-input-box">
+                <input type="text" id="chat-input" placeholder="Enviar mensaje..." maxlength="80">
             </div>
         </div>
 
-        <div class="panel-container">
-            <div class="panel-header">Sesión Actual</div>
-            <div style="padding: 15px; font-size: 0.75rem; color: var(--hex-text-muted); line-height: 1.8;">
-                USUARIO: <b id="display-user" style="color:#fff">---</b><br>
-                MIS PÍXELES: <b id="stat-my-pixels" style="color:#fff">0</b><br>
-                COOLDOWN: <b style="color:#fff">3.0s</b>
+        <div class="glass-panel">
+            <div class="panel-header">
+                <span class="panel-title">Sesión Técnica</span>
+            </div>
+            <div style="padding: 15px; font-size: 0.75rem; color: var(--color-gray-400); line-height: 1.8;">
+                USUARIO: <b id="display-name" style="color:white">---</b><br>
+                LIENZO: <b style="color:white">200 x 200 Px</b><br>
+                TASA REFRESCO: <b style="color:var(--color-success)">Realtime</b><br>
+                COOLDOWN: <b style="color:var(--color-accent)">0.5s</b>
             </div>
         </div>
     </aside>
 
-    <div id="ui-bottom-dock">
-        <div class="palette-card">
-            <div class="palette-grid" id="palette-render">
+    <div id="ui-dock">
+        <div class="palette-container">
+            <div class="color-grid" id="palette-grid">
                 </div>
-            <div class="cooldown-wrapper">
-                <div id="cooldown-bar"></div>
+            <div class="cooldown-track">
+                <div id="cooldown-progress"></div>
             </div>
         </div>
     </div>
 
     <script>
         /**
-         * OBJETO DE CONFIGURACIÓN GLOBAL
-         * Centraliza todos los parámetros técnicos del sistema.
+         * @constant NF_CONFIG
+         * Configuración maestra de parámetros técnicos y de base de datos.
          */
         const NF_CONFIG = {
-            FIREBASE: {
+            DATABASE: {
                 apiKey: "AIzaSyAtTbxuzHMQqSpQt9ZHZP1a0qZykY_NvWA",
                 authDomain: "notafinalpng.firebaseapp.com",
                 projectId: "notafinalpng",
@@ -649,523 +671,445 @@
                 messagingSenderId: "212333550718",
                 appId: "1:212333550718:web:05d1b04dc2a1de2a88cc2f"
             },
-            CANVAS: {
-                RESOLUTION: 125,
-                COOLDOWN_TIME: 3000,
-                DEFAULT_SCALE: 5.0,
-                MIN_SCALE: 0.5,
-                MAX_SCALE: 80.0
+            ENGINE: {
+                CANVAS_RESOLUTION: 200,
+                COOLDOWN_MS: 500, // Ajustado a 0.5 segundos según requerimiento
+                ZOOM_MIN: 0.3,
+                ZOOM_MAX: 100,
+                DEFAULT_ZOOM: 5.0
             },
-            PALETTE: [
-                "#000000", "#ffffff", "#aaaaaa", "#555555", "#fed3cf", "#f14131", "#ffa300", "#ffec00", 
-                "#00e436", "#00811f", "#00beff", "#0000ea", "#827193", "#e305ff", "#ff8bce", "#803c15",
-                "#222222", "#d4d7d9", "#9c0000", "#ff4500", "#ffa800", "#ffd635", "#00a368", "#7eed56",
-                "#2450a4", "#3690ea", "#51e9f4", "#811e9f", "#b44ac0", "#ff3881", "#9c6926", "#6d482f"
-            ]
+            THEME: {
+                PALETTE: [
+                    "#000000", "#ffffff", "#aaaaaa", "#555555", "#fed3cf", "#f14131", "#ffa300", "#ffec00", 
+                    "#00e436", "#00811f", "#00beff", "#0000ea", "#827193", "#e305ff", "#ff8bce", "#803c15",
+                    "#222222", "#d4d7d9", "#9c0000", "#ff4500", "#ffa800", "#ffd635", "#00a368", "#7eed56",
+                    "#2450a4", "#3690ea", "#51e9f4", "#811e9f", "#b44ac0", "#ff3881", "#9c6926", "#6d482f"
+                ]
+            }
         };
 
         /**
-         * ESTADO DE LA APLICACIÓN (STATE MANAGEMENT)
-         * Mantiene el seguimiento reactivo de la sesión.
+         * @object STATE
+         * Gestión de estado reactivo y memoria de sesión.
          */
         const STATE = {
-            user: {
-                name: "Invitado",
-                pixelsPlaced: 0,
-                isAuth: false
-            },
-            engine: {
-                scale: NF_CONFIG.CANVAS.DEFAULT_SCALE,
-                posX: 0,
-                posY: 0,
-                isLoaded: false,
-                isPaintingReady: true,
-                selectedColor: "#000000"
-            },
-            input: {
-                isDragging: false,
-                lastMouseX: 0,
-                lastMouseY: 0,
-                dragThreshold: false
-            }
+            initialized: false,
+            paintingEnabled: true,
+            currentUser: "Anónimo",
+            selectedColor: "#000000",
+            
+            // Transformación de Cámara
+            zoom: NF_CONFIG.ENGINE.DEFAULT_ZOOM,
+            panX: 0,
+            panY: 0,
+            
+            // Gestión de Inputs
+            activePointers: 0,
+            isDragging: false,
+            dragOccurred: false,
+            lastPoint: { x: 0, y: 0 },
+            
+            // Estadísticas
+            totalPixels: 0,
+            onlineCount: 0
         };
 
-        // Inicialización de Firebase API
-        firebase.initializeApp(NF_CONFIG.FIREBASE);
-        const db = firebase.database();
-
         /**
-         * REFERENCIAS DEL DOM (NODOS CACHEADOS)
+         * @object DOM_CACHE
+         * Nodos del DOM cacheados para evitar búsquedas repetitivas y mejorar FPS.
          */
         const DOM = {
-            canvas: document.getElementById('main-canvas'),
-            ctx: document.getElementById('main-canvas').getContext('2d', { alpha: false }),
-            viewport: document.getElementById('viewport-container'),
-            loader: document.getElementById('app-loader'),
-            loaderStatus: document.getElementById('loader-status'),
-            modalId: document.getElementById('modal-id'),
-            usernameField: document.getElementById('username-field'),
-            snapper: document.getElementById('pixel-snapper'),
-            coords: document.getElementById('pixel-coords-overlay'),
-            chatWindow: document.getElementById('chat-window'),
-            chatField: document.getElementById('chat-field'),
-            cooldownBar: document.getElementById('cooldown-bar')
+            canvas: document.getElementById('pixel-canvas'),
+            ctx: document.getElementById('pixel-canvas').getContext('2d', { alpha: false }),
+            loader: document.getElementById('global-loader'),
+            loaderLog: document.getElementById('loader-log'),
+            snapper: document.getElementById('selection-grid-snapper'),
+            tooltip: document.getElementById('pixel-tooltip'),
+            modalIdentity: document.getElementById('modal-identity'),
+            userIn: document.getElementById('user-field'),
+            chatMsgBox: document.getElementById('chat-messages'),
+            chatIn: document.getElementById('chat-input'),
+            cooldownBar: document.getElementById('cooldown-progress'),
+            palette: document.getElementById('palette-grid')
         };
 
         /**
-         * FUNCIÓN DE ARRANQUE (BOOTSTRAP)
-         * Se encarga de coordinar la carga de datos y la eliminación del loader.
+         * INICIALIZADOR DE FIREBASE
          */
-        async function boot() {
-            try {
-                updateLoader("Conectando con base de datos...");
-                
-                // 1. Cargar Identidad del LocalStorage
-                const savedUser = localStorage.getItem('nf_username');
-                if (savedUser) {
-                    STATE.user.name = savedUser;
-                    STATE.user.isAuth = true;
-                    DOM.modalId.style.display = 'none';
-                    document.getElementById('display-user').innerText = savedUser;
-                }
-
-                // 2. Sincronización Inicial de Píxeles
-                // Añadimos un timeout de seguridad para que el loader no se bloquee infinitamente
-                const boardPromise = db.ref('board').once('value');
-                const timeoutPromise = new Promise(resolve => setTimeout(resolve, 5000));
-
-                updateLoader("Sincronizando Lienzo...");
-                const snapshot = await Promise.race([boardPromise, timeoutPromise]);
-                
-                if (snapshot && snapshot.val()) {
-                    const data = snapshot.val();
-                    renderFullBoard(data);
-                } else {
-                    // Si no hay datos, inicializar lienzo blanco
-                    DOM.ctx.fillStyle = "#ffffff";
-                    DOM.ctx.fillRect(0, 0, NF_CONFIG.CANVAS.RESOLUTION, NF_CONFIG.CANVAS.RESOLUTION);
-                }
-
-                // 3. Configurar Escucha de Tiempo Real
-                setupRealtimeListeners();
-
-                // 4. Centrar Vista Inicial
-                centerViewport();
-
-                // 5. Finalizar Carga
-                updateLoader("Protocolos Listos.");
-                setTimeout(() => {
-                    DOM.loader.classList.add('hidden');
-                    STATE.engine.isLoaded = true;
-                }, 1000);
-
-            } catch (error) {
-                console.error("Error en el arranque:", error);
-                DOM.loaderStatus.innerText = "Error Crítico: Reintentando...";
-                setTimeout(() => location.reload(), 3000);
-            }
-        }
+        firebase.initializeApp(NF_CONFIG.DATABASE);
+        const database = firebase.database();
 
         /**
-         * RENDERIZADO INICIAL DEL TABLERO
+         * @function bootstrap
+         * Punto de entrada principal para el arranque del sistema.
          */
-        function renderFullBoard(data) {
-            DOM.ctx.fillStyle = "#ffffff";
-            DOM.ctx.fillRect(0, 0, NF_CONFIG.CANVAS.RESOLUTION, NF_CONFIG.CANVAS.RESOLUTION);
+        async function bootstrap() {
+            logSystem("Iniciando protocolos de conexión...");
             
-            Object.keys(data).forEach(key => {
-                const [x, y] = key.split('_');
-                DOM.ctx.fillStyle = data[key];
-                DOM.ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
+            setupIdentity();
+            setupPalette();
+            setupInteractions();
+            centerCamera();
+            
+            // Vincular observadores de Firebase
+            connectRealtimeDatabase();
+            
+            // Simular carga de recursos críticos
+            setTimeout(() => {
+                DOM.loader.classList.add('fade-out');
+                STATE.initialized = true;
+                logSystem("Sistema Operativo.");
+            }, 1200);
+        }
+
+        /**
+         * @function logSystem
+         * Mensajería interna para el loader.
+         */
+        function logSystem(msg) {
+            DOM.loaderLog.innerText = msg;
+            console.log(`[CORE] ${msg}`);
+        }
+
+        /**
+         * @function setupIdentity
+         * Verifica el almacenamiento local para persistencia de usuario.
+         */
+        function setupIdentity() {
+            const saved = localStorage.getItem('nota_final_id');
+            if (saved) {
+                STATE.currentUser = saved;
+                DOM.modalIdentity.style.display = 'none';
+                document.getElementById('display-name').innerText = saved;
+            }
+
+            document.getElementById('btn-login').onclick = () => {
+                const val = DOM.userIn.value.trim();
+                if (val.length >= 2) {
+                    STATE.currentUser = val;
+                    localStorage.setItem('nota_final_id', val);
+                    DOM.modalIdentity.style.display = 'none';
+                    document.getElementById('display-name').innerText = val;
+                    sendChatMessage("SISTEMA", `${val} se ha sincronizado.`, true);
+                } else {
+                    alert("Nombre demasiado corto.");
+                }
+            };
+        }
+
+        /**
+         * @function setupPalette
+         * Renderiza los nodos de selección de color.
+         */
+        function setupPalette() {
+            NF_CONFIG.THEME.PALETTE.forEach(color => {
+                const node = document.createElement('div');
+                node.className = 'swatch';
+                node.style.backgroundColor = color;
+                if (color === STATE.selectedColor) node.classList.add('active');
+                
+                node.onclick = () => {
+                    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+                    node.classList.add('active');
+                    STATE.selectedColor = color;
+                };
+                DOM.palette.appendChild(node);
             });
-            updatePixelCounter();
         }
 
         /**
-         * ACTUALIZADOR DE TEXTO DEL LOADER
+         * @function centerCamera
+         * Posicionamiento inicial del lienzo en el centro del Viewport.
          */
-        function updateLoader(text) {
-            DOM.loaderStatus.innerText = text;
-        }
-
-        /**
-         * GESTIÓN DE CÁMARA (CENTER, ZOOM, PAN)
-         */
-        function centerViewport() {
+        function centerCamera() {
             const vw = window.innerWidth;
             const vh = window.innerHeight;
-            const res = NF_CONFIG.CANVAS.RESOLUTION;
+            const res = NF_CONFIG.ENGINE.CANVAS_RESOLUTION;
             
-            STATE.engine.posX = (vw / 2) - (res * STATE.engine.scale / 2);
-            STATE.engine.posY = (vh / 2) - (res * STATE.engine.scale / 2);
+            STATE.panX = (vw / 2) - (res * STATE.zoom / 2);
+            STATE.panY = (vh / 2) - (res * STATE.zoom / 2);
             
-            applyTransform();
-        }
-
-        function applyTransform() {
-            DOM.canvas.style.transform = `translate(${STATE.engine.posX}px, ${STATE.engine.posY}px) scale(${STATE.engine.scale})`;
+            updateTransform();
         }
 
         /**
-         * LÓGICA DE SNAPPING (REDONDEO AL PÍXEL)
-         * Convierte coordenadas de pantalla a coordenadas de lienzo.
+         * @function updateTransform
+         * Aplica los valores de Pan y Zoom al elemento Canvas.
          */
-        function handlePixelSnapping(clientX, clientY) {
-            if (!STATE.engine.isLoaded) return;
+        function updateTransform() {
+            DOM.canvas.style.transform = `translate(${STATE.panX}px, ${STATE.panY}px) scale(${STATE.zoom})`;
+        }
 
-            const rect = DOM.canvas.getBoundingClientRect();
-            
-            // Calculamos la posición local dentro del canvas escalado
-            const localX = (clientX - rect.left) / STATE.engine.scale;
-            const localY = (clientY - rect.top) / STATE.engine.scale;
+        /**
+         * @function handleSnapping
+         * SISTEMA DE REDONDEO AL PÍXEL MÁS CERCANO (REVISADO)
+         * Resuelve la posición del cursor respecto al lienzo transformado.
+         */
+        function handleSnapping(eX, eY) {
+            if (!STATE.initialized) return;
 
-            // Redondeo absoluto al píxel más cercano (Snapping)
-            const px = Math.floor(localX);
-            const py = Math.floor(localY);
+            // 1. Obtener coordenadas relativas al lienzo considerando el Pan
+            const relativeX = (eX - STATE.panX) / STATE.zoom;
+            const relativeY = (eY - STATE.panY) / STATE.zoom;
 
-            // Validar límites
-            if (px >= 0 && px < NF_CONFIG.CANVAS.RESOLUTION && py >= 0 && py < NF_CONFIG.CANVAS.RESOLUTION) {
+            // 2. Redondear a la rejilla entera (Píxel Exacto)
+            const pX = Math.floor(relativeX);
+            const pY = Math.floor(relativeY);
+
+            // 3. Validar si el puntero está dentro de los límites
+            const limit = NF_CONFIG.ENGINE.CANVAS_RESOLUTION;
+            if (pX >= 0 && pX < limit && pY >= 0 && pY < limit) {
                 // Visualizar el Snapper
                 DOM.snapper.style.display = 'block';
-                DOM.snapper.style.width = STATE.engine.scale + "px";
-                DOM.snapper.style.height = STATE.engine.scale + "px";
+                DOM.snapper.style.width = STATE.zoom + 'px';
+                DOM.snapper.style.height = STATE.zoom + 'px';
                 
-                // Posicionamiento alineado a la rejilla visual
-                DOM.snapper.style.left = (rect.left + (px * STATE.engine.scale)) + "px";
-                DOM.snapper.style.top = (rect.top + (py * STATE.engine.scale)) + "px";
+                // Cálculo visual final: Posición absoluta en pantalla
+                const visualX = STATE.panX + (pX * STATE.zoom);
+                const visualY = STATE.panY + (pY * STATE.zoom);
+                
+                DOM.snapper.style.left = visualX + 'px';
+                DOM.snapper.style.top = visualY + 'px';
 
-                // Tooltip de coordenadas
-                DOM.coords.style.display = 'block';
-                DOM.coords.style.left = (clientX + 15) + "px";
-                DOM.coords.style.top = (clientY + 15) + "px";
-                DOM.coords.innerText = `[${px}, ${py}]`;
+                // Tooltip
+                DOM.tooltip.style.display = 'block';
+                DOM.tooltip.style.left = (eX + 15) + 'px';
+                DOM.tooltip.style.top = (eY + 15) + 'px';
+                DOM.tooltip.innerText = `Pos: ${pX}, ${pY}`;
+                
+                return { x: pX, y: pY };
             } else {
                 DOM.snapper.style.display = 'none';
-                DOM.coords.style.display = 'none';
+                DOM.tooltip.style.display = 'none';
+                return null;
             }
         }
 
         /**
-         * SISTEMA DE ENTRADA (RATÓN Y GESTOS TÁCTILES)
+         * @function setupInteractions
+         * Manejador de eventos híbrido (Ratón y Táctil).
          */
-        function attachInputHandlers() {
+        function setupInteractions() {
             
-            // --- EVENTOS DE RATÓN ---
+            // --- RATÓN: ZOOM (Scroll) ---
             window.addEventListener('wheel', (e) => {
-                if (DOM.modalId.style.display !== 'none') return;
+                if (DOM.modalIdentity.style.display !== 'none') return;
                 e.preventDefault();
 
-                const zoomSpeed = 0.1;
-                const delta = e.deltaY > 0 ? (1 - zoomSpeed) : (1 + zoomSpeed);
-                const prevScale = STATE.engine.scale;
-                
-                STATE.engine.scale = Math.min(Math.max(STATE.engine.scale * delta, NF_CONFIG.CANVAS.MIN_SCALE), NF_CONFIG.CANVAS.MAX_SCALE);
-                
-                // Zoom hacia el cursor
-                const mouseX = e.clientX;
-                const mouseY = e.clientY;
-                STATE.engine.posX -= (mouseX - STATE.engine.posX) * (STATE.engine.scale / prevScale - 1);
-                STATE.engine.posY -= (mouseY - STATE.engine.posY) * (STATE.engine.scale / prevScale - 1);
+                const delta = e.deltaY > 0 ? 0.92 : 1.08;
+                const oldZoom = STATE.zoom;
+                STATE.zoom = Math.min(Math.max(STATE.zoom * delta, NF_CONFIG.ENGINE.ZOOM_MIN), NF_CONFIG.ENGINE.ZOOM_MAX);
 
-                applyTransform();
-                handlePixelSnapping(e.clientX, e.clientY);
+                // Zoom centrado en el puntero
+                STATE.panX -= (e.clientX - STATE.panX) * (STATE.zoom / oldZoom - 1);
+                STATE.panY -= (e.clientY - STATE.panY) * (STATE.zoom / oldZoom - 1);
+
+                updateTransform();
+                handleSnapping(e.clientX, e.clientY);
             }, { passive: false });
 
-            DOM.viewport.addEventListener('mousedown', (e) => {
-                STATE.input.isDragging = true;
-                STATE.input.dragThreshold = false;
-                STATE.input.lastMouseX = e.clientX;
-                STATE.input.lastMouseY = e.clientY;
+            // --- RATÓN: PAN & CLICK ---
+            window.addEventListener('mousedown', (e) => {
+                STATE.isDragging = true;
+                STATE.dragOccurred = false;
+                STATE.lastPoint = { x: e.clientX, y: e.clientY };
             });
 
             window.addEventListener('mousemove', (e) => {
-                if (STATE.input.isDragging) {
-                    const dx = e.clientX - STATE.input.lastMouseX;
-                    const dy = e.clientY - STATE.input.lastMouseY;
+                if (STATE.isDragging) {
+                    const dx = e.clientX - STATE.lastPoint.x;
+                    const dy = e.clientY - STATE.lastPoint.y;
                     
-                    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) STATE.input.dragThreshold = true;
-                    
-                    STATE.engine.posX += dx;
-                    STATE.engine.posY += dy;
-                    STATE.input.lastMouseX = e.clientX;
-                    STATE.input.lastMouseY = e.clientY;
-                    applyTransform();
+                    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) STATE.dragOccurred = true;
+
+                    STATE.panX += dx;
+                    STATE.panY += dy;
+                    STATE.lastPoint = { x: e.clientX, y: e.clientY };
+                    updateTransform();
                 }
-                handlePixelSnapping(e.clientX, e.clientY);
+                handleSnapping(e.clientX, e.clientY);
             });
 
             window.addEventListener('mouseup', (e) => {
-                if (STATE.input.isDragging && !STATE.input.dragThreshold) {
-                    commitPixel(e.clientX, e.clientY);
+                if (STATE.isDragging && !STATE.dragOccurred) {
+                    const coords = handleSnapping(e.clientX, e.clientY);
+                    if (coords) paintPixel(coords.x, coords.y);
                 }
-                STATE.input.isDragging = false;
+                STATE.isDragging = false;
             });
 
-            // --- EVENTOS TÁCTILES ---
-            let touchStartDist = 0;
-
-            DOM.viewport.addEventListener('touchstart', (e) => {
+            // --- TÁCTIL: MULTI-GESTER ---
+            let initialDist = 0;
+            window.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
-                    STATE.input.isDragging = true;
-                    STATE.input.dragThreshold = false;
-                    STATE.input.lastMouseX = e.touches[0].clientX;
-                    STATE.input.lastMouseY = e.touches[0].clientY;
-                    handlePixelSnapping(e.touches[0].clientX, e.touches[0].clientY);
+                    STATE.isDragging = true;
+                    STATE.dragOccurred = false;
+                    STATE.lastPoint = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    handleSnapping(e.touches[0].clientX, e.touches[0].clientY);
                 } else if (e.touches.length === 2) {
-                    touchStartDist = Math.hypot(
-                        e.touches[0].pageX - e.touches[1].pageX,
-                        e.touches[0].pageY - e.touches[1].pageY
+                    initialDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
                     );
                 }
             }, { passive: false });
 
-            DOM.viewport.addEventListener('touchmove', (e) => {
+            window.addEventListener('touchmove', (e) => {
                 e.preventDefault();
-                if (e.touches.length === 1 && STATE.input.isDragging) {
-                    const dx = e.touches[0].clientX - STATE.input.lastMouseX;
-                    const dy = e.touches[0].clientY - STATE.input.lastMouseY;
-                    
-                    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) STATE.input.dragThreshold = true;
-                    
-                    STATE.engine.posX += dx;
-                    STATE.engine.posY += dy;
-                    STATE.input.lastMouseX = e.touches[0].clientX;
-                    STATE.input.lastMouseY = e.touches[0].clientY;
-                    applyTransform();
-                    handlePixelSnapping(e.touches[0].clientX, e.touches[0].clientY);
+                if (e.touches.length === 1 && STATE.isDragging) {
+                    const dx = e.touches[0].clientX - STATE.lastPoint.x;
+                    const dy = e.touches[0].clientY - STATE.lastPoint.y;
+                    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) STATE.dragOccurred = true;
+
+                    STATE.panX += dx;
+                    STATE.panY += dy;
+                    STATE.lastPoint = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    updateTransform();
+                    handleSnapping(e.touches[0].clientX, e.touches[0].clientY);
                 } else if (e.touches.length === 2) {
-                    // Lógica de Pinch Zoom
-                    const dist = Math.hypot(
-                        e.touches[0].pageX - e.touches[1].pageX,
-                        e.touches[0].pageY - e.touches[1].pageY
+                    // Pinch to zoom
+                    const currentDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
                     );
-                    const delta = dist / touchStartDist;
-                    const prevScale = STATE.engine.scale;
+                    const delta = currentDist / initialDist;
+                    const oldZoom = STATE.zoom;
                     
-                    STATE.engine.scale = Math.min(Math.max(STATE.engine.scale * delta, NF_CONFIG.CANVAS.MIN_SCALE), NF_CONFIG.CANVAS.MAX_SCALE);
+                    STATE.zoom = Math.min(Math.max(STATE.zoom * delta, NF_CONFIG.ENGINE.ZOOM_MIN), NF_CONFIG.ENGINE.ZOOM_MAX);
+
+                    const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                     
-                    const centerX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
-                    const centerY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
-                    
-                    STATE.engine.posX -= (centerX - STATE.engine.posX) * (STATE.engine.scale / prevScale - 1);
-                    STATE.engine.posY -= (centerY - STATE.engine.posY) * (STATE.engine.scale / prevScale - 1);
-                    
-                    touchStartDist = dist;
-                    applyTransform();
+                    STATE.panX -= (centerX - STATE.panX) * (STATE.zoom / oldZoom - 1);
+                    STATE.panY -= (centerY - STATE.panY) * (STATE.zoom / oldZoom - 1);
+
+                    initialDist = currentDist;
+                    updateTransform();
                 }
             }, { passive: false });
 
-            DOM.viewport.addEventListener('touchend', (e) => {
-                if (STATE.input.isDragging && !STATE.input.dragThreshold) {
-                    commitPixel(STATE.input.lastMouseX, STATE.input.lastMouseY);
+            window.addEventListener('touchend', (e) => {
+                if (STATE.isDragging && !STATE.dragOccurred) {
+                    const coords = handleSnapping(STATE.lastPoint.x, STATE.lastPoint.y);
+                    if (coords) paintPixel(coords.x, coords.y);
                 }
-                STATE.input.isDragging = false;
+                STATE.isDragging = false;
             });
+
+            // Chat & UI
+            DOM.chatIn.onkeydown = (e) => {
+                if (e.key === 'Enter' && DOM.chatIn.value.trim()) {
+                    sendChatMessage(STATE.currentUser, DOM.chatIn.value);
+                    DOM.chatIn.value = "";
+                }
+            };
+
+            document.getElementById('mobile-nav-toggle').onclick = () => {
+                document.getElementById('app-sidebar').classList.toggle('active');
+            };
         }
 
         /**
-         * ACCIÓN DE PINTAR (COMMIT)
+         * @function paintPixel
+         * Registra la acción de dibujo en la base de datos remota.
          */
-        function commitPixel(screenX, screenY) {
-            if (!STATE.engine.isPaintingReady) return;
-            if (!STATE.user.isAuth) {
-                DOM.modalId.style.display = 'flex';
-                return;
-            }
+        function paintPixel(x, y) {
+            if (!STATE.paintingEnabled) return;
 
-            const rect = DOM.canvas.getBoundingClientRect();
-            const px = Math.floor((screenX - rect.left) / STATE.engine.scale);
-            const py = Math.floor((screenY - rect.top) / STATE.engine.scale);
-
-            if (px >= 0 && px < NF_CONFIG.CANVAS.RESOLUTION && py >= 0 && py < NF_CONFIG.CANVAS.RESOLUTION) {
-                // Escribir en la DB
-                db.ref(`board/${px}_${py}`).set(STATE.engine.selectedColor);
-                
-                // Local stats
-                STATE.user.pixelsPlaced++;
-                document.getElementById('stat-my-pixels').innerText = STATE.user.pixelsPlaced;
-                
-                // Iniciar Cooldown
-                startCooldown();
-            }
-        }
-
-        function startCooldown() {
-            STATE.engine.isPaintingReady = false;
-            const startTime = Date.now();
-            const duration = NF_CONFIG.CANVAS.COOLDOWN_TIME;
+            database.ref(`board/${x}_${y}`).set(STATE.selectedColor);
             
-            const timer = setInterval(() => {
-                const now = Date.now();
-                const remaining = Math.max(0, duration - (now - startTime));
-                const percent = (remaining / duration) * 100;
+            // Iniciar Cooldown de 0.5s
+            STATE.paintingEnabled = false;
+            const start = Date.now();
+            const duration = NF_CONFIG.ENGINE.COOLDOWN_MS;
+
+            const updateBar = setInterval(() => {
+                const elapsed = Date.now() - start;
+                const progress = (elapsed / duration) * 100;
+                DOM.cooldownBar.style.width = (100 - progress) + "%";
                 
-                DOM.cooldownBar.style.width = (100 - percent) + "%";
-                
-                if (remaining <= 0) {
-                    clearInterval(timer);
-                    STATE.engine.isPaintingReady = true;
+                if (elapsed >= duration) {
+                    clearInterval(updateBar);
+                    STATE.paintingEnabled = true;
                     DOM.cooldownBar.style.width = "100%";
                 }
-            }, 30);
+            }, 20);
         }
 
         /**
-         * ESCUCHADORES DE FIREBASE (REALTIME)
+         * @function connectRealtimeDatabase
+         * Configura los triggers de sincronización con Firebase.
          */
-        function setupRealtimeListeners() {
-            // Actualización de píxeles individuales
-            db.ref('board').on('child_added', snap => updatePixelOnCanvas(snap));
-            db.ref('board').on('child_changed', snap => updatePixelOnCanvas(snap));
-            
-            // Contador de píxeles totales
-            db.ref('board').on('value', snap => {
-                updatePixelCounter(snap.numChildren());
+        function connectRealtimeDatabase() {
+            // Escuchar cambios en el tablero
+            database.ref('board').on('child_added', (snap) => {
+                const [x, y] = snap.key.split('_');
+                DOM.ctx.fillStyle = snap.val();
+                DOM.ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
+                updateStats();
             });
 
-            // Chat
-            db.ref('chat').limitToLast(40).on('child_added', snap => {
-                appendChatMessage(snap.val());
+            database.ref('board').on('child_changed', (snap) => {
+                const [x, y] = snap.key.split('_');
+                DOM.ctx.fillStyle = snap.val();
+                DOM.ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
+            });
+
+            // Escuchar Chat
+            database.ref('chat').limitToLast(50).on('child_added', (snap) => {
+                renderChatMessage(snap.val());
             });
 
             // Presencia
-            const presenceRef = db.ref('presence').push(true);
-            presenceRef.onDisconnect().remove();
-            db.ref('presence').on('value', snap => {
-                document.getElementById('stat-online').innerText = snap.numChildren();
+            const presence = database.ref('presence').push(true);
+            presence.onDisconnect().remove();
+            database.ref('presence').on('value', (snap) => {
+                document.getElementById('online-users').innerText = snap.numChildren();
             });
         }
 
-        function updatePixelOnCanvas(snap) {
-            const [x, y] = snap.key.split('_');
-            DOM.ctx.fillStyle = snap.val();
-            DOM.ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
+        /**
+         * @function sendChatMessage
+         * Empuja un mensaje al historial de Firebase.
+         */
+        function sendChatMessage(user, text, isSystem = false) {
+            database.ref('chat').push({
+                user: user,
+                text: text,
+                system: isSystem,
+                time: Date.now()
+            });
         }
 
-        function updatePixelCounter(count) {
-            if (count === undefined) {
-                db.ref('board').once('value', s => {
-                    document.getElementById('stat-total').innerText = (s.numChildren() || 0).toLocaleString();
-                });
+        /**
+         * @function renderChatMessage
+         * Inyecta un nodo de mensaje en el feed de la UI.
+         */
+        function renderChatMessage(data) {
+            const entry = document.createElement('div');
+            entry.className = 'message-entry';
+            if (data.system) {
+                entry.innerHTML = `<span class="system-text">[!] ${data.text}</span>`;
             } else {
-                document.getElementById('stat-total').innerText = count.toLocaleString();
+                entry.innerHTML = `<span class="author">${data.user}:</span><span>${data.text}</span>`;
             }
+            DOM.chatMsgBox.appendChild(entry);
+            DOM.chatMsgBox.scrollTop = DOM.chatMsgBox.scrollHeight;
         }
 
         /**
-         * SISTEMA DE CHAT
+         * @function updateStats
+         * Recalcula los metadatos del lienzo.
          */
-        function appendChatMessage(data) {
-            const div = document.createElement('div');
-            div.className = 'chat-msg';
-            if (data.isSystem) div.classList.add('system');
-            
-            div.innerHTML = `<span class="author">${data.user}:</span> <span class="content">${data.text}</span>`;
-            DOM.chatWindow.appendChild(div);
-            DOM.chatWindow.scrollTop = DOM.chatWindow.scrollHeight;
-        }
-
-        function sendChat(text) {
-            if (!text.trim()) return;
-            db.ref('chat').push({
-                user: STATE.user.name,
-                text: text.substring(0, 60),
-                timestamp: Date.now()
+        function updateStats() {
+            database.ref('board').once('value', (snap) => {
+                document.getElementById('total-pixels').innerText = snap.numChildren().toLocaleString();
             });
         }
 
-        /**
-         * INTERFAZ Y PALETA
-         */
-        function setupUI() {
-            // Generar Paleta
-            const paletteGrid = document.getElementById('palette-render');
-            NF_CONFIG.PALETTE.forEach(color => {
-                const swatch = document.createElement('div');
-                swatch.className = 'color-swatch';
-                if (color === STATE.engine.selectedColor) swatch.classList.add('active');
-                swatch.style.backgroundColor = color;
-                
-                swatch.onclick = () => {
-                    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-                    swatch.classList.add('active');
-                    STATE.engine.selectedColor = color;
-                };
-                paletteGrid.appendChild(swatch);
-            });
-
-            // Eventos de Chat
-            DOM.chatField.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    sendChat(DOM.chatField.value);
-                    DOM.chatField.value = "";
-                }
-            });
-
-            // Modal Acceso
-            document.getElementById('btn-enter').onclick = () => {
-                const nick = DOM.usernameField.value.trim();
-                if (nick.length >= 2) {
-                    STATE.user.name = nick;
-                    STATE.user.isAuth = true;
-                    localStorage.setItem('nf_username', nick);
-                    DOM.modalId.style.display = 'none';
-                    document.getElementById('display-user').innerText = nick;
-                    
-                    // Notificar en chat
-                    db.ref('chat').push({
-                        user: "SISTEMA",
-                        text: `${nick} ha entrado al lienzo.`,
-                        isSystem: true
-                    });
-                } else {
-                    DOM.usernameField.classList.add('pulse-red');
-                    setTimeout(() => DOM.usernameField.classList.remove('pulse-red'), 1000);
-                }
-            };
-
-            // Menú Móvil
-            const menuTrigger = document.getElementById('mobile-menu-trigger');
-            const sidebar = document.getElementById('ui-sidebar');
-            menuTrigger.onclick = () => {
-                sidebar.classList.toggle('active');
-                menuTrigger.innerText = sidebar.classList.contains('active') ? "CERRAR" : "MENU";
-            };
-
-            // Evitar Zoom nativo en input
-            const inputs = document.querySelectorAll('input');
-            inputs.forEach(i => {
-                i.addEventListener('focus', () => {
-                    // Prevenir scroll en movil
-                });
-            });
-        }
-
-        /**
-         * GESTIÓN DE RESIZE
-         */
-        window.addEventListener('resize', () => {
-            // Al redimensionar la ventana, no perdemos el pan/zoom pero ajustamos si es necesario
-            if (STATE.engine.isLoaded) {
-                // Opcional: Recalcular centro si el canvas se pierde
-            }
-        });
-
-        /**
-         * INICIALIZACIÓN GLOBAL
-         */
-        document.addEventListener('DOMContentLoaded', () => {
-            setupUI();
-            attachInputHandlers();
-            boot();
-        });
-
-        /**
-         * LOGS TÉCNICOS DE PROTOCOLO
-         */
-        console.log("%c NOTA_FINAL.PNG %c Motor de Renderizado v4.0 Iniciado ", 
-            "color: white; background: #3d5afe; font-weight: bold; padding: 4px;", 
-            "color: #3d5afe; background: #000; padding: 4px;");
+        // --- ARRANQUE ---
+        window.onload = bootstrap;
+        window.onresize = () => { if (STATE.initialized) centerCamera(); };
 
     </script>
 </body>
