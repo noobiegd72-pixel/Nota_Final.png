@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nota_Final.png</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --panel-dark: #141414;
+            --text-main: #d0d0d0;
+            --text-dim: #666666;
+            --accent: #2979ff;
+            --border: #222222;
+            --error: #ff5252;
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+            touch-action: none;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Pantalla de Carga */
+        #loader {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            transition: opacity 0.5s ease;
+        }
+
+        .loader-spinner {
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--border);
+            border-top: 2px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Contenedor del Canvas */
+        #viewport {
+            width: 100vw;
+            height: 100vh;
+            cursor: crosshair;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            background-color: #ffffff;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            transform-origin: 0 0;
+            user-select: none;
+        }
+
+        /* Borde de selección de píxel */
+        #pixel-selector {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            border: 0.1px solid rgba(0,0,0,0.5);
+            box-shadow: 0 0 0 0.5px white;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+
+        /* Interfaz Superior */
+        header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 50px;
+            background: rgba(10, 10, 10, 0.9);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+            justify-content: space-between;
+        }
+
+        .title-group h1 { font-size: 0.9rem; font-weight: bold; }
+
+        .stats-top {
+            display: flex;
+            gap: 15px;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .stats-top b { color: var(--text-main); }
+
+        /* Paleta Inferior */
+        #ui-bottom {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            width: 100%;
+            max-width: 450px;
+            padding: 0 15px;
+        }
+
+        .palette-card {
+            background: var(--panel-dark);
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 3px;
+        }
+
+        .color-swatch {
+            aspect-ratio: 1/1;
+            border-radius: 2px;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .color-swatch.active { border-color: white; transform: scale(1.1); }
+
+        .cooldown-bar {
+            height: 3px;
+            background: #111;
+            border-radius: 1px;
+            overflow: hidden;
+        }
+
+        #cooldown-progress {
+            height: 100%;
+            width: 100%;
+            background: var(--accent);
+            transition: width 0.1s linear;
+        }
+
+        /* Paneles */
+        #side-right {
+            position: fixed;
+            right: 15px; top: 65px;
+            width: 240px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 90;
+        }
+
+        .panel {
+            background: rgba(15, 15, 15, 0.85);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .panel-label { 
+            padding: 8px 12px; 
+            font-size: 0.6rem; 
+            color: var(--text-dim); 
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--border);
+        }
+
+        #chat-log {
+            height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .chat-msg span { color: var(--accent); font-weight: bold; }
+
+        #chat-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--border);
+            padding: 10px;
+            color: white;
+            outline: none;
+            font-size: 0.75rem;
+        }
+
+        #extra-stats {
+            padding: 10px;
+            font-size: 0.7rem;
+            line-height: 1.5;
+            color: var(--text-dim);
+        }
+
+        #extra-stats b { color: var(--text-main); }
+
+        /* Admin */
+        #admin-trigger {
+            position: fixed;
+            bottom: 20px; right: 20px;
+            width: 35px; height: 35px;
+            background: var(--panel-dark);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            opacity: 0.4;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-box {
+            background: var(--panel-dark);
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 350px;
+            border: 1px solid var(--border);
+        }
+
+        .modal-box h2 { font-size: 1rem; margin-bottom: 15px; }
+        
+        input[type="password"], input[type="number"], input[type="text"] {
+            width: 100%;
+            background: #000;
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-danger { background: var(--error); color: white; }
+        .btn-close { background: #333; color: white; }
+
+        #coords-display {
+            position: fixed;
+            pointer-events: none;
+            background: black;
+            padding: 2px 5px;
+            font-size: 0.6rem;
+            z-index: 150;
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            #side-right { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="loader-spinner"></div>
+        <div style="font-size: 0.6rem; color: var(--text-dim);">ENTRANDO...</div>
+    </div>
+
+    <div id="coords-display">0,0</div>
+
+    <header>
+        <div class="title-group">
+            <h1>Nota_Final.png</h1>
+        </div>
+        <div class="stats-top">
+            <span>Gente: <b id="user-count">1</b></span>
+            <span>Pintados: <b id="pixel-count">0</b></span>
+            <span id="session-timer">00:00</span>
+        </div>
+    </header>
+
+    <div id="viewport">
+        <div id="pixel-selector"></div>
+        <canvas id="canvas" width="125" height="125"></canvas>
+    </div>
+
+    <div id="side-right">
+        <div class="panel">
+            <div class="panel-label">CHAT</div>
+            <div id="chat-log"></div>
+            <input type="text" id="chat-input" placeholder="Escribir..." maxlength="50">
+        </div>
+        <div class="panel">
+            <div class="panel-label">ESTADÍSTICAS</div>
+            <div id="extra-stats">
+                Píxeles tuyos: <b id="my-pixels">0</b><br>
+                Última acción: <b id="last-action">Ninguna</b><br>
+                Lienzo: <b>125 x 125</b>
+            </div>
+        </div>
+    </div>
+
+    <div id="ui-bottom">
+        <div class="palette-card">
+            <div class="palette-grid" id="palette"></div>
+            <div class="cooldown-bar"><div id="cooldown-progress"></div></div>
+        </div>
+    </div>
+
+    <div id="admin-trigger">⚙️</div>
+
+    <div id="modal-auth" class="modal">
+        <div class="modal-box">
+            <h2>Panel</h2>
+            <input type="password" id="admin-pass" placeholder="Contraseña">
+            <button class="btn btn-primary" onclick="authAdmin()">Entrar</button>
+            <button class="btn btn-close" onclick="closeModals()">Salir</button>
+        </div>
+    </div>
+
+    <div id="modal-admin" class="modal">
+        <div class="modal-box">
+            <h2>Admin</h2>
+            <button class="btn btn-danger" onclick="clearCanvas()">Borrar lienzo</button>
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 15px 0;">
+            <p style="font-size: 0.7rem; margin-bottom: 10px;">Timelapse:</p>
+            <input type="number" id="tl-interval" value="5" min="1">
+            <button class="btn btn-primary" id="tl-btn" onclick="toggleTimelapse()">Grabar</button>
+            <button class="btn btn-close" onclick="closeModals()">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        // FIREBASE
+        const firebaseConfig = { 
+            apiKey: "AIzaSyAtTbxuzHMQqSpQt9ZHZP1a0qZykY_NvWA", 
+            authDomain: "notafinalpng.firebaseapp.com", 
+            projectId: "notafinalpng", 
+            storageBucket: "notafinalpng.firebasestorage.app", 
+            messagingSenderId: "212333550718", 
+            appId: "1:212333550718:web:05d1b04dc2a1de2a88cc2f" 
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // CONFIG
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const viewport = document.getElementById('viewport');
+        const selector = document.getElementById('pixel-selector');
+        const CANVAS_SIZE = 125;
+        
+        let scale = 4.0;
+        let originX = (window.innerWidth / 2) - (CANVAS_SIZE * scale / 2);
+        let originY = (window.innerHeight / 2) - (CANVAS_SIZE * scale / 2);
+        
+        let isDragging = false;
+        let hasMoved = false; // Nueva flag para detectar arrastre
+        let lastX, lastY;
+        let canPaint = true;
+        let selectedColor = "#000000";
+        let isAdmin = false;
+        let myPixelCount = 0;
+
+        const colors = [
+            "#000000", "#ffffff", "#aaaaaa", "#555555", "#fed3cf", "#f14131", "#ffa300", "#ffec00", 
+            "#00e436", "#00811f", "#00beff", "#0000ea", "#827193", "#e305ff", "#ff8bce", "#803c15",
+            "#222222", "#d4d7d9", "#9c0000", "#ff4500", "#ffa800", "#ffd635", "#00a368", "#7eed56",
+            "#2450a4", "#3690ea", "#51e9f4", "#811e9f", "#b44ac0", "#ff3881", "#9c6926", "#6d482f"
+        ];
+
+        function init() {
+            const paletteGrid = document.getElementById('palette');
+            colors.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'color-swatch';
+                div.style.backgroundColor = c;
+                if(c === selectedColor) div.classList.add('active');
+                div.onclick = () => {
+                    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                    div.classList.add('active');
+                    selectedColor = c;
+                };
+                paletteGrid.appendChild(div);
+            });
+
+            db.ref('board').once('value', snap => {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0,0, CANVAS_SIZE, CANVAS_SIZE);
+                const data = snap.val();
+                if(data) {
+                    Object.keys(data).forEach(key => {
+                        const [x, y] = key.split('_');
+                        ctx.fillStyle = data[key];
+                        ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
+                    });
+                }
+                updatePixelCount();
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+            });
+
+            db.ref('board').on('child_added', drawFromSnap);
+            db.ref('board').on('child_changed', drawFromSnap);
+            db.ref('board').on('child_removed', () => {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0,0, CANVAS_SIZE, CANVAS_SIZE);
+            });
+
+            const userRef = db.ref('presence').push(true);
+            userRef.onDisconnect().remove();
+            db.ref('presence').on('value', snap => {
+                document.getElementById('user-count').innerText = snap.numChildren();
+            });
+
+            let startTime = Date.now();
+            setInterval(() => {
+                const diff = Math.floor((Date.now() - startTime) / 1000);
+                const m = String(Math.floor(diff / 60)).padStart(2, '0');
+                const s = String(diff % 60).padStart(2, '0');
+                document.getElementById('session-timer').innerText = `${m}:${s}`;
+            }, 1000);
+
+            applyTransform();
+        }
+
+        function drawFromSnap(snap) {
+            const [x, y] = snap.key.split('_');
+            ctx.fillStyle = snap.val();
+            ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
+            updatePixelCount();
+        }
+
+        function updatePixelCount() {
+            db.ref('board').once('value', snap => {
+                document.getElementById('pixel-count').innerText = snap.numChildren();
+            });
+        }
+
+        function applyTransform() {
+            canvas.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
+            updateSelector();
+        }
+
+        function updateSelector() {
+            selector.style.width = `${scale}px`;
+            selector.style.height = `${scale}px`;
+        }
+
+        window.addEventListener('wheel', e => {
+            e.preventDefault();
+            const oldScale = scale;
+            scale = Math.min(Math.max(scale + (e.deltaY > 0 ? -0.4 : 0.4), 0.5), 50);
+            if (scale !== oldScale) {
+                originX -= (e.clientX - originX) * (scale / oldScale - 1);
+                originY -= (e.clientY - originY) * (scale / oldScale - 1);
+            }
+            applyTransform();
+        }, { passive: false });
+
+        viewport.addEventListener('mousedown', e => {
+            isDragging = true;
+            hasMoved = false; // Reset al empezar
+            lastX = e.clientX;
+            lastY = e.clientY;
+        });
+
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const cx = Math.floor((e.clientX - rect.left) / scale);
+            const cy = Math.floor((e.clientY - rect.top) / scale);
+
+            if (isDragging) {
+                const dx = Math.abs(e.clientX - lastX);
+                const dy = Math.abs(e.clientY - lastY);
+                if(dx > 2 || dy > 2) hasMoved = true; // Si se mueve más de 2px, es arrastre
+
+                originX += e.clientX - lastX;
+                originY += e.clientY - lastY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                applyTransform();
+            }
+
+            if(cx >= 0 && cx < CANVAS_SIZE && cy >= 0 && cy < CANVAS_SIZE) {
+                selector.style.display = 'block';
+                selector.style.left = (rect.left + cx * scale) + 'px';
+                selector.style.top = (rect.top + cy * scale) + 'px';
+                selector.style.width = scale + 'px';
+                selector.style.height = scale + 'px';
+                
+                const disp = document.getElementById('coords-display');
+                disp.style.display = 'block';
+                disp.style.left = (e.clientX + 10) + 'px';
+                disp.style.top = (e.clientY + 10) + 'px';
+                disp.innerText = `${cx},${cy}`;
+            } else {
+                selector.style.display = 'none';
+                document.getElementById('coords-display').style.display = 'none';
+            }
+        });
+
+        window.addEventListener('mouseup', e => {
+            if (!hasMoved) { // Solo pinta si no se arrastró el mapa
+                handleCanvasClick(e);
+            }
+            isDragging = false;
+        });
+
+        function handleCanvasClick(e) {
+            if(!canPaint) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / scale);
+            const y = Math.floor((e.clientY - rect.top) / scale);
+
+            if(x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
+                db.ref(`board/${x}_${y}`).set(selectedColor);
+                myPixelCount++;
+                document.getElementById('my-pixels').innerText = myPixelCount;
+                document.getElementById('last-action').innerText = `${x},${y}`;
+                startCooldown();
+            }
+        }
+
+        function startCooldown() {
+            canPaint = false;
+            let start = Date.now();
+            let duration = 1000; // 1 segundo
+            const bar = document.getElementById('cooldown-progress');
+            
+            const interval = setInterval(() => {
+                let elapsed = Date.now() - start;
+                let progress = (elapsed / duration) * 100;
+                bar.style.width = (100 - progress) + "%";
+                if(elapsed >= duration) {
+                    clearInterval(interval);
+                    canPaint = true;
+                    bar.style.width = "100%";
+                }
+            }, 30);
+        }
+
+        // CHAT
+        const chatIn = document.getElementById('chat-input');
+        chatIn.addEventListener('keydown', e => {
+            if(e.key === 'Enter' && chatIn.value.trim() !== "") {
+                db.ref('messages').push({ text: chatIn.value.substring(0, 50) });
+                chatIn.value = "";
+            }
+        });
+
+        db.ref('messages').limitToLast(20).on('child_added', snap => {
+            const div = document.createElement('div');
+            div.className = 'chat-msg';
+            div.innerHTML = `<span>ID_${snap.key.substring(1,4)}:</span> ${snap.val().text}`;
+            const log = document.getElementById('chat-log');
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        });
+
+        // ADMIN
+        document.getElementById('admin-trigger').onclick = () => {
+            if(!isAdmin) document.getElementById('modal-auth').style.display = 'flex';
+            else document.getElementById('modal-admin').style.display = 'flex';
+        };
+
+        function authAdmin() {
+            if(document.getElementById('admin-pass').value === "Isaias2013Cerrado") {
+                isAdmin = true;
+                closeModals();
+                document.getElementById('modal-admin').style.display = 'flex';
+                document.getElementById('admin-trigger').style.opacity = '1';
+            } else alert("Error");
+        }
+
+        function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+        function clearCanvas() { if(confirm("¿Borrar?")) db.ref('board').remove(); }
+
+        // TIMELAPSE
+        let recording = false;
+        let tlFrames = [];
+        let tlTimer = null;
+
+        function toggleTimelapse() {
+            if(!recording) {
+                recording = true; tlFrames = [];
+                const interval = parseInt(document.getElementById('tl-interval').value) * 1000;
+                document.getElementById('tl-btn').innerText = "PARAR";
+                tlTimer = setInterval(() => {
+                    const tmp = document.createElement('canvas');
+                    tmp.width = CANVAS_SIZE; tmp.height = CANVAS_SIZE;
+                    const tctx = tmp.getContext('2d');
+                    tctx.drawImage(canvas, 0, 0);
+                    
+                    // Stamp con fecha
+                    tctx.fillStyle = "rgba(0,0,0,0.5)";
+                    tctx.fillRect(0, CANVAS_SIZE - 12, CANVAS_SIZE, 12);
+                    tctx.fillStyle = "white";
+                    tctx.font = "6px Arial";
+                    tctx.fillText(new Date().toLocaleString(), 2, CANVAS_SIZE - 4);
+                    
+                    tlFrames.push(tmp.toDataURL('image/webp'));
+                }, interval);
+            } else {
+                stopAndExport();
+            }
+        }
+
+        async function stopAndExport() {
+            clearInterval(tlTimer);
+            recording = false;
+            document.getElementById('tl-btn').innerText = "OK...";
+            
+            const streamCanvas = document.createElement('canvas');
+            streamCanvas.width = CANVAS_SIZE; streamCanvas.height = CANVAS_SIZE;
+            const sCtx = streamCanvas.getContext('2d');
+            const stream = streamCanvas.captureStream(10);
+            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            const chunks = [];
+            
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `timelapse_${Date.now()}.webm`;
+                a.click();
+                document.getElementById('tl-btn').innerText = "GRABAR";
+            };
+
+            recorder.start();
+            for(let frame of tlFrames) {
+                await new Promise(res => {
+                    const img = new Image();
+                    img.onload = () => {
+                        sCtx.drawImage(img, 0, 0);
+                        setTimeout(res, 100);
+                    };
+                    img.src = frame;
+                });
+            }
+            recorder.stop();
+        }
+
+        init();
+    </script>
+</body>
+</html>
