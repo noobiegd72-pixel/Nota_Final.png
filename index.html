@@ -128,6 +128,12 @@
             text-transform: uppercase;
         }
 
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
         .global-stats {
             display: flex;
             gap: 25px;
@@ -137,6 +143,25 @@
         }
 
         .global-stats b { color: var(--accent); }
+
+        #mobile-menu-btn {
+            display: none;
+            background: var(--panel-dark);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.75rem;
+            transition: 0.2s;
+        }
+
+        #mobile-menu-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
 
         /* Interfaz Inferior: Paleta y Cooldown */
         #ui-bottom {
@@ -207,6 +232,7 @@
             flex-direction: column;
             gap: 15px;
             z-index: 900;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .glass-module {
@@ -217,6 +243,12 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .chat-module {
+            flex: 1;
+            min-height: 200px;
         }
 
         .module-header {
@@ -228,6 +260,19 @@
             border-bottom: 1px solid var(--border);
             text-transform: uppercase;
             letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mobile-close-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--error);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0 5px;
         }
 
         #chat-area {
@@ -238,10 +283,10 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            max-height: 250px;
+            touch-action: pan-y; /* Permite scroll táctil */
         }
 
-        .msg { line-height: 1.4; border-left: 2px solid var(--accent); padding-left: 8px; }
+        .msg { line-height: 1.4; border-left: 2px solid var(--accent); padding-left: 8px; word-wrap: break-word; }
         .msg b { color: var(--accent); font-size: 0.7rem; margin-right: 5px; }
 
         #chat-input {
@@ -355,10 +400,41 @@
 
         /* Responsive Mobile */
         @media (max-width: 768px) {
-            #sidebar-right { display: none; }
-            .global-stats span:not(:first-child) { display: none; }
-            .palette-grid { grid-template-columns: repeat(8, 1fr); }
-            #ui-bottom { bottom: 20px; }
+            header { padding: 0 15px; }
+            .brand h1 { font-size: 0.9rem; }
+            #mobile-menu-btn { display: block; }
+            
+            /* Compactar estadísticas del header */
+            .global-stats { gap: 10px; font-size: 0.65rem; }
+            #session-clock { display: none; } /* Ocultar reloj en móvil para ahorrar espacio */
+            
+            /* Convertir panel lateral en un menú desplegable (Drawer) */
+            #sidebar-right {
+                top: 60px;
+                bottom: 0;
+                right: -320px; /* Oculto por defecto */
+                width: 300px;
+                max-width: 100vw;
+                height: calc(100vh - 60px);
+                background: rgba(12, 12, 12, 0.98);
+                backdrop-filter: blur(20px);
+                border-left: 1px solid var(--border);
+                padding: 15px;
+                z-index: 2000;
+            }
+
+            #sidebar-right.show { right: 0; }
+            
+            .mobile-close-btn { display: block; }
+            
+            .glass-module { background: transparent; border: none; }
+            .module-header { background: transparent; padding: 10px 5px; }
+            
+            /* Ajustes de paleta */
+            #ui-bottom { bottom: 15px; padding: 0 10px; }
+            .palette-grid { grid-template-columns: repeat(8, 1fr); gap: 4px; }
+            
+            #admin-entry { bottom: 85px; right: 15px; width: 40px; height: 40px; }
         }
     </style>
 </head>
@@ -375,10 +451,13 @@
 
     <header>
         <div class="brand"><h1>Nota_Final.png</h1></div>
-        <div class="global-stats">
-            <span>Usuarios: <b id="stat-online">0</b></span>
-            <span>Total Píxeles: <b id="stat-total">0</b></span>
-            <span id="session-clock">00:00:00</span>
+        <div class="header-controls">
+            <div class="global-stats">
+                <span>👥 <b id="stat-online">0</b></span>
+                <span>📍 <b id="stat-total">0</b></span>
+                <span id="session-clock">00:00:00</span>
+            </div>
+            <button id="mobile-menu-btn">💬 Menú</button>
         </div>
     </header>
 
@@ -388,8 +467,11 @@
     </div>
 
     <div id="sidebar-right">
-        <div class="glass-module">
-            <div class="module-header">Mensajes Recientes</div>
+        <div class="glass-module chat-module">
+            <div class="module-header">
+                Mensajes Recientes
+                <button class="mobile-close-btn" onclick="toggleMobileMenu()">✖</button>
+            </div>
             <div id="chat-area"></div>
             <input type="text" id="chat-input" placeholder="Enviar mensaje..." maxlength="50">
         </div>
@@ -491,6 +573,27 @@
         ];
 
         /**
+         * LÓGICA UI MÓVIL
+         */
+        const mobileBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar-right');
+
+        mobileBtn.addEventListener('click', toggleMobileMenu);
+
+        function toggleMobileMenu() {
+            sidebar.classList.toggle('show');
+            mobileBtn.classList.toggle('active');
+        }
+
+        // Evitar que interactuar con el menú dibuje o mueva la cámara
+        sidebar.addEventListener('touchstart', e => e.stopPropagation(), {passive: false});
+        sidebar.addEventListener('touchmove', e => e.stopPropagation(), {passive: false});
+        sidebar.addEventListener('mousedown', e => e.stopPropagation());
+        sidebar.addEventListener('mousemove', e => e.stopPropagation());
+        sidebar.addEventListener('wheel', e => e.stopPropagation(), {passive: false});
+
+
+        /**
          * INICIALIZACIÓN DE SISTEMA
          */
         function boot() {
@@ -533,13 +636,15 @@
             db.ref('board').on('child_removed', () => {
                 ctx.fillStyle = "#ffffff";
                 ctx.fillRect(0,0, RES, RES);
+                updateCounters();
             });
 
             // Gestión de Presencia
             const presenceRef = db.ref('presence').push(true);
             presenceRef.onDisconnect().remove();
             db.ref('presence').on('value', s => {
-                document.getElementById('stat-online').innerText = s.numChildren();
+                // Formato con comas para usuarios también
+                document.getElementById('stat-online').innerText = (s.numChildren() || 0).toLocaleString('en-US');
             });
 
             // Reloj de Sesión
@@ -564,7 +669,9 @@
 
         function updateCounters() {
             db.ref('board').once('value', s => {
-                document.getElementById('stat-total').innerText = s.numChildren() || 0;
+                // Aplica formato de separador de miles con comas (en-US)
+                const total = s.numChildren() || 0;
+                document.getElementById('stat-total').innerText = total.toLocaleString('en-US');
             });
         }
 
@@ -577,6 +684,7 @@
 
         // Mouse Wheel Zoom
         window.addEventListener('wheel', e => {
+            if(sidebar.contains(e.target)) return; // Ignorar zoom si el cursor está en el menú
             e.preventDefault();
             const factor = e.deltaY > 0 ? 0.85 : 1.15;
             applyZoom(factor, e.clientX, e.clientY);
@@ -705,7 +813,8 @@
             if(x >= 0 && x < RES && y >= 0 && y < RES) {
                 db.ref(`board/${x}_${y}`).set(activeColor);
                 myPixels++;
-                document.getElementById('stat-mine').innerText = myPixels;
+                // Formato con comas para los píxeles propios
+                document.getElementById('stat-mine').innerText = myPixels.toLocaleString('en-US');
                 triggerCooldown();
             }
         }
