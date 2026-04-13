@@ -546,11 +546,13 @@
 
     <div class="glass-module" id="module-activity" data-mobile-section="activity">
       <div class="module-header">
-        <span>Eventos recientes</span>
-        <span class="hint">píxeles · chat · sanciones</span>
+        <span>Resumen en vivo</span>
+        <span class="hint">último pixel · chat · sanción</span>
       </div>
       <div class="activity-list" id="activity-list">
-        <div class="small-note">Sin eventos todavía.</div>
+        <div class="stats-row"><span>Último pixel</span><strong id="live-last-pixel">Sin datos</strong></div>
+        <div class="stats-row"><span>Último chat</span><strong id="live-last-chat">Sin datos</strong></div>
+        <div class="stats-row"><span>Última sanción</span><strong id="live-last-ban">Sin datos</strong></div>
       </div>
     </div>
   </div>
@@ -832,6 +834,9 @@
       statTs: document.getElementById('stat-ts'),
       sessionClock: document.getElementById('session-clock'),
       activityList: document.getElementById('activity-list'),
+      liveLastPixel: document.getElementById('live-last-pixel'),
+      liveLastChat: document.getElementById('live-last-chat'),
+      liveLastBan: document.getElementById('live-last-ban'),
       headerSubtitle: document.getElementById('header-subtitle'),
       minimap: document.getElementById('minimap'),
       minimapInfo: document.getElementById('minimap-info'),
@@ -1185,8 +1190,32 @@
     }
 
     function clearRecentActivity() {
-      el.activityList.innerHTML = '<div class="small-note">Sin eventos todavía.</div>';
+      el.activityList.innerHTML = '<div class="stats-row"><span>Último pixel</span><strong id="live-last-pixel">Sin datos</strong></div><div class="stats-row"><span>Último chat</span><strong id="live-last-chat">Sin datos</strong></div><div class="stats-row"><span>Última sanción</span><strong id="live-last-ban">Sin datos</strong></div>';
+      el.liveLastPixel = document.getElementById('live-last-pixel');
+      el.liveLastChat = document.getElementById('live-last-chat');
+      el.liveLastBan = document.getElementById('live-last-ban');
       state.renderedActivityKeys.clear();
+    }
+
+    function updateLiveSummary(kind, entry) {
+      const kindKey = String(kind || '').toLowerCase();
+      const ts = entry?.ts || Date.now();
+      const when = formatShortTime(ts);
+      const safeUser = normalizeUsername(entry?.username || entry?.user || entry?.target || entry?.bannedBy || 'Sistema');
+      const detail = normalizeActivityText(entry?.message || entry?.reason || '', 70);
+      if (kindKey === 'pixel' && el.liveLastPixel) {
+        const coords = Number.isFinite(Number(entry?.x)) && Number.isFinite(Number(entry?.y)) ? ` (${Number(entry.x)}, ${Number(entry.y)})` : '';
+        el.liveLastPixel.textContent = `${safeUser}${coords} · ${entry?.color || ''}`.trim();
+      }
+      if (kindKey === 'chat' && el.liveLastChat) {
+        const chatText = detail ? `${safeUser}: ${detail}` : safeUser;
+        el.liveLastChat.textContent = `${chatText} · ${when}`;
+      }
+      if ((kindKey === 'ban' || kindKey === 'unban' || kindKey === 'system') && el.liveLastBan) {
+        const action = kindKey === 'ban' ? 'Ban' : (kindKey === 'unban' ? 'Desban' : 'Sistema');
+        const extra = detail ? ` · ${detail}` : '';
+        el.liveLastBan.textContent = `${action}: ${safeUser}${extra} · ${when}`;
+      }
     }
 
     function getActivityBadge(type) {
@@ -1324,10 +1353,8 @@
         eventId: entry?.eventId || randomUid()
       };
       state.renderedActivityKeys.add(payload.eventId);
-      renderActivityEntry(payload);
-      return db.ref(ACTIVITY_PATH).push(payload).catch(err => {
-        console.error('No se pudo registrar la actividad:', err);
-      });
+      updateLiveSummary(payload.type, payload);
+      return Promise.resolve(payload);
     }
 
     function renderLeaderboard() {
@@ -1449,15 +1476,21 @@
     function applyRealtimeBoardChange(key, rawValue) {
       const [x, y] = String(key).split('_').map(Number);
       if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
-      const color = typeof rawValue === 'string' ? rawValue : (rawValue && typeof rawValue.color === 'string' ? rawValue.color : '#ffffff');
+      const rawObject = rawValue && typeof rawValue === 'object' ? rawValue : null;
+      const color = typeof rawValue === 'string' ? rawValue : (rawObject && typeof rawObject.color === 'string' ? rawObject.color : '#ffffff');
       setPixel(x, y, color);
       scheduleCanvasFlush();
 
       const pending = state.popQueue.get(key);
       const isLocalEcho = !!pending && pending.color === color && (Date.now() - pending.ts) < 5000;
-      const localName = isLocalEcho ? pending.username : '';
+      const resolvedName = normalizeUsername(
+        (rawObject && (rawObject.username || rawObject.user || rawObject.by)) ||
+        (rawObject && rawObject.uid && state.usersSnapshot && state.usersSnapshot[rawObject.uid] && state.usersSnapshot[rawObject.uid].username) ||
+        (isLocalEcho ? pending.username : '') ||
+        'Anónimo'
+      );
 
-      announcePixel(x, y, color, localName, isLocalEcho);
+      announcePixel(x, y, color, resolvedName, isLocalEcho);
 
       if (isLocalEcho) {
         state.popQueue.delete(key);
@@ -1560,15 +1593,7 @@
     }
 
     function attachActivityListeners() {
-      if (state.activityListenerAttached) return;
-      state.activityListenerAttached = true;
-      db.ref(ACTIVITY_PATH).limitToLast(20).on('child_added', snap => {
-        const meta = snap.val() || {};
-        const eventId = meta.eventId || snap.key;
-        if (eventId && state.renderedActivityKeys.has(eventId)) return;
-        if (eventId) state.renderedActivityKeys.add(eventId);
-        updateActivityFromMeta(meta);
-      });
+      return;
     }
 
     function attachChatListeners() {
@@ -1787,12 +1812,9 @@
     }
 
     function announcePixel(x, y, color, username, localEcho) {
-      const label = normalizeUsername(username || '');
-      const trackingOn = !!state.settings.trackingEnabled && !!state.isAuthorized;
-      if (trackingOn && label) {
-        showPixelPop(x, y, label, color);
-        playPopSound();
-      }
+      const label = normalizeUsername(username || 'Anónimo');
+      showPixelPop(x, y, label, color);
+      playLocalPixelSound();
     }
 
     function handlePixelCommit(input) {
@@ -1819,7 +1841,6 @@
         state.myPixels += 1;
         localStorage.setItem('nf_my_pixels', String(state.myPixels));
         el.statMine.textContent = formatNumber(state.myPixels);
-        if (!state.settings.trackingEnabled || !state.isAuthorized) playLocalPixelSound();
         triggerCooldown();
       }).catch(err => {
         state.popQueue.delete(key);
@@ -2668,15 +2689,21 @@
     function applyRealtimeBoardChange(key, rawValue) {
       const [x, y] = String(key).split('_').map(Number);
       if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
-      const color = typeof rawValue === 'string' ? rawValue : (rawValue && typeof rawValue.color === 'string' ? rawValue.color : '#ffffff');
+      const rawObject = rawValue && typeof rawValue === 'object' ? rawValue : null;
+      const color = typeof rawValue === 'string' ? rawValue : (rawObject && typeof rawObject.color === 'string' ? rawObject.color : '#ffffff');
       setPixel(x, y, color);
       scheduleCanvasFlush();
 
       const pending = state.popQueue.get(key);
       const isLocalEcho = !!pending && pending.color === color && (Date.now() - pending.ts) < 5000;
-      const localName = isLocalEcho ? pending.username : '';
+      const resolvedName = normalizeUsername(
+        (rawObject && (rawObject.username || rawObject.user || rawObject.by)) ||
+        (rawObject && rawObject.uid && state.usersSnapshot && state.usersSnapshot[rawObject.uid] && state.usersSnapshot[rawObject.uid].username) ||
+        (isLocalEcho ? pending.username : '') ||
+        'Anónimo'
+      );
 
-      announcePixel(x, y, color, localName, isLocalEcho);
+      announcePixel(x, y, color, resolvedName, isLocalEcho);
 
       if (isLocalEcho) {
         state.popQueue.delete(key);
@@ -2898,7 +2925,6 @@
       quickSession: document.getElementById('quick-session'),
       quickMap: document.getElementById('quick-map'),
       quickLeaderboard: document.getElementById('quick-leaderboard'),
-      quickActivity: document.getElementById('quick-activity'),
       quickGlobalStats: document.getElementById('quick-globalstats'),
       modalBanned: document.getElementById('modal-banned'),
       banMessage: document.getElementById('ban-message'),
@@ -2942,7 +2968,6 @@
         globalstats: el.quickGlobalStats,
         map: el.quickMap,
         leaderboard: el.quickLeaderboard,
-        activity: el.quickActivity,
         palette: el.quickPalette,
         center: el.quickCenter
       };
@@ -3239,7 +3264,6 @@
         state.myPixels += 1;
         localStorage.setItem('nf_my_pixels', String(state.myPixels));
         el.statMine.textContent = formatNumber(state.myPixels);
-        if (!state.settings.trackingEnabled || !state.isAuthorized) playLocalPixelSound();
         registerRecentEvent(ts);
         logActivity({
           type: 'pixel',
@@ -3560,15 +3584,21 @@
     function applyRealtimeBoardChange(key, rawValue) {
       const [x, y] = String(key).split('_').map(Number);
       if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
-      const color = typeof rawValue === 'string' ? rawValue : (rawValue && typeof rawValue.color === 'string' ? rawValue.color : '#ffffff');
+      const rawObject = rawValue && typeof rawValue === 'object' ? rawValue : null;
+      const color = typeof rawValue === 'string' ? rawValue : (rawObject && typeof rawObject.color === 'string' ? rawObject.color : '#ffffff');
       setPixel(x, y, color);
       scheduleCanvasFlush();
 
       const pending = state.popQueue.get(key);
       const isLocalEcho = !!pending && pending.color === color && (Date.now() - pending.ts) < 5000;
-      const localName = isLocalEcho ? pending.username : '';
+      const resolvedName = normalizeUsername(
+        (rawObject && (rawObject.username || rawObject.user || rawObject.by)) ||
+        (rawObject && rawObject.uid && state.usersSnapshot && state.usersSnapshot[rawObject.uid] && state.usersSnapshot[rawObject.uid].username) ||
+        (isLocalEcho ? pending.username : '') ||
+        'Anónimo'
+      );
 
-      announcePixel(x, y, color, localName, isLocalEcho);
+      announcePixel(x, y, color, resolvedName, isLocalEcho);
 
       if (isLocalEcho) {
         state.popQueue.delete(key);
@@ -3666,7 +3696,7 @@
         ensureWhiteCanvas();
         scheduleCanvasFlush();
         persistBoardCache({});
-        el.activityList.innerHTML = '<div class="small-note">Sin actividad todavía.</div>';
+        clearRecentActivity();
         updateTopStats();
         el.tlStatus.textContent = 'Lienzo formateado correctamente.';
         hideAllModals();
@@ -3740,7 +3770,6 @@
       el.quickGlobalStats.addEventListener('click', () => openSidebar('globalstats'));
       el.quickMap.addEventListener('click', () => openSidebar('map'));
       el.quickLeaderboard.addEventListener('click', () => openSidebar('leaderboard'));
-      el.quickActivity.addEventListener('click', () => openSidebar('activity'));
       el.quickCenter.addEventListener('click', () => { centerCanvas(); openSidebar(state.currentMobileSection || 'chat'); });
       el.quickPalette.addEventListener('click', () => {
         if (isMobileLayout()) {
