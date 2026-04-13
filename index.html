@@ -405,37 +405,6 @@
       .palette-grid{grid-template-columns:repeat(5,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
       .cooldown-wrap{padding:0 8px 8px}
     }
-
-    .top-btn#session-btn{position:relative}
-    .top-btn#session-btn.active{background:rgba(41,121,255,.16);border-color:rgba(41,121,255,.55)}
-    .quick-btn.brush-on{border-color:rgba(41,121,255,.7);color:var(--accent);background:rgba(41,121,255,.14)}
-
-    #active-users-popover{
-      position:fixed;top:calc(var(--header-h) + 12px);right:18px;z-index:7200;width:min(92vw,320px);
-      background:rgba(14,14,14,.98);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
-      padding:12px 12px 10px;display:none;backdrop-filter:blur(16px)
-    }
-    #active-users-popover.visible{display:block}
-    .active-users-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;font-size:.75rem;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.9px}
-    #active-users-list{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto;padding-right:2px}
-    .active-user-item{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);font-size:.82rem;line-height:1.35}
-    .active-user-item strong{color:var(--text)}
-    .active-user-item span{display:block;color:var(--dim);font-size:.7rem;margin-top:3px}
-    .active-user-empty{padding:12px;border-radius:12px;border:1px dashed rgba(255,255,255,.1);color:var(--dim);font-size:.8rem}
-
-    .session-code-box{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);border-radius:14px;margin-bottom:14px}
-    .session-code-box strong{font-size:1.35rem;letter-spacing:3px;font-family:'Courier New',monospace;flex:1;word-break:break-all}
-    .session-code-box .action-btn{padding:10px 12px;white-space:nowrap}
-    .account-list{display:flex;flex-direction:column;gap:8px}
-    .account-chip{
-      display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;
-      border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);cursor:pointer;transition:transform .12s ease,border-color .12s ease,background .12s ease
-    }
-    .account-chip:hover{transform:translateY(-1px);border-color:rgba(41,121,255,.35);background:rgba(41,121,255,.08)}
-    .account-chip .meta{display:flex;flex-direction:column;gap:2px;min-width:0}
-    .account-chip .meta strong{font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .account-chip .meta span{font-size:.68rem;color:var(--dim);font-family:'Courier New',monospace}
-    .account-chip .use{flex:0 0 auto;font-size:.68rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.4px}
   </style>
 </head>
 <body>
@@ -492,10 +461,6 @@
         <button class="top-btn" id="center-btn" title="Centrar lienzo">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
           <span class="label">Centro</span>
-        </button>
-        <button class="top-btn" id="session-btn" title="Login por código">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 12a4 4 0 0 0-8 0"></path><circle cx="12" cy="12" r="9"></circle><path d="M9 12h6"></path></svg>
-          <span class="label">ID</span>
         </button>
         <button class="top-btn" id="mobile-menu-btn" title="Menú">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7H20M4 12H20M4 17H20"/></svg>
@@ -628,12 +593,6 @@
     </button>
     <button class="quick-btn" id="quick-activity" title="Actividad">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
-    </button>
-    <button class="quick-btn" id="quick-brush" title="Toggle pincel continuo">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 4l2 2-8.5 8.5-3 1 1-3L18 4Z"/><path d="M4 20c1.5 0 2.5-.5 3.2-1.3.7-.8 1-1.7 1.8-2.2.8-.5 1.8-.5 3 .5"/></svg>
-    </button>
-    <button class="quick-btn" id="quick-id" title="Login por código">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 12a4 4 0 0 0-8 0"/><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>
     </button>
     <button class="quick-btn" id="quick-palette" title="Mostrar u ocultar la paleta">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 3 3 0 0 0-3-3h-1a2 2 0 0 1-2-2V6a3 3 0 0 0-3-3Z"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="15.5" cy="10.5" r="1"/></svg>
@@ -804,9 +763,6 @@
     const PRESENCE_PATH = 'presence';
     const USERS_PATH = 'users';
     const USER_STATS_PATH = 'user_stats';
-    const SESSION_CODES_PATH = 'session_codes';
-    const ACCOUNT_HISTORY_KEY = 'nf_account_history';
-    const SESSION_CODE_TTL = 5 * 60 * 1000;
 
     const DEFAULT_SETTINGS = {
       timestampEnabled: true,
@@ -939,18 +895,7 @@
       lastChatSendAt: 0,
       lastChatSendText: '',
       popQueue: new Map(),
-      hoverPoint: null,
-      brushMode: false,
-      sessionCode: localStorage.getItem('nf_session_code') || '',
-      sessionCodeExpiresAt: Number(localStorage.getItem('nf_session_code_expires') || 0),
-      accountHistory: loadAccountHistory(),
-      usersSnapshot: {},
-      activeUsers: [],
-      activeUsersVisible: false,
-      activeUsersHideTimer: null,
-      presenceRef: null,
-      currentUserRef: null,
-      currentUserStatsRef: null
+      hoverPoint: null
     };
 
     const boardImageData = ctx.createImageData(RES, RES);
@@ -983,250 +928,6 @@
     function normalizeActivityText(value, maxLen = 120) {
       return String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLen);
     }
-
-    function loadAccountHistory() {
-      try {
-        const raw = JSON.parse(localStorage.getItem(ACCOUNT_HISTORY_KEY) || '[]');
-        return Array.isArray(raw) ? raw.filter(item => item && item.uid) : [];
-      } catch {
-        return [];
-      }
-    }
-
-    function saveAccountHistory() {
-      try {
-        localStorage.setItem(ACCOUNT_HISTORY_KEY, JSON.stringify((state.accountHistory || []).slice(0, 8)));
-      } catch {}
-    }
-
-    function rememberAccount(uid, username) {
-      const cleanUid = String(uid || '').trim();
-      if (!cleanUid) return;
-      const cleanName = normalizeUsername(username || state.username || 'Sin asignar');
-      const next = [{ uid: cleanUid, username: cleanName, lastUsed: Date.now() }];
-      (state.accountHistory || []).forEach(item => {
-        if (!item || !item.uid || item.uid === cleanUid) return;
-        next.push({
-          uid: String(item.uid),
-          username: normalizeUsername(item.username || 'Sin asignar'),
-          lastUsed: Number(item.lastUsed) || 0
-        });
-      });
-      state.accountHistory = next.slice(0, 8);
-      saveAccountHistory();
-    }
-
-    function normalizeSessionCode(value) {
-      return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
-    }
-
-    function generateSessionCode() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let out = '';
-      for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
-      return out;
-    }
-
-    function formatRemainingTime(ms) {
-      const safe = Math.max(0, Number(ms) || 0);
-      const totalSec = Math.ceil(safe / 1000);
-      const m = Math.floor(totalSec / 60);
-      const s = totalSec % 60;
-      return `${m}:${String(s).padStart(2, '0')}`;
-    }
-
-    function getActiveUserNamesFromSnapshot(snapshot) {
-      const entries = Object.entries(snapshot || {});
-      const seen = new Set();
-      const users = [];
-      entries.forEach(([uid, item]) => {
-        if (!item) return;
-        if (item.online === false) return;
-        const name = normalizeUsername(item.username || item.name || `USR_${String(uid).slice(-4)}`);
-        if (!name) return;
-        const key = name.toLowerCase();
-        if (seen.has(key)) return;
-        seen.add(key);
-        users.push({ uid, username: name, lastSeen: Number(item.lastSeen) || 0 });
-      });
-      users.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0) || a.username.localeCompare(b.username));
-      return users;
-    }
-
-    function renderActiveUsersPopover(list = state.activeUsers) {
-      const users = Array.isArray(list) ? list : [];
-      if (el.activeUsersCount) el.activeUsersCount.textContent = String(users.length);
-      if (!el.activeUsersList) return;
-      el.activeUsersList.innerHTML = '';
-      if (!users.length) {
-        const empty = document.createElement('div');
-        empty.className = 'active-user-empty';
-        empty.textContent = 'No hay usuarios activos ahora mismo.';
-        el.activeUsersList.appendChild(empty);
-        return;
-      }
-      users.forEach(user => {
-        const item = document.createElement('div');
-        item.className = 'active-user-item';
-        item.innerHTML = `<strong>${escapeHtmlText(user.username)}</strong><span>UID ${escapeHtmlText(String(user.uid).slice(-8))}</span>`;
-        el.activeUsersList.appendChild(item);
-      });
-    }
-
-    function showActiveUsersPopover() {
-      if (!el.activeUsersPopover) return;
-      if (state.activeUsersHideTimer) {
-        clearTimeout(state.activeUsersHideTimer);
-        state.activeUsersHideTimer = null;
-      }
-      el.activeUsersPopover.classList.add('visible');
-      state.activeUsersVisible = true;
-      renderActiveUsersPopover();
-    }
-
-    function hideActiveUsersPopover(delay = 0) {
-      if (!el.activeUsersPopover) return;
-      if (state.activeUsersHideTimer) clearTimeout(state.activeUsersHideTimer);
-      const doHide = () => {
-        el.activeUsersPopover.classList.remove('visible');
-        state.activeUsersVisible = false;
-      };
-      if (delay > 0) {
-        state.activeUsersHideTimer = setTimeout(doHide, delay);
-      } else {
-        doHide();
-      }
-    }
-
-    async function refreshActiveUsersSnapshot() {
-      try {
-        const snap = await db.ref(USERS_PATH).once('value');
-        state.usersSnapshot = snap.val() || {};
-        state.activeUsers = getActiveUserNamesFromSnapshot(state.usersSnapshot);
-        renderActiveUsersPopover();
-        return state.activeUsers;
-      } catch {
-        state.activeUsers = [];
-        renderActiveUsersPopover([]);
-        return [];
-      }
-    }
-
-    async function ensureSessionCode(forceNew = false) {
-      const uid = ensureUid();
-      const username = normalizeUsername(state.username || localStorage.getItem('nf_username') || 'Sin asignar') || 'Sin asignar';
-      const now = Date.now();
-      if (!forceNew && state.sessionCode && state.sessionCodeExpiresAt > now) {
-        return state.sessionCode;
-      }
-      const code = generateSessionCode();
-      const payload = {
-        uid,
-        username,
-        createdAt: now,
-        expiresAt: now + SESSION_CODE_TTL
-      };
-      await db.ref(`${SESSION_CODES_PATH}/${code}`).set(payload);
-      state.sessionCode = code;
-      state.sessionCodeExpiresAt = payload.expiresAt;
-      localStorage.setItem('nf_session_code', code);
-      localStorage.setItem('nf_session_code_expires', String(payload.expiresAt));
-      updateSessionLoginModal();
-      return code;
-    }
-
-    function updateSessionLoginModal() {
-      if (el.sessionAccountName) el.sessionAccountName.textContent = state.username || 'Sin asignar';
-      if (el.sessionCodeValue) el.sessionCodeValue.textContent = state.sessionCode || '— — — — — —';
-      if (el.sessionCodeExpiry) {
-        if (state.sessionCode && state.sessionCodeExpiresAt > Date.now()) {
-          el.sessionCodeExpiry.textContent = `expira en ${formatRemainingTime(state.sessionCodeExpiresAt - Date.now())}`;
-        } else {
-          el.sessionCodeExpiry.textContent = 'sin código activo';
-        }
-      }
-      if (el.sessionAccountList) {
-        el.sessionAccountList.innerHTML = '';
-        if (!state.accountHistory.length) {
-          const empty = document.createElement('div');
-          empty.className = 'active-user-empty';
-          empty.textContent = 'No hay cuentas guardadas en este navegador.';
-          el.sessionAccountList.appendChild(empty);
-        } else {
-          state.accountHistory.forEach(account => {
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'account-chip';
-            chip.innerHTML = `<div class="meta"><strong>${escapeHtmlText(account.username || 'Sin asignar')}</strong><span>${escapeHtmlText(account.uid)}</span></div><span class="use">Usar</span>`;
-            chip.addEventListener('click', () => switchToAccount(account.uid, account.username, { keepHistory: true, source: 'local-history' }));
-            el.sessionAccountList.appendChild(chip);
-          });
-        }
-      }
-    }
-
-    function renderAccountHistory() {
-      updateSessionLoginModal();
-    }
-
-    function openSessionLoginModal() {
-      updateSessionLoginModal();
-      showModal(el.modalSessionLogin);
-      ensureSessionCode().then(() => updateSessionLoginModal()).catch(() => {});
-      renderAccountHistory();
-      if (el.sessionCodeInput) el.sessionCodeInput.value = '';
-      if (el.sessionCodeInput) setTimeout(() => el.sessionCodeInput.focus(), 50);
-    }
-
-    async function switchToAccount(uid, username, options = {}) {
-      const cleanUid = String(uid || '').trim();
-      if (!cleanUid) return;
-      const previousUid = state.uid || '';
-      const previousUsername = state.username || '';
-      if (previousUid && previousUid !== cleanUid && !options.skipPreviousOffline) {
-        try {
-          await db.ref(`${USERS_PATH}/${previousUid}`).update({ online: false, lastSeen: Date.now(), username: previousUsername || 'Anónimo' });
-        } catch {}
-      }
-      state.uid = cleanUid;
-      localStorage.setItem('nf_uid', cleanUid);
-      if (username !== undefined && username !== null) {
-        const cleanName = normalizeUsername(username);
-        if (cleanName) {
-          state.username = cleanName;
-          localStorage.setItem('nf_username', cleanName);
-        }
-      }
-      if (!state.username) state.username = normalizeUsername(localStorage.getItem('nf_username') || '') || 'Sin asignar';
-      if (!options.keepHistory) rememberAccount(cleanUid, state.username);
-      updateUsernameBadge();
-      syncUsers();
-      syncPresence();
-      await refreshActiveUsersSnapshot();
-      updateSessionLoginModal();
-      return cleanUid;
-    }
-
-    async function redeemSessionCode(rawCode) {
-      const code = normalizeSessionCode(rawCode);
-      if (!code) {
-        if (el.sessionCodeInput) el.sessionCodeInput.focus();
-        return { ok: false, reason: 'empty' };
-      }
-      const snap = await db.ref(`${SESSION_CODES_PATH}/${code}`).once('value');
-      const payload = snap.val();
-      if (!payload) {
-        return { ok: false, reason: 'missing' };
-      }
-      if (Number(payload.expiresAt) <= Date.now()) {
-        await db.ref(`${SESSION_CODES_PATH}/${code}`).remove().catch(() => {});
-        return { ok: false, reason: 'expired' };
-      }
-      rememberAccount(ensureUid(), state.username || localStorage.getItem('nf_username') || 'Sin asignar');
-      await switchToAccount(payload.uid, payload.username, { keepHistory: true, source: 'session-code' });
-      return { ok: true, payload };
-    }
-
     function showModal(node) { node.classList.add('visible'); }
     function hideModal(node) { node.classList.remove('visible'); }
     function hideAllModals() { [el.modalUsername, el.modalLogin, el.modalDashboard].forEach(hideModal); }
@@ -1326,7 +1027,6 @@
       el.headerSubtitle.textContent = state.username ? `Conectado como ${state.username}` : 'Lienzo colaborativo en tiempo real';
       el.chatInput.disabled = !state.username;
       el.chatInput.placeholder = state.username ? `Enviar mensaje como ${state.username}...` : 'Debes crear un usuario primero';
-      updateSessionLoginModal();
     }
 
     function updateTopStats() {
@@ -1707,17 +1407,12 @@
     }
 
     function syncPresence() {
-      if (state.presenceRef) {
-        try { state.presenceRef.remove(); } catch {}
-      }
       const ref = db.ref(PRESENCE_PATH).push({
         uid: ensureUid(),
         username: state.username || 'Anónimo',
         ts: Date.now()
       });
-      state.presenceRef = ref;
       ref.onDisconnect().remove();
-      db.ref(PRESENCE_PATH).off('value');
       db.ref(PRESENCE_PATH).on('value', snap => {
         state.onlineCount = snap.numChildren() || 0;
         el.statOnline.textContent = formatNumber(state.onlineCount);
@@ -1726,28 +1421,11 @@
 
     function syncUsers() {
       const ref = db.ref(`${USERS_PATH}/${ensureUid()}`);
-      state.currentUserRef = ref;
-      ref.update({ uid: ensureUid(), username: state.username || 'Anónimo', lastSeen: Date.now(), online: true });
+      ref.update({ username: state.username || 'Anónimo', lastSeen: Date.now(), online: true });
       ref.onDisconnect().update({ online: false, lastSeen: Date.now() });
-      if (state.currentUserStatsRef) {
-        try { state.currentUserStatsRef.off('value'); } catch {}
-      }
-      state.currentUserStatsRef = db.ref(`${USER_STATS_PATH}/${ensureUid()}/pixels`);
-      state.currentUserStatsRef.off('value');
-      state.currentUserStatsRef.on('value', snap => {
-        state.myPixels = Number(snap.val()) || 0;
-        localStorage.setItem('nf_my_pixels', String(state.myPixels));
-        el.statMine.textContent = formatNumber(state.myPixels);
-        updateTopStats();
-      });
-      db.ref(USERS_PATH).off('value');
       db.ref(USERS_PATH).on('value', snap => {
-        const users = snap.val() || {};
-        state.usersSnapshot = users;
         state.uniqueCount = snap.numChildren() || 0;
         el.statUnique.textContent = formatNumber(state.uniqueCount);
-        state.activeUsers = getActiveUserNamesFromSnapshot(users);
-        if (state.activeUsersVisible) renderActiveUsersPopover();
       });
     }
 
@@ -2394,7 +2072,6 @@
       el.chatBtn.addEventListener('click', () => openSidebar('chat'));
       el.statsBtn.addEventListener('click', () => openSidebar('stats'));
       el.centerBtn.addEventListener('click', centerCanvas);
-      el.sessionBtn.addEventListener('click', openSessionLoginModal);
       el.sidebarCloseBtn.addEventListener('click', closeSidebar);
 
       el.quickChat.addEventListener('click', () => openSidebar('chat'));
@@ -2410,31 +2087,6 @@
       el.adminCancelBtn.addEventListener('click', hideAllModals);
       el.closeDashboardBtn.addEventListener('click', hideAllModals);
       el.wipeBtn.addEventListener('click', executeWipe);
-      el.sessionCodeRefreshBtn.addEventListener('click', () => ensureSessionCode(true).then(() => updateSessionLoginModal()));
-      el.sessionCodeCopyBtn.addEventListener('click', async () => {
-        try {
-          await ensureSessionCode();
-          await navigator.clipboard.writeText(state.sessionCode || '');
-          el.sessionCodeCopyBtn.textContent = 'Copiado';
-          setTimeout(() => { if (el.sessionCodeCopyBtn) el.sessionCodeCopyBtn.textContent = 'Copiar'; }, 1000);
-        } catch {
-          el.sessionCodeCopyBtn.textContent = 'Error';
-          setTimeout(() => { if (el.sessionCodeCopyBtn) el.sessionCodeCopyBtn.textContent = 'Copiar'; }, 1000);
-        }
-      });
-      el.sessionCodeLoginBtn.addEventListener('click', async () => {
-        const result = await redeemSessionCode(el.sessionCodeInput.value);
-        if (result.ok) {
-          hideModal(el.modalSessionLogin);
-          el.sessionCodeInput.value = '';
-        } else if (result.reason === 'expired') {
-          alert('Ese código ya expiró. Genera uno nuevo.');
-        } else {
-          alert('Código inválido.');
-        }
-      });
-      el.sessionCodeCloseBtn.addEventListener('click', () => hideModal(el.modalSessionLogin));
-      el.sessionCodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') el.sessionCodeLoginBtn.click(); });
       el.refreshSettingsBtn.addEventListener('click', () => {
         db.ref(SETTINGS_PATH).once('value').then(s => {
           state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) };
@@ -2703,7 +2355,6 @@
       syncSettings();
       syncPresence();
       syncUsers();
-      refreshActiveUsersSnapshot();
       refreshLeaderboard();
       updateTopStats();
     }
@@ -2712,8 +2363,6 @@
       buildPalette();
       syncPaletteVisibilityUI();
       updateUsernameBadge();
-      updateBrushButtonUI();
-      updateSessionLoginModal();
       updateCooldownUI(0, true);
       clearRecentActivity();
       renderLeaderboard();
@@ -3179,17 +2828,6 @@
         el.tlFreqInput.value = String(v);
       });
       el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
-      const statsHoverTarget = el.header.querySelector('.global-stats');
-      if (statsHoverTarget) {
-        statsHoverTarget.addEventListener('pointerenter', () => { if (!isMobileLayout()) showActiveUsersPopover(); });
-        statsHoverTarget.addEventListener('pointerleave', () => { if (!isMobileLayout()) hideActiveUsersPopover(140); });
-        statsHoverTarget.addEventListener('click', () => { if (isMobileLayout()) showActiveUsersPopover(); });
-      }
-      [document.getElementById('module-stats'), document.getElementById('module-globalstats')].filter(Boolean).forEach(node => {
-        node.addEventListener('click', () => { if (isMobileLayout()) showActiveUsersPopover(); });
-      });
-      updateBrushButtonUI();
-      updateSessionLoginModal();
 
       const activePointers = new Map();
 
@@ -3341,26 +2979,10 @@
       mobileStatRate: document.getElementById('mobile-stat-rate'),
       mobileStatUnique: document.getElementById('mobile-stat-unique'),
       mobileSessionClock: document.getElementById('mobile-session-clock'),
-      sessionBtn: document.getElementById('session-btn'),
-      quickBrush: document.getElementById('quick-brush'),
-      quickId: document.getElementById('quick-id'),
       quickSession: document.getElementById('quick-session'),
       quickMap: document.getElementById('quick-map'),
       quickLeaderboard: document.getElementById('quick-leaderboard'),
       quickGlobalStats: document.getElementById('quick-globalstats'),
-      modalSessionLogin: document.getElementById('modal-session-login'),
-      sessionAccountName: document.getElementById('session-account-name'),
-      sessionCodeValue: document.getElementById('session-code-value'),
-      sessionCodeInput: document.getElementById('session-code-input'),
-      sessionCodeRefreshBtn: document.getElementById('session-code-refresh'),
-      sessionCodeLoginBtn: document.getElementById('session-code-login-btn'),
-      sessionCodeCloseBtn: document.getElementById('session-code-close-btn'),
-      sessionCodeCopyBtn: document.getElementById('session-code-copy'),
-      sessionCodeExpiry: document.getElementById('session-code-expiry'),
-      sessionAccountList: document.getElementById('session-account-list'),
-      activeUsersPopover: document.getElementById('active-users-popover'),
-      activeUsersList: document.getElementById('active-users-list'),
-      activeUsersCount: document.getElementById('active-users-count'),
       modalBanned: document.getElementById('modal-banned'),
       banMessage: document.getElementById('ban-message'),
       banDetail: document.getElementById('ban-detail'),
@@ -3685,7 +3307,7 @@
           stopPaintLoop();
           return;
         }
-        if ((state.spaceHeld || state.touchPainting || state.brushMode) && state.hoverPoint) {
+        if ((state.spaceHeld || state.touchPainting) && state.hoverPoint) {
           commitPixelAt(state.hoverPoint.clientX, state.hoverPoint.clientY, mode);
         }
       };
@@ -3780,13 +3402,9 @@
       if (banned) return;
       state.username = name;
       localStorage.setItem('nf_username', name);
-      rememberAccount(uid, name);
       updateUsernameBadge();
       hideModal(el.modalUsername);
       db.ref(`${USERS_PATH}/${uid}`).update({ username: name, createdAt: Date.now(), lastSeen: Date.now(), online: true });
-      syncUsers();
-      syncPresence();
-      updateSessionLoginModal();
       logActivity({
         type: 'join',
         username: name,
@@ -4226,26 +3844,6 @@
       if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent || '00:00:00';
     }
 
-    function updateBrushButtonUI() {
-      if (!el.quickBrush) return;
-      el.quickBrush.classList.toggle('brush-on', !!state.brushMode);
-      el.quickBrush.setAttribute('aria-pressed', String(!!state.brushMode));
-      el.quickBrush.title = state.brushMode ? 'Pincel continuo activo' : 'Activar pincel continuo';
-    }
-
-    function setBrushMode(enabled) {
-      state.brushMode = !!enabled;
-      if (!state.brushMode) {
-        stopTouchPaintLoop();
-        stopPaintLoop();
-      }
-      updateBrushButtonUI();
-    }
-
-    function toggleBrushMode() {
-      setBrushMode(!state.brushMode);
-    }
-
     function startSessionClock() {
       const start = Date.now();
       setInterval(() => {
@@ -4255,15 +3853,6 @@
         const s = String(total % 60).padStart(2, '0');
         el.sessionClock.textContent = `${h}:${m}:${s}`;
         updateSessionClockMobile();
-        if (state.sessionCode && state.sessionCodeExpiresAt > Date.now()) {
-          updateSessionLoginModal();
-        } else if (state.sessionCode && state.sessionCodeExpiresAt <= Date.now()) {
-          state.sessionCode = '';
-          state.sessionCodeExpiresAt = 0;
-          localStorage.removeItem('nf_session_code');
-          localStorage.removeItem('nf_session_code_expires');
-          updateSessionLoginModal();
-        }
       }, 1000);
     }
 
@@ -4286,8 +3875,6 @@
       el.quickMap.addEventListener('click', () => openSidebar('map'));
       el.quickLeaderboard.addEventListener('click', () => openSidebar('leaderboard'));
       el.quickCenter.addEventListener('click', () => { centerCanvas(); openSidebar(state.currentMobileSection || 'chat'); });
-      el.quickBrush.addEventListener('click', () => { toggleBrushMode(); });
-      el.quickId.addEventListener('click', openSessionLoginModal);
       el.quickPalette.addEventListener('click', () => {
         if (isMobileLayout()) {
           toggleMobilePalette();
@@ -4440,17 +4027,6 @@
         setPointerPosition(e);
         try { el.viewport.setPointerCapture(e.pointerId); } catch {}
 
-        if (state.brushMode && e.pointerType !== 'mouse') {
-          state.mouseIsDown = true;
-          state.dragging = false;
-          state.dragMoved = true;
-          state.touchPainting = true;
-          cancelTouchHold();
-          updateCoordsOverlay(e.clientX, e.clientY);
-          startPaintLoop('brush');
-          return;
-        }
-
         if (activePointers.size === 2) {
           const [p1, p2] = getPointerPoints();
           state.pinchDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
@@ -4467,13 +4043,6 @@
         updateCoordsOverlay(e.clientX, e.clientY);
 
         if (e.pointerType === 'touch') {
-          if (state.brushMode) {
-            state.dragging = false;
-            state.touchPainting = true;
-            cancelTouchHold();
-            startPaintLoop('brush');
-            return;
-          }
           state.dragging = false;
           armTouchHold(e);
           return;
@@ -4499,16 +4068,6 @@
         }
 
         setPointerPosition(e);
-
-        if (state.brushMode && e.pointerType !== 'mouse') {
-          state.dragging = false;
-          state.dragMoved = true;
-          state.touchPainting = true;
-          cancelTouchHold();
-          updateCoordsOverlay(e.clientX, e.clientY);
-          startPaintLoop('brush');
-          return;
-        }
 
         if (activePointers.size >= 2) {
           cancelTouchHold();
@@ -4622,18 +4181,7 @@
         state.dragging = false;
         state.pinchDistance = null;
         state.spaceHeld = false;
-        hideActiveUsersPopover();
         stopTouchPaintLoop();
-      });
-
-      document.addEventListener('pointerdown', e => {
-        if (!state.activeUsersVisible) return;
-        if (el.activeUsersPopover && el.activeUsersPopover.contains(e.target)) return;
-        if (el.header.querySelector('.global-stats')?.contains(e.target)) return;
-        if (document.getElementById('module-stats')?.contains(e.target)) return;
-        if (document.getElementById('module-globalstats')?.contains(e.target)) return;
-        if (el.sessionBtn?.contains(e.target)) return;
-        hideActiveUsersPopover();
       });
     }
 
@@ -4653,8 +4201,6 @@
       buildPalette();
       syncPaletteVisibilityUI();
       updateUsernameBadge();
-      updateBrushButtonUI();
-      updateSessionLoginModal();
       updateCooldownUI(0, true);
       clearRecentActivity();
       renderLeaderboard();
@@ -4666,52 +4212,5 @@
     initUiHooks();
     startSession();
   </script>
-
-  <div id="modal-session-login" class="modal-overlay">
-    <div class="modal-content wide">
-      <h2>Login por código</h2>
-      <p>Genera un código temporal de 5 minutos para abrir esta cuenta en otro dispositivo y sincronizar la misma sesión.</p>
-
-      <div class="username-badge">
-        <span>Cuenta actual:</span> <strong id="session-account-name">Sin asignar</strong>
-      </div>
-
-      <div class="field-label">
-        <span>Código activo</span>
-        <span id="session-code-expiry">sin generar</span>
-      </div>
-      <div class="session-code-box">
-        <strong id="session-code-value">— — — — — —</strong>
-        <button class="action-btn btn-main" type="button" id="session-code-refresh">Generar</button>
-        <button class="action-btn btn-ghost" type="button" id="session-code-copy">Copiar</button>
-      </div>
-
-      <div class="field-label">
-        <span>Entrar con código</span>
-        <span>otro dispositivo</span>
-      </div>
-      <input type="text" id="session-code-input" placeholder="Escribe el código" maxlength="12" autocomplete="off">
-
-      <div class="btn-grid">
-        <button class="action-btn btn-main" id="session-code-login-btn">Entrar</button>
-        <button class="action-btn btn-ghost" id="session-code-close-btn">Cerrar</button>
-      </div>
-
-      <div class="split-line"></div>
-      <div class="field-label">
-        <span>Cuentas guardadas</span>
-        <span>local</span>
-      </div>
-      <div id="session-account-list" class="account-list"></div>
-    </div>
-  </div>
-
-  <div id="active-users-popover" aria-live="polite">
-    <div class="active-users-title">
-      <span>Usuarios activos</span>
-      <span id="active-users-count">0</span>
-    </div>
-    <div id="active-users-list"></div>
-  </div>
 </body>
 </html>
