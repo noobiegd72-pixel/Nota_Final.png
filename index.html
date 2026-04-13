@@ -498,7 +498,7 @@
         <div class="stats-row"><span>Tus aportes</span><strong id="stat-mine">0</strong></div>
         <div class="stats-row"><span>Resolución</span><strong>125×125 px</strong></div>
         <div class="stats-row"><span>Pintura</span><strong>Continua</strong></div>
-        <div class="stats-row"><span>Tracking local</span><strong id="stat-tracking" class="warn">Desactivado</strong></div>
+        <div class="stats-row"><span>Tracking global</span><strong id="stat-tracking" class="warn">Desactivado</strong></div>
         <div class="stats-row"><span>Timestamp timelapse</span><strong id="stat-ts" class="good">Activo</strong></div>
         <div class="stats-row"><span>Estado</span><strong class="good">Conectado</strong></div>
       </div>
@@ -666,8 +666,8 @@
 
       <div class="toggle-row">
         <div class="toggle-copy">
-          <strong>Tracking visual local</strong>
-          <span>Muestra nombre y sonido al aparecer un pixel en este cliente. No guarda nada por pixel en Firebase.</span>
+          <strong>Tracking global (admin)</strong>
+          <span>Permite mostrar nombre y sonido en cada pixel para todos los usuarios. Solo el admin puede activarlo y se sincroniza por Firebase.</span>
         </div>
         <input type="checkbox" id="toggle-tracking">
       </div>
@@ -1040,6 +1040,7 @@
       el.statOnline.textContent = formatNumber(activeUsers);
       el.statUnique.textContent = formatNumber(contributors);
       el.statRate.textContent = formatNumber(rate);
+      el.toggleTracking.disabled = !state.isAuthorized;
       el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
       el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
@@ -1379,12 +1380,17 @@
       try {
         const snap = await db.ref(USER_STATS_PATH).once('value');
         const data = snap.val() || {};
-        const items = Object.entries(data).map(([uid, value]) => ({
-          uid,
-          username: (value && value.username) || 'Anónimo',
-          pixels: Number(value && value.pixels) || 0,
-          messages: Number(value && value.messages) || 0
-        })).sort((a, b) => b.pixels - a.pixels);
+        const users = state.usersSnapshot || {};
+        const items = Object.entries(data).map(([uid, value]) => {
+          const profile = users[uid] || {};
+          const username = normalizeUsername((value && value.username) || profile.username || '') || `USR_${String(uid).slice(-4)}`;
+          return {
+            uid,
+            username,
+            pixels: Number(value && value.pixels) || 0,
+            messages: Number(value && value.messages) || 0
+          };
+        }).sort((a, b) => b.pixels - a.pixels);
         state.leaderboardCache = items;
         renderLeaderboard();
       } catch {
@@ -1426,10 +1432,11 @@
     function syncSettings() {
       db.ref(SETTINGS_PATH).on('value', snap => {
         const incoming = snap.val() || {};
-        const trackingOn = !!state.isAuthorized && !!incoming.trackingEnabled;
+        const trackingOn = !!incoming.trackingEnabled;
         state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: trackingOn };
         el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
         el.toggleTracking.checked = !!state.settings.trackingEnabled;
+        el.toggleTracking.disabled = !state.isAuthorized;
         el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
         if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
         updateTopStats();
@@ -1793,7 +1800,12 @@
       } catch {}
     }
 
+    function canShowTrackingEffects() {
+      return !!state.isAuthorized && !!state.settings.trackingEnabled;
+    }
+
     function showPixelPop(x, y, username, color) {
+      if (!canShowTrackingEffects()) return;
       const name = normalizeUsername(username || '');
       if (!name) return;
       const rect = el.canvas.getBoundingClientRect();
@@ -1812,9 +1824,35 @@
     }
 
     function announcePixel(x, y, color, username, localEcho) {
+      if (!canShowTrackingEffects()) return;
       const label = normalizeUsername(username || 'Anónimo');
       showPixelPop(x, y, label, color);
       playLocalPixelSound();
+    }
+
+    function normalizeColorHex(value) {
+      const raw = String(value || '').trim().toLowerCase();
+      if (!raw) return '#ffffff';
+      if (/^#[0-9a-f]{3}$/.test(raw)) {
+        return '#' + raw.slice(1).split('').map(ch => ch + ch).join('');
+      }
+      if (/^#[0-9a-f]{6}$/.test(raw)) return raw;
+      if (/^[0-9a-f]{6}$/.test(raw)) return `#${raw}`;
+      return '#ffffff';
+    }
+
+    function rgbaToHex(r, g, b) {
+      return `#${[r, g, b].map(v => Number(v).toString(16).padStart(2, '0')).join('')}`;
+    }
+
+    function getCurrentPixelHex(x, y) {
+      if (x < 0 || x >= RES || y < 0 || y >= RES) return '#ffffff';
+      const idx = (y * RES + x) * 4;
+      return rgbaToHex(
+        boardImageData.data[idx],
+        boardImageData.data[idx + 1],
+        boardImageData.data[idx + 2]
+      );
     }
 
     function handlePixelCommit(input) {
@@ -1920,6 +1958,7 @@
       updateUsernameBadge();
       hideModal(el.modalUsername);
       db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: name, createdAt: Date.now(), lastSeen: Date.now(), online: true });
+      attachBanWatchers();
       el.chatInput.disabled = false;
       el.chatInput.focus();
       if (state.settings.usernameRequired) el.tlStatus.textContent = `Usuario configurado como ${name}.`;
@@ -1933,6 +1972,7 @@
     function openAdminDashboard() {
       el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
       el.toggleTracking.checked = !!state.settings.trackingEnabled;
+      el.toggleTracking.disabled = false;
       el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
       showModal(el.modalDashboard);
     }
@@ -2067,6 +2107,10 @@
         el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
       });
       el.toggleTracking.addEventListener('change', () => {
+        if (!state.isAuthorized) {
+          el.toggleTracking.checked = !!state.settings.trackingEnabled;
+          return;
+        }
         state.settings.trackingEnabled = el.toggleTracking.checked;
         el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
         el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
@@ -2342,6 +2386,7 @@
     function updateSettingsDisplay() {
       el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
       el.toggleTracking.checked = !!state.settings.trackingEnabled;
+      el.toggleTracking.disabled = !state.isAuthorized;
       el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
       if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
       el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
@@ -2541,9 +2586,16 @@
       pointerOverCanvas: false,
       mouseIsDown: false,
       touchPainting: false,
+      touchHoldTimer: null,
+      touchHoldActive: false,
+      touchHoldPointerId: null,
+      touchHoldMoved: false,
+      touchHoldStart: null,
       currentMobileSection: 'chat',
       banned: false,
       banInfo: null,
+      banWatchRefs: [],
+      banWatchTarget: null,
       sessionStartedAt: Date.now(),
       heartbeatIntervalId: null,
       usersListenerAttached: false,
@@ -2577,6 +2629,7 @@
         el.usernameInput.value = state.username;
       }
       syncUiWithUsername();
+      attachBanWatchers();
       initUsernameBoot();
       loadFirebaseResources();
     });
@@ -2762,6 +2815,10 @@
         el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
       });
       el.toggleTracking.addEventListener('change', () => {
+        if (!state.isAuthorized) {
+          el.toggleTracking.checked = !!state.settings.trackingEnabled;
+          return;
+        }
         state.settings.trackingEnabled = el.toggleTracking.checked;
         el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
         el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
@@ -3000,6 +3057,7 @@
       el.statOnline.textContent = formatNumber(activeUsers);
       el.statUnique.textContent = formatNumber(contributors);
       el.statRate.textContent = formatNumber(state.pixelRate);
+      el.toggleTracking.disabled = !state.isAuthorized;
       el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
       el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
@@ -3092,16 +3150,56 @@
       return null;
     }
 
+    function clearBanWatchers() {
+      (state.banWatchRefs || []).forEach(ref => {
+        try { ref.off('value'); } catch {}
+      });
+      state.banWatchRefs = [];
+      state.banWatchTarget = null;
+    }
+
     async function verifyBanStatusForIdentity(targetUid, targetUsername) {
-      const now = Date.now();
-      if (now - Number(state.lastBanLookupAt || 0) < BAN_LOOKUP_TTL && state.banned) return true;
-      state.lastBanLookupAt = now;
-      const record = await fetchBanRecord(targetUid, targetUsername).catch(() => null);
+      const uid = normalizeUsername(targetUid || ensureUid());
+      const name = normalizeUsername(targetUsername || state.username || '');
+      state.lastBanLookupAt = Date.now();
+      const record = await fetchBanRecord(uid, name).catch(() => null);
       if (record && record.active !== false) {
         openBannedModal(record, record.reason);
         return true;
       }
+      if (state.banned) {
+        state.banned = false;
+        state.banInfo = null;
+        hideModal(el.modalBanned);
+        updateUsernameBadge();
+      }
       return false;
+    }
+
+    function attachBanWatchers() {
+      const uid = ensureUid();
+      const name = normalizeUsername(state.username || '');
+      const token = `${uid}|${normalizeBanKey(name)}`;
+      if (state.banWatchTarget === token) return;
+      clearBanWatchers();
+      state.banWatchTarget = token;
+
+      const refs = [];
+      if (uid) refs.push(db.ref(`${BANS_PATH}/${uid}`));
+      if (name) refs.push(db.ref(`${USERNAME_BANS_PATH}/${normalizeBanKey(name)}`));
+      refs.forEach(ref => {
+        const handler = snap => {
+          const record = snap.val() || null;
+          if (record && record.active !== false) {
+            openBannedModal(record, record.reason);
+          } else {
+            verifyBanStatusForIdentity(uid, name);
+          }
+        };
+        ref.on('value', handler);
+        state.banWatchRefs.push(ref);
+      });
+      verifyBanStatusForIdentity(uid, name);
     }
 
     function setBanStatus(text, kind = '') {
@@ -3231,10 +3329,13 @@
       const { x, y } = getCanvasCoords(clientX, clientY);
       if (x < 0 || x >= RES || y < 0 || y >= RES) return;
 
+      const color = normalizeColorHex(state.activeColor);
+      const currentColor = getCurrentPixelHex(x, y);
+      if (currentColor === color) return;
+
       const key = `${x}_${y}`;
       const ts = Date.now();
       const user = state.username;
-      const color = state.activeColor;
       const uid = ensureUid();
 
       state.popQueue.set(key, { username: user, color, ts });
@@ -3437,10 +3538,11 @@
       db.ref(SETTINGS_PATH).off('value');
       db.ref(SETTINGS_PATH).on('value', snap => {
         const incoming = snap.val() || {};
-        const trackingOn = !!state.isAuthorized && !!incoming.trackingEnabled;
+        const trackingOn = !!incoming.trackingEnabled;
         state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: trackingOn };
         el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
         el.toggleTracking.checked = !!state.settings.trackingEnabled;
+        el.toggleTracking.disabled = !state.isAuthorized;
         el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
         if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
         updateTopStats();
@@ -3451,8 +3553,10 @@
     function updateSettingsDisplay() {
       el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
       el.toggleTracking.checked = !!state.settings.trackingEnabled;
+      el.toggleTracking.disabled = !state.isAuthorized;
       el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
       if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
+      el.toggleTracking.disabled = !state.isAuthorized;
       el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
       el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
@@ -3631,7 +3735,7 @@
         addLoadingDone(1);
       }).catch(() => addLoadingDone(1));
 
-      const messagesPromise = db.ref(MESSAGES_PATH).limitToLast(50).once('value').then(s => {
+      const messagesPromise = db.ref(MESSAGES_PATH).limitToLast(30).once('value').then(s => {
         el.chatArea.innerHTML = '';
         state.renderedMessageKeys = new Set();
         appendLoadedMessagesOnce(s.val() || {});
@@ -3808,6 +3912,10 @@
         el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
       });
       el.toggleTracking.addEventListener('change', () => {
+        if (!state.isAuthorized) {
+          el.toggleTracking.checked = !!state.settings.trackingEnabled;
+          return;
+        }
         state.settings.trackingEnabled = el.toggleTracking.checked;
         el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
         el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
@@ -3836,10 +3944,51 @@
         return el.sidebar.contains(target) || document.querySelector('.modal-overlay.visible')?.contains(target);
       }
 
+      function clearTouchHoldTimer() {
+        if (state.touchHoldTimer) {
+          clearTimeout(state.touchHoldTimer);
+          state.touchHoldTimer = null;
+        }
+      }
+
+      function stopTouchPaintLoop() {
+        state.touchPainting = false;
+        state.touchHoldActive = false;
+        state.touchHoldPointerId = null;
+        state.touchHoldMoved = false;
+        clearTouchHoldTimer();
+        stopPaintLoop();
+      }
+
+      function armTouchHold(e) {
+        clearTouchHoldTimer();
+        state.touchHoldPointerId = e.pointerId;
+        state.touchHoldStart = { x: e.clientX, y: e.clientY, ts: Date.now() };
+        state.touchHoldMoved = false;
+        state.touchHoldActive = false;
+        state.touchPainting = false;
+        state.touchHoldTimer = setTimeout(() => {
+          if (!activePointers.has(e.pointerId)) return;
+          if (activePointers.size !== 1) return;
+          if (state.pinchDistance != null || state.dragMoved) return;
+          state.touchHoldActive = true;
+          state.touchPainting = true;
+          startPaintLoop('touch');
+        }, 1500);
+      }
+
+      function cancelTouchHold() {
+        clearTouchHoldTimer();
+        state.touchHoldActive = false;
+        state.touchHoldPointerId = null;
+        state.touchHoldMoved = false;
+      }
+
       function endViewportInteraction(e) {
         if (!activePointers.has(e.pointerId)) return;
         const hadDrag = state.dragging;
         const hadMove = state.dragMoved;
+        const wasTouchHoldActive = state.touchHoldActive;
         const point = { x: e.clientX, y: e.clientY };
 
         clearPointerPosition(e);
@@ -3848,9 +3997,15 @@
           state.pinchDistance = null;
         }
 
+        if (e.pointerType === 'touch' && !wasTouchHoldActive && !hadMove && activePointers.size === 0) {
+          commitPixelAt(e.clientX, e.clientY, 'touch');
+        }
+
         if (activePointers.size === 0) {
-          if (state.touchPainting || state.spaceHeld) {
+          if (state.spaceHeld) {
             stopPaintLoop();
+          } else if (state.touchPainting) {
+            stopTouchPaintLoop();
           } else if (hadDrag && !hadMove && e.pointerType === 'mouse') {
             handlePixelCommit(e);
           }
@@ -3858,6 +4013,7 @@
           state.dragMoved = false;
           state.pinchDistance = null;
           state.mouseIsDown = false;
+          cancelTouchHold();
         }
 
         updateCoordsOverlay(point.x, point.y);
@@ -3876,6 +4032,7 @@
           state.pinchDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
           state.dragging = false;
           state.dragMoved = true;
+          cancelTouchHold();
           return;
         }
 
@@ -3885,10 +4042,15 @@
         state.lastY = e.clientY;
         updateCoordsOverlay(e.clientX, e.clientY);
 
-        if (e.pointerType === 'touch' || state.spaceHeld) {
-          state.touchPainting = e.pointerType === 'touch';
+        if (e.pointerType === 'touch') {
           state.dragging = false;
-          startPaintLoop(e.pointerType === 'touch' ? 'touch' : 'space');
+          armTouchHold(e);
+          return;
+        }
+
+        if (state.spaceHeld) {
+          state.dragging = false;
+          startPaintLoop('space');
           return;
         }
 
@@ -3908,6 +4070,7 @@
         setPointerPosition(e);
 
         if (activePointers.size >= 2) {
+          cancelTouchHold();
           const [p1, p2] = getPointerPoints();
           const currentDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
           if (state.pinchDistance) {
@@ -3925,8 +4088,22 @@
 
         updateCoordsOverlay(e.clientX, e.clientY);
 
-        if (state.touchPainting || state.spaceHeld) {
-          startPaintLoop(e.pointerType === 'touch' ? 'touch' : 'space');
+        if (state.touchHoldActive || state.touchPainting) {
+          startPaintLoop('touch');
+          return;
+        }
+
+        if (e.pointerType === 'touch' && state.touchHoldTimer) {
+          const distToStart = Math.hypot(e.clientX - state.touchHoldStart.x, e.clientY - state.touchHoldStart.y);
+          if (distToStart > 8) {
+            state.dragging = true;
+            state.dragMoved = true;
+            cancelTouchHold();
+          }
+        }
+
+        if (state.spaceHeld) {
+          startPaintLoop('space');
           return;
         }
 
@@ -3954,6 +4131,7 @@
         state.dragMoved = false;
         state.pinchDistance = null;
         state.mouseIsDown = false;
+        cancelTouchHold();
       });
 
       el.viewport.addEventListener('pointerenter', e => {
@@ -4003,7 +4181,7 @@
         state.dragging = false;
         state.pinchDistance = null;
         state.spaceHeld = false;
-        stopPaintLoop();
+        stopTouchPaintLoop();
       });
     }
 
