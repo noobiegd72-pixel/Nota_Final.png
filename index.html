@@ -241,7 +241,13 @@
       width:min(92vw,450px);background:linear-gradient(180deg,rgba(20,20,20,.98),rgba(14,14,14,.98));
       border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:var(--shadow)
     }
-    .modal-content.wide{width:min(94vw,680px)}
+    .modal-content.wide{
+      width:min(94vw,760px);
+      max-width:760px;
+      max-height:min(92vh,920px);
+      overflow:auto;
+      scrollbar-gutter:stable;
+    }
     .modal-content h2{font-size:1.08rem;margin-bottom:8px;color:var(--accent);letter-spacing:.2px}
     .modal-content p{color:var(--dim);font-size:.76rem;line-height:1.55;margin-bottom:16px}
     .field-label{
@@ -292,6 +298,26 @@
       color:var(--text);display:grid;place-items:center;box-shadow:var(--shadow);cursor:pointer
     }
     .quick-btn.active{border-color:rgba(41,121,255,.5);color:var(--accent);background:rgba(41,121,255,.12)}
+
+    #sidebar-right[data-mobile-section] .glass-module{display:flex}
+
+    @media (max-width: 768px){
+      #sidebar-right[data-mobile-section] .glass-module{display:none}
+      #sidebar-right[data-mobile-section="chat"] #module-chat{display:flex}
+      #sidebar-right[data-mobile-section="session"] #module-stats{display:flex}
+      #sidebar-right[data-mobile-section="globalstats"] #module-globalstats{display:flex}
+      #sidebar-right[data-mobile-section="map"] #module-map{display:flex}
+      #sidebar-right[data-mobile-section="leaderboard"] #module-leaderboard{display:flex}
+      #sidebar-right[data-mobile-section="activity"] #module-activity{display:flex}
+      #sidebar-right[data-mobile-section] .glass-module{min-height:calc(100vh - 188px)}
+      .top-actions .top-btn:not(#mobile-menu-btn){display:none !important}
+      #mobile-menu-btn{display:none !important}
+      #module-globalstats{display:flex}
+    }
+
+    @media (min-width: 769px){
+      #module-globalstats{display:none}
+    }
     @media (max-width: 768px){
       #ui-bottom.mobile-hidden{display:none !important}
     }
@@ -346,7 +372,18 @@
       .cooldown-caption{margin-bottom:5px;font-size:.66rem}
       #admin-entry{right:12px;bottom:76px;width:42px;height:42px}
       .modal-content{width:100%;max-height:calc(100vh - 24px);overflow:auto;padding:18px}
-      .modal-content.wide{width:min(96vw,540px)}
+      .modal-content.wide{
+        width:calc(100vw - 16px);
+        max-width:none;
+        max-height:calc(100vh - 16px);
+        padding:14px;
+        border-radius:18px;
+      }
+      .modal-content.wide .btn-grid{grid-template-columns:1fr}
+      .modal-content.wide .toggle-row,
+      .modal-content.wide .username-badge{
+        width:100%;
+      }
       .btn-grid{grid-template-columns:1fr}
       .stats-module{font-size:.84rem}
       .leaderboard-row,.activity-item{font-size:.78rem}
@@ -439,7 +476,7 @@
   </div>
 
   <div id="sidebar-right">
-    <div class="glass-module chat-module" id="module-chat">
+    <div class="glass-module chat-module" id="module-chat" data-mobile-section="chat">
       <div class="module-header">
         <span>Mensajes recientes</span>
         <div style="display:flex;align-items:center;gap:8px">
@@ -451,7 +488,7 @@
       <input type="text" id="chat-input" placeholder="Enviar mensaje..." maxlength="80" autocomplete="off" disabled>
     </div>
 
-    <div class="glass-module" id="module-stats">
+    <div class="glass-module" id="module-stats" data-mobile-section="session">
       <div class="module-header">
         <span>Datos de sesión</span>
         <span class="hint">tiempo real</span>
@@ -460,14 +497,28 @@
         <div class="stats-row"><span>Tu usuario</span><strong id="stat-user">Sin asignar</strong></div>
         <div class="stats-row"><span>Tus aportes</span><strong id="stat-mine">0</strong></div>
         <div class="stats-row"><span>Resolución</span><strong>125×125 px</strong></div>
-        <div class="stats-row"><span>Cooldown</span><strong>1.0s</strong></div>
+        <div class="stats-row"><span>Pintura</span><strong>Continua</strong></div>
         <div class="stats-row"><span>Tracking local</span><strong id="stat-tracking" class="warn">Desactivado</strong></div>
         <div class="stats-row"><span>Timestamp timelapse</span><strong id="stat-ts" class="good">Activo</strong></div>
         <div class="stats-row"><span>Estado</span><strong class="good">Conectado</strong></div>
       </div>
     </div>
 
-    <div class="glass-module" id="module-map">
+    <div class="glass-module" id="module-globalstats" data-mobile-section="globalstats">
+      <div class="module-header">
+        <span>Estadísticas globales</span>
+        <span class="hint">solo móvil</span>
+      </div>
+      <div class="stats-module">
+        <div class="stats-row"><span>Usuarios activos</span><strong id="mobile-stat-online">0</strong></div>
+        <div class="stats-row"><span>Píxeles totales</span><strong id="mobile-stat-total">0</strong></div>
+        <div class="stats-row"><span>Ritmo</span><strong id="mobile-stat-rate">0/min</strong></div>
+        <div class="stats-row"><span>Sesión</span><strong id="mobile-session-clock">00:00:00</strong></div>
+        <div class="stats-row"><span>Contribuidores</span><strong id="mobile-stat-unique">0</strong></div>
+      </div>
+    </div>
+
+    <div class="glass-module" id="module-map" data-mobile-section="map">
       <div class="module-header">
         <span>Minimapa</span>
         <span class="hint">clic para centrar</span>
@@ -483,7 +534,7 @@
       </div>
     </div>
 
-    <div class="glass-module" id="module-leaderboard">
+    <div class="glass-module" id="module-leaderboard" data-mobile-section="leaderboard">
       <div class="module-header">
         <span>Top contribuidores</span>
         <span class="hint">pixels colocados</span>
@@ -493,17 +544,16 @@
       </div>
     </div>
 
-    <div class="glass-module" id="module-activity">
+    <div class="glass-module" id="module-activity" data-mobile-section="activity">
       <div class="module-header">
-        <span>Actividad reciente</span>
-        <span class="hint">últimos pixeles</span>
+        <span>Eventos recientes</span>
+        <span class="hint">píxeles · chat · sanciones</span>
       </div>
       <div class="activity-list" id="activity-list">
-        <div class="small-note">Sin actividad todavía.</div>
+        <div class="small-note">Sin eventos todavía.</div>
       </div>
     </div>
   </div>
-
   <div id="ui-bottom">
     <div class="palette-container">
       <div class="palette-topline">
@@ -513,8 +563,8 @@
       <div class="palette-grid" id="palette-render"></div>
       <div class="cooldown-wrap">
         <div class="cooldown-caption">
-          <span id="cooldown-text">Listo para pintar</span>
-          <span id="cooldown-value">100%</span>
+          <span id="cooldown-text">Pintura continua</span>
+          <span id="cooldown-value">∞</span>
         </div>
         <div class="cooldown-wrapper">
           <div id="cooldown-timer"></div>
@@ -527,17 +577,28 @@
     <button class="quick-btn" id="quick-chat" title="Chat">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
     </button>
-    <button class="quick-btn" id="quick-stats" title="Stats">
+    <button class="quick-btn" id="quick-session" title="Datos de sesión">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 19V5M8 19v-8M12 19v-4M16 19V9M20 19V3"/></svg>
     </button>
-    <button class="quick-btn" id="quick-center" title="Centro">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
+    <button class="quick-btn" id="quick-globalstats" title="Estadísticas globales">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 19V5M8 19v-8M12 19v-4M16 19V9M20 19V3"/><path d="M3 20h18"/></svg>
+    </button>
+    <button class="quick-btn" id="quick-map" title="Minimapa">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
+    </button>
+    <button class="quick-btn" id="quick-leaderboard" title="Clasificación">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 21V9M12 21V3M16 21v-7"/></svg>
+    </button>
+    <button class="quick-btn" id="quick-activity" title="Actividad">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
     </button>
     <button class="quick-btn" id="quick-palette" title="Mostrar u ocultar la paleta">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 3 3 0 0 0-3-3h-1a2 2 0 0 1-2-2V6a3 3 0 0 0-3-3Z"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="15.5" cy="10.5" r="1"/></svg>
     </button>
+    <button class="quick-btn" id="quick-center" title="Centrar lienzo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
+    </button>
   </div>
-
   <div id="admin-entry" title="Administrador">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M12 15V17M12 7V13M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"/>
@@ -623,7 +684,13 @@
         <span>Frecuencia de captura (segundos)</span>
         <span id="tl-frames-info">Video 1250×1250</span>
       </div>
-      <input type="number" id="tl-freq" value="5" min="1" max="120" step="1">
+      <input type="number" id="tl-freq" value="5" min="1" step="1">
+
+      <div class="field-label">
+        <span>FPS del timelapse</span>
+        <span id="tl-fps-info">Cualquier valor positivo</span>
+      </div>
+      <input type="number" id="tl-fps" value="12" min="1" step="1">
 
       <div class="btn-grid">
         <button class="action-btn btn-main" id="tl-toggle">Iniciar timelapse</button>
@@ -631,6 +698,20 @@
       </div>
 
       <div id="tl-status" class="mini-help">Listo.</div>
+
+      <div class="split-line"></div>
+
+      <div class="field-label">
+        <span>Sanciones</span>
+        <span>UID o usuario</span>
+      </div>
+      <input type="text" id="ban-target" placeholder="UID o nombre de usuario" autocomplete="off">
+      <input type="text" id="ban-reason" placeholder="Razón obligatoria" autocomplete="off">
+      <div class="btn-grid">
+        <button class="action-btn btn-danger" id="ban-btn">Banear</button>
+        <button class="action-btn btn-ghost" id="unban-btn">Desbanear</button>
+      </div>
+      <div id="ban-status" class="mini-help">Introduce el objetivo y una razón para aplicar una sanción.</div>
 
       <div class="split-line"></div>
 
@@ -645,6 +726,16 @@
     </div>
   </div>
 
+  <div id="modal-banned" class="modal-overlay">
+    <div class="modal-content">
+      <h2>Acceso bloqueado</h2>
+      <p id="ban-message">Tu acceso a este lienzo está suspendido.</p>
+      <div class="small-note" id="ban-detail">No puedes pintar ni enviar mensajes mientras siga activa la sanción.</div>
+      <div class="btn-stack" style="margin-top:16px;">
+        <button class="action-btn btn-ghost" id="ban-close-btn">Cerrar</button>
+      </div>
+    </div>
+  </div>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAtTbxuzHMQqSpQt9ZHZP1a0qZykY_NvWA",
@@ -727,6 +818,7 @@
       exportStatsBtn: document.getElementById('export-stats-btn'),
       tlToggleBtn: document.getElementById('tl-toggle'),
       tlFreqInput: document.getElementById('tl-freq'),
+      tlFpsInput: document.getElementById('tl-fps'),
       tlStatus: document.getElementById('tl-status'),
       toggleTimestamp: document.getElementById('toggle-timestamp'),
       toggleTracking: document.getElementById('toggle-tracking'),
@@ -826,6 +918,10 @@
     }
     function normalizeUsername(value) {
       return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 20);
+    }
+
+    function normalizeActivityText(value, maxLen = 120) {
+      return String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLen);
     }
     function showModal(node) { node.classList.add('visible'); }
     function hideModal(node) { node.classList.remove('visible'); }
@@ -929,16 +1025,27 @@
     }
 
     function updateTopStats() {
+      const activeUsers = Number(state.activeUserCount || 0);
+      const totalPlaced = Number(state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS);
+      const contributors = Number(state.contributorCount || GLOBAL_STATS_SEED_CONTRIBUTORS);
+      const rate = Number(state.pixelRate || 0);
+
       el.statMine.textContent = formatNumber(state.myPixels);
-      el.statTotal.textContent = formatNumber(state.boardCount);
-      el.statOnline.textContent = formatNumber(state.onlineCount);
-      el.statUnique.textContent = formatNumber(state.uniqueCount);
-      el.statRate.textContent = formatNumber(state.pixelRate);
+      el.statTotal.textContent = formatNumber(totalPlaced);
+      el.statOnline.textContent = formatNumber(activeUsers);
+      el.statUnique.textContent = formatNumber(contributors);
+      el.statRate.textContent = formatNumber(rate);
       el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
       el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
       el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
       el.minimapZoom.textContent = `${state.scale.toFixed(1)}×`;
+
+      if (el.mobileStatOnline) el.mobileStatOnline.textContent = formatNumber(activeUsers);
+      if (el.mobileStatTotal) el.mobileStatTotal.textContent = formatNumber(totalPlaced);
+      if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(rate)}/min`;
+      if (el.mobileStatUnique) el.mobileStatUnique.textContent = formatNumber(contributors);
+      if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent;
     }
 
     function updateCooldownUI(percent, ready) {
@@ -1078,29 +1185,149 @@
     }
 
     function clearRecentActivity() {
-      el.activityList.innerHTML = '<div class="small-note">Sin actividad todavía.</div>';
+      el.activityList.innerHTML = '<div class="small-note">Sin eventos todavía.</div>';
+      state.renderedActivityKeys.clear();
     }
 
-    function addRecentActivity(entry) {
+    function getActivityBadge(type) {
+      const map = {
+        pixel: 'PX',
+        chat: 'CHAT',
+        ban: 'BAN',
+        unban: 'UNBAN',
+        join: 'JOIN',
+        leave: 'LEAVE',
+        system: 'SYS'
+      };
+      return map[type] || 'LOG';
+    }
+
+    function getActivityTone(type) {
+      const map = {
+        pixel: 'var(--accent)',
+        chat: 'var(--good)',
+        ban: 'var(--bad)',
+        unban: 'var(--warn)',
+        join: 'var(--good)',
+        leave: 'var(--dim)',
+        system: 'var(--accent2)'
+      };
+      return map[type] || 'var(--text)';
+    }
+
+    function formatActivityText(entry) {
+      const type = String(entry?.type || 'system').toLowerCase();
+      const username = normalizeUsername(entry?.username || entry?.user || entry?.target || entry?.bannedBy || 'Sistema');
+      const color = entry?.color || '#ffffff';
+      const x = Number.isFinite(Number(entry?.x)) ? Number(entry.x) : null;
+      const y = Number.isFinite(Number(entry?.y)) ? Number(entry.y) : null;
+      const message = normalizeActivityText(entry?.message || entry?.text || '', 120);
+      const reason = normalizeActivityText(entry?.reason || '', 120);
+      const scope = normalizeActivityText(entry?.scope || '', 80);
+      if (type === 'pixel') {
+        return {
+          title: username || 'Anónimo',
+          detail: `colocó un píxel${x !== null && y !== null ? ` en (${x}, ${y})` : ''}`,
+          extra: color,
+          accent: color
+        };
+      }
+      if (type === 'chat') {
+        return {
+          title: username || 'Anónimo',
+          detail: message ? `envío: ${message}` : 'envió un mensaje',
+          extra: 'chat',
+          accent: 'var(--good)'
+        };
+      }
+      if (type === 'ban') {
+        return {
+          title: username || 'Sistema',
+          detail: reason ? `baneó con razón: ${reason}` : 'aplicó una sanción',
+          extra: scope || 'sanción',
+          accent: 'var(--bad)'
+        };
+      }
+      if (type === 'unban') {
+        return {
+          title: username || 'Sistema',
+          detail: reason ? `desbaneó · ${reason}` : 'retiró una sanción',
+          extra: scope || 'desban',
+          accent: 'var(--warn)'
+        };
+      }
+      if (type === 'join') {
+        return {
+          title: username || 'Usuario',
+          detail: 'se conectó',
+          extra: 'online',
+          accent: 'var(--good)'
+        };
+      }
+      if (type === 'leave') {
+        return {
+          title: username || 'Usuario',
+          detail: 'se desconectó',
+          extra: 'offline',
+          accent: 'var(--dim)'
+        };
+      }
+      return {
+        title: username || 'Sistema',
+        detail: message || 'evento registrado',
+        extra: scope || 'evento',
+        accent: 'var(--accent2)'
+      };
+    }
+
+    function renderActivityEntry(entry) {
       if (!entry) return;
-      const username = normalizeUsername(entry.username || entry.user || '');
-      if (!username) return;
-      if (el.activityList.firstElementChild?.classList.contains('small-note')) el.activityList.innerHTML = '';
+      const resolved = formatActivityText(entry);
+      if (el.activityList.firstElementChild?.classList.contains('small-note')) {
+        el.activityList.innerHTML = '';
+      }
       const item = document.createElement('div');
       item.className = 'activity-item';
-      const color = entry.color || '#ffffff';
-      const x = Number.isFinite(entry.x) ? entry.x : '?';
-      const y = Number.isFinite(entry.y) ? entry.y : '?';
       const ts = entry.ts || Date.now();
+      const badge = getActivityBadge(entry.type);
+      const accent = resolved.accent || 'var(--text)';
+      const extra = entry.color || resolved.extra || '';
       item.innerHTML = `
         <div class="a-top">
-          <span class="a-user">${escapeHtmlText(username)}</span>
+          <span class="a-user">${escapeHtmlText(resolved.title)}</span>
           <span class="a-time">${escapeHtmlText(formatShortTime(ts))}</span>
         </div>
-        <div class="a-detail">Colocado en <b>(${x}, ${y})</b> · <span style="color:${escapeHtmlText(color)};font-weight:800;">${escapeHtmlText(color)}</span></div>
+        <div class="a-detail">
+          <span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="padding:2px 7px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:${escapeHtmlText(accent)};font-weight:800;font-size:.68rem;letter-spacing:.5px">${escapeHtmlText(badge)}</span>
+            <span>${escapeHtmlText(resolved.detail)}</span>
+          </span>
+          ${extra ? `<div style="margin-top:6px;color:${escapeHtmlText(accent)};font-weight:800;">${escapeHtmlText(extra)}</div>` : ''}
+        </div>
       `;
       el.activityList.prepend(item);
-      while (el.activityList.children.length > 12) el.activityList.removeChild(el.activityList.lastElementChild);
+      while (el.activityList.children.length > 20) el.activityList.removeChild(el.activityList.lastElementChild);
+    }
+
+    function logActivity(entry) {
+      const payload = {
+        type: String(entry?.type || 'system').toLowerCase(),
+        username: normalizeUsername(entry?.username || entry?.user || ''),
+        target: normalizeUsername(entry?.target || ''),
+        message: normalizeActivityText(entry?.message || entry?.text || '', 120),
+        reason: normalizeActivityText(entry?.reason || '', 120),
+        color: entry?.color || '',
+        x: Number.isFinite(Number(entry?.x)) ? Number(entry.x) : null,
+        y: Number.isFinite(Number(entry?.y)) ? Number(entry.y) : null,
+        scope: normalizeActivityText(entry?.scope || '', 80),
+        ts: Number(entry?.ts) || Date.now(),
+        eventId: entry?.eventId || randomUid()
+      };
+      state.renderedActivityKeys.add(payload.eventId);
+      renderActivityEntry(payload);
+      return db.ref(ACTIVITY_PATH).push(payload).catch(err => {
+        console.error('No se pudo registrar la actividad:', err);
+      });
     }
 
     function renderLeaderboard() {
@@ -1177,6 +1404,7 @@
         el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
         el.toggleTracking.checked = !!state.settings.trackingEnabled;
         el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
+        if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
         updateTopStats();
         el.tlStatus.textContent = `Ajustes sincronizados · tracking ${state.settings.trackingEnabled ? 'activo' : 'inactivo'} · timestamp ${state.settings.timestampEnabled ? 'visible' : 'oculto'}.`;
       });
@@ -1325,11 +1553,22 @@
 
     function updateActivityFromMeta(meta) {
       if (!meta) return;
-      addRecentActivity(meta);
+      const eventId = meta.eventId || meta.id || meta.key || null;
+      if (eventId && state.renderedActivityKeys.has(eventId)) return;
+      if (eventId) state.renderedActivityKeys.add(eventId);
+      renderActivityEntry(meta);
     }
 
     function attachActivityListeners() {
-      // solo local visual, no tracking persistido por pixel
+      if (state.activityListenerAttached) return;
+      state.activityListenerAttached = true;
+      db.ref(ACTIVITY_PATH).limitToLast(20).on('child_added', snap => {
+        const meta = snap.val() || {};
+        const eventId = meta.eventId || snap.key;
+        if (eventId && state.renderedActivityKeys.has(eventId)) return;
+        if (eventId) state.renderedActivityKeys.add(eventId);
+        updateActivityFromMeta(meta);
+      });
     }
 
     function attachChatListeners() {
@@ -1552,7 +1791,6 @@
       const trackingOn = !!state.settings.trackingEnabled && !!state.isAuthorized;
       if (trackingOn && label) {
         showPixelPop(x, y, label, color);
-        addRecentActivity({ x, y, color, username: label, ts: Date.now() });
         playPopSound();
       }
     }
@@ -1633,6 +1871,13 @@
         playSendSound();
         db.ref(`${USER_STATS_PATH}/${ensureUid()}/messages`).transaction(v => (v || 0) + 1);
         db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: state.username, lastSeen: Date.now() });
+        logActivity({
+          type: 'chat',
+          username: state.username,
+          message: content.slice(0, 80),
+          ts: now,
+          scope: 'chat'
+        });
       }).catch(err => console.error('Error enviando mensaje:', err));
     }
 
@@ -1703,7 +1948,7 @@
         ensureWhiteCanvas();
         scheduleCanvasFlush();
         persistBoardCache({});
-        el.activityList.innerHTML = '<div class="small-note">Sin actividad todavía.</div>';
+        clearRecentActivity();
         updateTopStats();
         el.tlStatus.textContent = 'Lienzo formateado correctamente.';
         hideAllModals();
@@ -1715,10 +1960,13 @@
     }
 
     function saveAdminSettings() {
+      const rawInterval = parseInt(el.tlFreqInput.value, 10);
+      const rawFps = parseInt(el.tlFpsInput?.value, 10);
       const patch = {
         timestampEnabled: !!el.toggleTimestamp.checked,
         trackingEnabled: !!el.toggleTracking.checked,
-        timelapseIntervalSec: clamp(parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec, 1, 120)
+        timelapseIntervalSec: Math.max(1, Number.isFinite(rawInterval) ? rawInterval : DEFAULT_SETTINGS.timelapseIntervalSec),
+        timelapseFps: Math.max(1, Number.isFinite(rawFps) ? rawFps : DEFAULT_SETTINGS.timelapseFps)
       };
       state.settings = { ...state.settings, ...patch };
       saveSettingsToFirebase(patch)
@@ -1743,7 +1991,9 @@
         const h = String(Math.floor(total / 3600)).padStart(2,'0');
         const m = String(Math.floor((total % 3600) / 60)).padStart(2,'0');
         const s = String(total % 60).padStart(2,'0');
-        el.sessionClock.textContent = `${h}:${m}:${s}`;
+        const clockValue = `${h}:${m}:${s}`;
+        el.sessionClock.textContent = clockValue;
+        if (el.mobileSessionClock) el.mobileSessionClock.textContent = clockValue;
       }, 1000);
     }
 
@@ -1801,9 +2051,17 @@
         el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       });
       el.tlFreqInput.addEventListener('input', () => {
-        const v = clamp(parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec, 1, 120);
+        const parsed = parseInt(el.tlFreqInput.value, 10);
+        const v = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SETTINGS.timelapseIntervalSec;
         el.tlFreqInput.value = String(v);
       });
+      if (el.tlFpsInput) {
+        el.tlFpsInput.addEventListener('input', () => {
+          const parsed = parseInt(el.tlFpsInput.value, 10);
+          const v = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SETTINGS.timelapseFps;
+          el.tlFpsInput.value = String(v);
+        });
+      }
       el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
       el.minimap.addEventListener('click', e => {
         const rect = el.minimap.getBoundingClientRect();
@@ -2064,6 +2322,7 @@
       el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
       el.toggleTracking.checked = !!state.settings.trackingEnabled;
       el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
+      if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
       el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
       el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
       el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
@@ -2078,7 +2337,7 @@
       el.tlToggleBtn.classList.remove('btn-main');
       el.tlToggleBtn.classList.add('btn-danger');
       el.tlStatus.textContent = 'Capturando fotogramas...';
-      const intervalSec = clamp(parseInt(el.tlFreqInput.value, 10) || 5, 1, 120);
+      const intervalSec = Math.max(1, parseInt(el.tlFreqInput.value, 10) || 5);
       state.settings.timelapseIntervalSec = intervalSec;
       state.captureIntervalId = setInterval(() => captureTimelapseFrame().catch(()=>{}), intervalSec * 1000);
       captureTimelapseFrame().catch(()=>{});
@@ -2237,6 +2496,45 @@
         } catch {}
       });
     }
+
+
+    const GLOBAL_STATS_PATH = 'global_stats';
+    const ACTIVITY_PATH = 'activity_events';
+    const BANS_PATH = 'bans';
+    const USERNAME_BANS_PATH = 'username_bans';
+    const BAN_LOOKUP_TTL = 60 * 1000;
+    const ACTIVE_USER_WINDOW_MS = 45 * 1000;
+    const HEARTBEAT_INTERVAL_MS = 15 * 1000;
+    const PAINT_REPEAT_MS = 85;
+    const GLOBAL_STATS_SEED_TOTAL_PIXELS = 3647;
+    const GLOBAL_STATS_SEED_CONTRIBUTORS = 17;
+
+    Object.assign(state, {
+      totalPixelsPlaced: Number(localStorage.getItem('nf_total_pixels') || GLOBAL_STATS_SEED_TOTAL_PIXELS),
+      contributorCount: Number(localStorage.getItem('nf_contributor_count') || GLOBAL_STATS_SEED_CONTRIBUTORS),
+      renderedMessageKeys: new Set(),
+      usersSnapshot: {},
+      activeUserCount: 0,
+      paintLoopId: null,
+      spaceHeld: false,
+      pointerOverCanvas: false,
+      mouseIsDown: false,
+      touchPainting: false,
+      currentMobileSection: 'chat',
+      banned: false,
+      banInfo: null,
+      sessionStartedAt: Date.now(),
+      heartbeatIntervalId: null,
+      usersListenerAttached: false,
+      settingsListenerAttached: false,
+      globalStatsListenerAttached: false,
+      chatListenerAttached: false,
+      boardListenerAttached: false,
+      lastBanLookupAt: 0,
+      activePointerIds: new Set(),
+      renderedActivityKeys: new Set(),
+      activityListenerAttached: false
+    });
 
     window.addEventListener('resize', () => {
       normalizeSidebarForMobile();
@@ -2423,6 +2721,7 @@
         db.ref(SETTINGS_PATH).once('value').then(s => {
           state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) };
           updateSettingsDisplay();
+          if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
           el.tlStatus.textContent = 'Ajustes recargados.';
         });
       });
@@ -2441,7 +2740,7 @@
         el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       });
       el.tlFreqInput.addEventListener('input', () => {
-        const v = clamp(parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec, 1, 120);
+        const v = Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec);
         el.tlFreqInput.value = String(v);
       });
       el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
@@ -2588,6 +2887,1120 @@
         state.dragging = false;
         state.pinchDistance = null;
       });
+    }
+
+    Object.assign(el, {
+      mobileStatOnline: document.getElementById('mobile-stat-online'),
+      mobileStatTotal: document.getElementById('mobile-stat-total'),
+      mobileStatRate: document.getElementById('mobile-stat-rate'),
+      mobileStatUnique: document.getElementById('mobile-stat-unique'),
+      mobileSessionClock: document.getElementById('mobile-session-clock'),
+      quickSession: document.getElementById('quick-session'),
+      quickMap: document.getElementById('quick-map'),
+      quickLeaderboard: document.getElementById('quick-leaderboard'),
+      quickActivity: document.getElementById('quick-activity'),
+      quickGlobalStats: document.getElementById('quick-globalstats'),
+      modalBanned: document.getElementById('modal-banned'),
+      banMessage: document.getElementById('ban-message'),
+      banDetail: document.getElementById('ban-detail'),
+      banCloseBtn: document.getElementById('ban-close-btn'),
+      banTargetInput: document.getElementById('ban-target'),
+      banReasonInput: document.getElementById('ban-reason'),
+      banBtn: document.getElementById('ban-btn'),
+      unbanBtn: document.getElementById('unban-btn'),
+      banStatus: document.getElementById('ban-status')
+    });
+
+    function isTypingTarget(target) {
+      return !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+    }
+
+    function normalizeBanKey(value) {
+      return normalizeUsername(value).toLowerCase().replace(/[^a-z0-9_-]+/g, '_');
+    }
+
+    function getSectionModuleId(section) {
+      const map = {
+        chat: 'module-chat',
+        session: 'module-stats',
+        globalstats: 'module-globalstats',
+        map: 'module-map',
+        leaderboard: 'module-leaderboard',
+        activity: 'module-activity'
+      };
+      return map[section] || 'module-chat';
+    }
+
+    function setMobileSection(section) {
+      const next = section || 'chat';
+      state.currentMobileSection = next;
+      el.sidebar.dataset.mobileSection = next;
+      document.querySelectorAll('#mobile-quickbar .quick-btn').forEach(btn => btn.classList.remove('active'));
+      const activeMap = {
+        chat: el.quickChat,
+        session: el.quickSession,
+        globalstats: el.quickGlobalStats,
+        map: el.quickMap,
+        leaderboard: el.quickLeaderboard,
+        activity: el.quickActivity,
+        palette: el.quickPalette,
+        center: el.quickCenter
+      };
+      if (activeMap[next]) activeMap[next].classList.add('active');
+      if (next === 'palette') {
+        setMobilePaletteVisible(true);
+      }
+      if (next === 'center') {
+        centerCanvas();
+      }
+      if (isMobileLayout() && next !== 'palette' && next !== 'center') {
+        const moduleId = getSectionModuleId(next);
+        const target = document.getElementById(moduleId);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function updatePaintModeUI() {
+      el.cooldownBar.style.width = '100%';
+      el.cooldownText.textContent = 'Pintura continua';
+      el.cooldownValue.textContent = '∞';
+    }
+
+    function updateTopStats() {
+      const activeUsers = Number(state.activeUserCount || 0);
+      const totalPlaced = Number(state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS);
+      const contributors = Number(state.contributorCount || GLOBAL_STATS_SEED_CONTRIBUTORS);
+      el.statMine.textContent = formatNumber(state.myPixels);
+      el.statTotal.textContent = formatNumber(totalPlaced);
+      el.statOnline.textContent = formatNumber(activeUsers);
+      el.statUnique.textContent = formatNumber(contributors);
+      el.statRate.textContent = formatNumber(state.pixelRate);
+      el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
+      el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
+      el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
+      el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
+      if (el.mobileStatOnline) el.mobileStatOnline.textContent = formatNumber(activeUsers);
+      if (el.mobileStatTotal) el.mobileStatTotal.textContent = formatNumber(totalPlaced);
+      if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(state.pixelRate)}/min`;
+      if (el.mobileStatUnique) el.mobileStatUnique.textContent = formatNumber(contributors);
+      if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent || '00:00:00';
+      el.minimapZoom.textContent = `${state.scale.toFixed(1)}×`;
+      updatePaintModeUI();
+    }
+
+    function updateCooldownUI() {
+      updatePaintModeUI();
+    }
+
+    function syncPaletteVisibilityUI() {
+      const mobile = isMobileLayout();
+      const visible = !mobile || state.paletteVisibleMobile;
+      if (el.uiBottom) el.uiBottom.classList.toggle('mobile-hidden', mobile && !state.paletteVisibleMobile);
+      if (el.quickPalette) {
+        el.quickPalette.classList.toggle('active', mobile ? state.paletteVisibleMobile : true);
+        el.quickPalette.setAttribute('aria-pressed', String(visible));
+        el.quickPalette.title = mobile ? (state.paletteVisibleMobile ? 'Ocultar paleta' : 'Mostrar paleta') : 'Paleta';
+      }
+    }
+
+    function setMobilePaletteVisible(visible, persist = true) {
+      state.paletteVisibleMobile = !!visible;
+      if (persist) {
+        try { localStorage.setItem('nf_palette_visible_mobile', state.paletteVisibleMobile ? '1' : '0'); } catch {}
+      }
+      syncPaletteVisibilityUI();
+    }
+
+    function toggleMobilePalette() {
+      setMobilePaletteVisible(!state.paletteVisibleMobile);
+    }
+
+    function toggleSidebar() {
+      if (el.sidebar.classList.contains('show')) {
+        closeSidebar();
+      } else {
+        openSidebar(state.currentMobileSection || 'chat');
+      }
+    }
+
+    function openSidebar(section = 'chat') {
+      el.sidebar.classList.add('show');
+      el.mobileMenuBtn.classList.add('active');
+      setMobileSection(section);
+      if (!isMobileLayout()) {
+        const moduleId = getSectionModuleId(section);
+        document.getElementById(moduleId)?.scrollIntoView({ behavior:'smooth', block:'start' });
+      }
+    }
+
+    function closeSidebar() {
+      el.sidebar.classList.remove('show');
+      el.mobileMenuBtn.classList.remove('active');
+    }
+
+    function openBannedModal(record, fallbackReason) {
+      state.banned = true;
+      state.banInfo = record || null;
+      const reason = record?.reason || fallbackReason || 'Sin razón especificada';
+      const by = record?.bannedBy || 'admin';
+      const when = record?.bannedAt ? formatShortTime(record.bannedAt) : 'desconocido';
+      if (el.banMessage) el.banMessage.textContent = `Tu acceso ha sido suspendido. Razón: ${reason}`;
+      if (el.banDetail) el.banDetail.textContent = `Sanción aplicada por ${by} · ${when}.`;
+      hideAllModals();
+      showModal(el.modalBanned);
+      stopPaintLoop();
+      el.chatInput.disabled = true;
+    }
+
+    async function fetchBanRecord(targetUid, targetUsername) {
+      const normalized = normalizeBanKey(targetUsername || '');
+      const queries = [];
+      if (targetUid) queries.push(db.ref(`${BANS_PATH}/${targetUid}`).once('value'));
+      if (normalized) queries.push(db.ref(`${USERNAME_BANS_PATH}/${normalized}`).once('value'));
+      if (!queries.length) return null;
+      const results = await Promise.allSettled(queries);
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value && result.value.exists && result.value.exists()) {
+          return result.value.val();
+        }
+      }
+      return null;
+    }
+
+    async function verifyBanStatusForIdentity(targetUid, targetUsername) {
+      const now = Date.now();
+      if (now - Number(state.lastBanLookupAt || 0) < BAN_LOOKUP_TTL && state.banned) return true;
+      state.lastBanLookupAt = now;
+      const record = await fetchBanRecord(targetUid, targetUsername).catch(() => null);
+      if (record && record.active !== false) {
+        openBannedModal(record, record.reason);
+        return true;
+      }
+      return false;
+    }
+
+    function setBanStatus(text, kind = '') {
+      if (!el.banStatus) return;
+      el.banStatus.textContent = text;
+      el.banStatus.style.color = kind === 'bad' ? 'var(--bad)' : kind === 'good' ? 'var(--good)' : 'var(--dim)';
+    }
+
+    async function resolveBanTarget(rawTarget) {
+      const target = normalizeUsername(rawTarget);
+      if (!target) return null;
+      const usersSnap = await db.ref(USERS_PATH).once('value');
+      const users = usersSnap.val() || {};
+      const lowered = normalizeBanKey(target);
+
+      for (const [uid, user] of Object.entries(users)) {
+        const userName = normalizeUsername(user?.username || '');
+        if (uid === target || normalizeBanKey(userName) === lowered) {
+          return { uid, username: userName || target };
+        }
+      }
+
+      return { uid: target, username: target };
+    }
+
+    async function banUserByTarget() {
+      const rawTarget = normalizeUsername(el.banTargetInput?.value || '');
+      const reason = normalizeActivityText(el.banReasonInput?.value || '', 120);
+      if (!rawTarget) {
+        setBanStatus('Escribe un UID o nombre de usuario.', 'bad');
+        el.banTargetInput?.focus();
+        return;
+      }
+      if (reason.length < 3) {
+        setBanStatus('La razón es obligatoria.', 'bad');
+        el.banReasonInput?.focus();
+        return;
+      }
+      const resolved = await resolveBanTarget(rawTarget);
+      if (!resolved) {
+        setBanStatus('No se pudo resolver el objetivo.', 'bad');
+        return;
+      }
+      const record = {
+        uid: resolved.uid,
+        username: resolved.username,
+        reason,
+        bannedBy: state.username || 'admin',
+        bannedAt: Date.now(),
+        active: true
+      };
+      const updates = {};
+      updates[`${BANS_PATH}/${resolved.uid}`] = record;
+      updates[`${USERNAME_BANS_PATH}/${normalizeBanKey(resolved.username)}`] = record;
+      await db.ref().update(updates);
+      setBanStatus(`Ban aplicado a ${resolved.username}.`, 'good');
+      logActivity({
+        type: 'ban',
+        username: state.username || 'admin',
+        target: resolved.username,
+        reason,
+        ts: Date.now(),
+        scope: resolved.uid
+      });
+      if (normalizeBanKey(resolved.username) === normalizeBanKey(state.username) || resolved.uid === ensureUid()) {
+        openBannedModal(record, reason);
+      }
+    }
+
+    async function unbanUserByTarget() {
+      const rawTarget = normalizeUsername(el.banTargetInput?.value || '');
+      if (!rawTarget) {
+        setBanStatus('Escribe un UID o nombre de usuario para desbanear.', 'bad');
+        return;
+      }
+      const resolved = await resolveBanTarget(rawTarget);
+      if (!resolved) {
+        setBanStatus('No se pudo resolver el objetivo.', 'bad');
+        return;
+      }
+      const updates = {};
+      updates[`${BANS_PATH}/${resolved.uid}`] = null;
+      updates[`${USERNAME_BANS_PATH}/${normalizeBanKey(resolved.username)}`] = null;
+      await db.ref().update(updates);
+      setBanStatus(`Desbaneado ${resolved.username}.`, 'good');
+      logActivity({
+        type: 'unban',
+        username: state.username || 'admin',
+        target: resolved.username,
+        reason: 'Sanción retirada',
+        ts: Date.now(),
+        scope: resolved.uid
+      });
+      if (state.banned && normalizeBanKey(resolved.username) === normalizeBanKey(state.username)) {
+        state.banned = false;
+        state.banInfo = null;
+        hideModal(el.modalBanned);
+      }
+    }
+
+    function startPaintLoop(mode = 'manual') {
+      if (state.paintLoopId) return;
+      const tick = () => {
+        if (state.banned) {
+          stopPaintLoop();
+          return;
+        }
+        if ((state.spaceHeld || state.touchPainting) && state.hoverPoint) {
+          commitPixelAt(state.hoverPoint.clientX, state.hoverPoint.clientY, mode);
+        }
+      };
+      state.paintLoopId = setInterval(tick, PAINT_REPEAT_MS);
+      tick();
+    }
+
+    function stopPaintLoop() {
+      if (state.paintLoopId) {
+        clearInterval(state.paintLoopId);
+        state.paintLoopId = null;
+      }
+      state.touchPainting = false;
+    }
+
+    function commitPixelAt(clientX, clientY, source = 'manual') {
+      if (state.banned) return;
+      if (!state.username) { showModal(el.modalUsername); return; }
+      const { x, y } = getCanvasCoords(clientX, clientY);
+      if (x < 0 || x >= RES || y < 0 || y >= RES) return;
+
+      const key = `${x}_${y}`;
+      const ts = Date.now();
+      const user = state.username;
+      const color = state.activeColor;
+      const uid = ensureUid();
+
+      state.popQueue.set(key, { username: user, color, ts });
+
+      const updates = {};
+      updates[`${BOARD_PATH}/${key}`] = {
+        color,
+        username: user,
+        uid,
+        ts,
+        source
+      };
+      updates[`${USER_STATS_PATH}/${uid}/lastPixelAt`] = ts;
+      updates[`${USER_STATS_PATH}/${uid}/username`] = user;
+      updates[`${USERS_PATH}/${uid}/username`] = user;
+      updates[`${USERS_PATH}/${uid}/lastSeen`] = ts;
+      updates[`${USERS_PATH}/${uid}/online`] = true;
+
+      db.ref().update(updates).then(() => {
+        const userPixelsRef = db.ref(`${USER_STATS_PATH}/${uid}/pixels`);
+        userPixelsRef.transaction(v => (Number(v) || 0) + 1).then(result => {
+          if (result && result.committed && Number(result.snapshot.val()) === 1) {
+            db.ref(`${GLOBAL_STATS_PATH}/contributorsCount`).transaction(v => (Number(v) || 0) + 1);
+          }
+        }).catch(() => {});
+        db.ref(`${GLOBAL_STATS_PATH}/totalPixelsPlaced`).transaction(v => (Number(v) || 0) + 1).catch(() => {});
+        state.myPixels += 1;
+        localStorage.setItem('nf_my_pixels', String(state.myPixels));
+        el.statMine.textContent = formatNumber(state.myPixels);
+        if (!state.settings.trackingEnabled || !state.isAuthorized) playLocalPixelSound();
+        registerRecentEvent(ts);
+        logActivity({
+          type: 'pixel',
+          username: user,
+          color,
+          x,
+          y,
+          ts,
+          scope: source
+        });
+        updateTopStats();
+      }).catch(err => {
+        state.popQueue.delete(key);
+        console.error('No se pudo colocar pixel:', err);
+      });
+    }
+
+    function handlePixelCommit(input) {
+      commitPixelAt(input.clientX, input.clientY, 'click');
+    }
+
+    function triggerCooldown() {
+      updatePaintModeUI();
+    }
+
+    async function confirmUsername() {
+      const name = normalizeUsername(el.usernameInput.value);
+      if (!name) {
+        el.usernameInput.focus();
+        el.usernameInput.style.borderColor = 'var(--bad)';
+        return;
+      }
+      const uid = ensureUid();
+      const banned = await verifyBanStatusForIdentity(uid, name);
+      if (banned) return;
+      state.username = name;
+      localStorage.setItem('nf_username', name);
+      updateUsernameBadge();
+      hideModal(el.modalUsername);
+      db.ref(`${USERS_PATH}/${uid}`).update({ username: name, createdAt: Date.now(), lastSeen: Date.now(), online: true });
+      logActivity({
+        type: 'join',
+        username: name,
+        ts: Date.now(),
+        scope: 'sesión'
+      });
+      el.chatInput.disabled = false;
+      el.chatInput.focus();
+      if (state.settings.usernameRequired) el.tlStatus.textContent = `Usuario configurado como ${name}.`;
+    }
+
+    function sendChatMessage() {
+      if (state.banned) return;
+      if (!state.username) { showModal(el.modalUsername); return; }
+      const content = el.chatInput.value.trim();
+      if (!content) return;
+      const now = Date.now();
+      const msg = {
+        content: content.slice(0, 80),
+        username: state.username,
+        uid: ensureUid(),
+        time: now,
+        clientId: ensureUid()
+      };
+      db.ref(MESSAGES_PATH).push(msg).then(() => {
+        el.chatInput.value = '';
+        playSendSound();
+        db.ref(`${USER_STATS_PATH}/${ensureUid()}/messages`).transaction(v => (v || 0) + 1);
+        db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: state.username, lastSeen: Date.now(), online: true });
+      }).catch(err => console.error('Error enviando mensaje:', err));
+    }
+
+    function renderChatMessage(key, m) {
+      if (!key || state.renderedMessageKeys.has(key)) return;
+      state.renderedMessageKeys.add(key);
+      const div = document.createElement('div');
+      div.className = 'msg';
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const user = document.createElement('span');
+      user.className = 'user';
+      user.textContent = m.username || `USR_${String(key || '').slice(-4)}`;
+      const time = document.createElement('span');
+      time.className = 'time';
+      time.textContent = m.time ? formatShortTime(m.time) : '';
+      const text = document.createElement('div');
+      text.className = 'text';
+      text.textContent = m.content || '';
+      meta.appendChild(user);
+      meta.appendChild(time);
+      div.appendChild(meta);
+      div.appendChild(text);
+      el.chatArea.appendChild(div);
+      el.chatArea.scrollTop = el.chatArea.scrollHeight;
+    }
+
+    function attachChatListeners() {
+      if (state.chatListenerAttached) return;
+      state.chatListenerAttached = true;
+      db.ref(MESSAGES_PATH).limitToLast(50).on('child_added', snap => {
+        const m = snap.val() || {};
+        renderChatMessage(snap.key, m);
+        const messageTs = Number(m.time) || Date.now();
+        const isOwnMessage = m.uid && m.uid === ensureUid();
+        const isNewMessage = messageTs > state.lastMessageTime;
+        state.lastMessageTime = Math.max(state.lastMessageTime, messageTs);
+        if (!isOwnMessage && isNewMessage) playMessageSound();
+      });
+    }
+
+    function syncPresence() {
+      const ref = db.ref(`${PRESENCE_PATH}/${ensureUid()}`);
+      ref.set({ uid: ensureUid(), username: state.username || 'Anónimo', lastSeen: Date.now(), online: true });
+      ref.onDisconnect().remove();
+    }
+
+    function recomputeActiveUsers() {
+      const now = Date.now();
+      const users = state.usersSnapshot || {};
+      const active = Object.values(users).filter(u => {
+        if (!u) return false;
+        const lastSeen = Number(u.lastSeen || u.createdAt || 0);
+        return (now - lastSeen) <= ACTIVE_USER_WINDOW_MS && u.online !== false;
+      }).length;
+      state.activeUserCount = active;
+      state.onlineCount = active;
+      updateTopStats();
+    }
+
+    function syncUsers() {
+      const uid = ensureUid();
+      const ref = db.ref(`${USERS_PATH}/${uid}`);
+      const heartbeat = () => {
+        ref.update({ username: state.username || 'Anónimo', lastSeen: Date.now(), online: true, sessionStartedAt: state.sessionStartedAt });
+      };
+      heartbeat();
+      ref.onDisconnect().update({ online: false, lastSeen: Date.now() });
+      if (state.heartbeatIntervalId) clearInterval(state.heartbeatIntervalId);
+      state.heartbeatIntervalId = setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
+      db.ref(USERS_PATH).off('value');
+      db.ref(USERS_PATH).on('value', snap => {
+        state.usersSnapshot = snap.val() || {};
+        recomputeActiveUsers();
+      });
+    }
+
+    function syncGlobalStats() {
+      if (state.globalStatsListenerAttached) return;
+      state.globalStatsListenerAttached = true;
+
+      const totalRef = db.ref(`${GLOBAL_STATS_PATH}/totalPixelsPlaced`);
+      const contributorsRef = db.ref(`${GLOBAL_STATS_PATH}/contributorsCount`);
+
+      totalRef.transaction(v => (v == null ? GLOBAL_STATS_SEED_TOTAL_PIXELS : Number(v)));
+      contributorsRef.transaction(v => (v == null ? GLOBAL_STATS_SEED_CONTRIBUTORS : Number(v)));
+
+      totalRef.on('value', snap => {
+        state.totalPixelsPlaced = Number(snap.val()) || GLOBAL_STATS_SEED_TOTAL_PIXELS;
+        localStorage.setItem('nf_total_pixels', String(state.totalPixelsPlaced));
+        updateTopStats();
+      });
+
+      contributorsRef.on('value', snap => {
+        state.contributorCount = Number(snap.val()) || GLOBAL_STATS_SEED_CONTRIBUTORS;
+        localStorage.setItem('nf_contributor_count', String(state.contributorCount));
+        updateTopStats();
+      });
+    }
+
+    function syncSettings() {
+      db.ref(SETTINGS_PATH).off('value');
+      db.ref(SETTINGS_PATH).on('value', snap => {
+        const incoming = snap.val() || {};
+        const trackingOn = !!state.isAuthorized && !!incoming.trackingEnabled;
+        state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: trackingOn };
+        el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
+        el.toggleTracking.checked = !!state.settings.trackingEnabled;
+        el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
+        if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
+        updateTopStats();
+        el.tlStatus.textContent = `Ajustes sincronizados · tracking ${state.settings.trackingEnabled ? 'activo' : 'inactivo'} · timestamp ${state.settings.timestampEnabled ? 'visible' : 'oculto'}.`;
+      });
+    }
+
+    function updateSettingsDisplay() {
+      el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
+      el.toggleTracking.checked = !!state.settings.trackingEnabled;
+      el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
+      if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
+      el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
+      el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
+      el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
+      el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
+      updateTopStats();
+    }
+
+    function updateUsernameBadge() {
+      el.statUser.textContent = state.username || 'Sin asignar';
+      el.headerSubtitle.textContent = state.username ? `Conectado como ${state.username}` : 'Lienzo colaborativo en tiempo real';
+      el.chatInput.disabled = !state.username || state.banned;
+      el.chatInput.placeholder = state.banned
+        ? 'Acceso suspendido'
+        : state.username
+          ? `Enviar mensaje como ${state.username}...`
+          : 'Debes crear un usuario primero';
+    }
+
+    async function refreshLeaderboard() {
+      try {
+        const [statsSnap, usersSnap] = await Promise.all([
+          db.ref(USER_STATS_PATH).once('value'),
+          db.ref(USERS_PATH).once('value')
+        ]);
+        const stats = statsSnap.val() || {};
+        const users = usersSnap.val() || {};
+        const items = Object.entries(stats).map(([uid, value]) => {
+          const profile = users[uid] || {};
+          const username = normalizeUsername((value && value.username) || profile.username || '') || 'Anónimo';
+          return {
+            uid,
+            username,
+            pixels: Number(value && value.pixels) || 0,
+            messages: Number(value && value.messages) || 0
+          };
+        }).sort((a, b) => b.pixels - a.pixels);
+        state.leaderboardCache = items;
+        renderLeaderboard();
+      } catch {
+        el.leaderboardList.innerHTML = '<div class="small-note">Error cargando la clasificación.</div>';
+      }
+    }
+
+    function loadBoardCacheAndShow() {
+      const cached = loadBoardCache();
+      if (cached) {
+        setBoardFromObject(cached);
+        const keys = Object.keys(cached);
+        state.knownBoardKeys = new Set(keys);
+        state.boardCount = keys.length;
+        state.loadingDone = keys.length;
+        updateTopStats();
+        updateLoadingUI();
+      }
+    }
+
+    function processBoardSnapshot(boardSnap) {
+      const data = boardSnap.val() || {};
+      const entries = Object.entries(data);
+      state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
+      updateLoadingUI();
+      ensureWhiteCanvas();
+
+      const chunkSize = 220;
+      let index = 0;
+
+      const processChunk = () => {
+        const end = Math.min(index + chunkSize, entries.length);
+        const startIndex = index;
+
+        for (; index < end; index++) {
+          const [key, raw] = entries[index];
+          const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
+          const [x, y] = key.split('_').map(Number);
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            setPixel(x, y, color);
+            state.knownBoardKeys.add(key);
+          }
+        }
+
+        state.boardCount = state.knownBoardKeys.size;
+        addLoadingDone(index - startIndex);
+        scheduleCanvasFlush();
+        updateTopStats();
+
+        if (index < entries.length) {
+          requestAnimationFrame(processChunk);
+        } else {
+          persistBoardCache(data);
+          state.lastBoardSyncAt = Date.now();
+          finishBoardLoading();
+        }
+      };
+
+      requestAnimationFrame(processChunk);
+    }
+
+    function attachBoardListeners() {
+      if (state.boardListenerAttached) return;
+      state.boardListenerAttached = true;
+      const boardRef = db.ref(BOARD_PATH);
+      boardRef.on('child_added', snap => {
+        const key = snap.key;
+        if (state.knownBoardKeys.has(key)) return;
+        state.knownBoardKeys.add(key);
+        state.boardCount += 1;
+        applyRealtimeBoardChange(key, snap.val());
+        updateTopStats();
+      });
+      boardRef.on('child_changed', snap => {
+        applyRealtimeBoardChange(snap.key, snap.val());
+        updateTopStats();
+      });
+      boardRef.on('child_removed', snap => {
+        const key = snap.key;
+        if (state.knownBoardKeys.has(key)) {
+          state.knownBoardKeys.delete(key);
+          state.boardCount = Math.max(0, state.boardCount - 1);
+        }
+        const [x, y] = String(key).split('_').map(Number);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          setPixel(x, y, '#ffffff');
+          scheduleCanvasFlush();
+        }
+        updateTopStats();
+      });
+    }
+
+    function applyRealtimeBoardChange(key, rawValue) {
+      const [x, y] = String(key).split('_').map(Number);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+      const color = typeof rawValue === 'string' ? rawValue : (rawValue && typeof rawValue.color === 'string' ? rawValue.color : '#ffffff');
+      setPixel(x, y, color);
+      scheduleCanvasFlush();
+
+      const pending = state.popQueue.get(key);
+      const isLocalEcho = !!pending && pending.color === color && (Date.now() - pending.ts) < 5000;
+      const localName = isLocalEcho ? pending.username : '';
+
+      announcePixel(x, y, color, localName, isLocalEcho);
+
+      if (isLocalEcho) {
+        state.popQueue.delete(key);
+      }
+      return true;
+    }
+
+    function appendLoadedMessagesOnce(snapshotVal) {
+      const data = snapshotVal || {};
+      Object.entries(data).sort((a, b) => (Number(a[1]?.time) || 0) - (Number(b[1]?.time) || 0)).forEach(([key, m]) => {
+        state.renderedMessageKeys.add(key);
+        renderChatMessage(key, m || {});
+      });
+      const maxTs = Object.values(data).reduce((acc, m) => Math.max(acc, Number(m && m.time) || 0), 0);
+      state.lastMessageTime = Math.max(state.lastMessageTime, maxTs);
+    }
+
+    async function loadFirebaseResources() {
+      loadBoardCacheAndShow();
+      setLoadingTotal(4);
+
+      const settingsPromise = db.ref(SETTINGS_PATH).once('value').then(s => {
+        state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) };
+        addLoadingDone(1);
+      }).catch(() => addLoadingDone(1));
+
+      const usersPromise = db.ref(USERS_PATH).once('value').then(s => {
+        state.usersSnapshot = s.val() || {};
+        recomputeActiveUsers();
+        addLoadingDone(1);
+      }).catch(() => addLoadingDone(1));
+
+      const messagesPromise = db.ref(MESSAGES_PATH).limitToLast(50).once('value').then(s => {
+        el.chatArea.innerHTML = '';
+        state.renderedMessageKeys = new Set();
+        appendLoadedMessagesOnce(s.val() || {});
+        el.chatArea.scrollTop = el.chatArea.scrollHeight;
+        addLoadingDone(1);
+      }).catch(() => addLoadingDone(1));
+
+      const globalStatsPromise = Promise.all([
+        db.ref(`${GLOBAL_STATS_PATH}/totalPixelsPlaced`).once('value'),
+        db.ref(`${GLOBAL_STATS_PATH}/contributorsCount`).once('value')
+      ]).then(([totalSnap, contributorsSnap]) => {
+        state.totalPixelsPlaced = Number(totalSnap.val()) || state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS;
+        state.contributorCount = Number(contributorsSnap.val()) || state.contributorCount || GLOBAL_STATS_SEED_CONTRIBUTORS;
+        localStorage.setItem('nf_total_pixels', String(state.totalPixelsPlaced));
+        localStorage.setItem('nf_contributor_count', String(state.contributorCount));
+        addLoadingDone(1);
+      }).catch(() => addLoadingDone(1));
+
+      const boardPromise = db.ref(BOARD_PATH).once('value').then(snap => {
+        processBoardSnapshot(snap);
+      }).catch(() => {
+        ensureWhiteCanvas();
+        scheduleCanvasFlush();
+        finishBoardLoading();
+      });
+
+      await Promise.allSettled([settingsPromise, usersPromise, messagesPromise, globalStatsPromise]);
+      await boardPromise;
+
+      attachBoardListeners();
+      attachChatListeners();
+      syncSettings();
+      syncPresence();
+      syncUsers();
+      syncGlobalStats();
+      refreshLeaderboard();
+      updateTopStats();
+    }
+
+    function performAdminLogin() {
+      if (el.adminKeyInput.value === "Isaias2013Cerrado") {
+        state.isAuthorized = true;
+        el.adminEntry.classList.add('active');
+        db.ref(SETTINGS_PATH).once('value').then(s => {
+          const incoming = s.val() || {};
+          state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: !!incoming.trackingEnabled };
+          updateSettingsDisplay();
+          hideAllModals();
+          openAdminDashboard();
+        });
+        el.adminKeyInput.value = '';
+      } else {
+        alert("Acceso Denegado.");
+      }
+    }
+
+    function executeWipe() {
+      if (!confirm("¿ELIMINAR TODO EL LIENZO? Esta acción no se puede deshacer.")) return;
+      db.ref(BOARD_PATH).remove().then(() => {
+        state.knownBoardKeys.clear();
+        state.boardCount = 0;
+        ensureWhiteCanvas();
+        scheduleCanvasFlush();
+        persistBoardCache({});
+        el.activityList.innerHTML = '<div class="small-note">Sin actividad todavía.</div>';
+        updateTopStats();
+        el.tlStatus.textContent = 'Lienzo formateado correctamente.';
+        hideAllModals();
+        refreshLeaderboard();
+      }).catch(err => {
+        console.error(err);
+        alert('No se pudo formatear el lienzo.');
+      });
+    }
+
+    function saveAdminSettings() {
+      const patch = {
+        timestampEnabled: !!el.toggleTimestamp.checked,
+        trackingEnabled: !!el.toggleTracking.checked,
+        timelapseIntervalSec: Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec)
+      };
+      state.settings = { ...state.settings, ...patch };
+      saveSettingsToFirebase(patch)
+        .then(() => {
+          el.tlStatus.textContent = 'Ajustes guardados y sincronizados.';
+          updateTopStats();
+        })
+        .catch(err => {
+          console.error(err);
+          el.tlStatus.textContent = 'No se pudieron guardar los ajustes.';
+        });
+    }
+
+    function openAdminDashboard() {
+      updateSettingsDisplay();
+      if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
+      showModal(el.modalDashboard);
+      setBanStatus('Introduce el objetivo y una razón para aplicar una sanción.', '');
+    }
+
+    function openAdminLogin() {
+      showModal(el.modalLogin);
+    }
+
+    function updateSessionClockMobile() {
+      if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent || '00:00:00';
+    }
+
+    function startSessionClock() {
+      const start = Date.now();
+      setInterval(() => {
+        const total = Math.floor((Date.now() - start) / 1000);
+        const h = String(Math.floor(total / 3600)).padStart(2, '0');
+        const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+        const s = String(total % 60).padStart(2, '0');
+        el.sessionClock.textContent = `${h}:${m}:${s}`;
+        updateSessionClockMobile();
+      }, 1000);
+    }
+
+    function initUiHooks() {
+      document.addEventListener('pointerdown', e => {
+        const target = e.target.closest('button, input[type="checkbox"]');
+        if (!target || target.disabled || target.classList.contains('color-box')) return;
+        playClickSound();
+      }, true);
+
+      el.mobileMenuBtn.addEventListener('click', () => toggleSidebar());
+      el.chatBtn.addEventListener('click', () => openSidebar('chat'));
+      el.statsBtn.addEventListener('click', () => openSidebar('session'));
+      el.centerBtn.addEventListener('click', centerCanvas);
+      el.sidebarCloseBtn.addEventListener('click', closeSidebar);
+
+      el.quickChat.addEventListener('click', () => openSidebar('chat'));
+      el.quickSession.addEventListener('click', () => openSidebar('session'));
+      el.quickGlobalStats.addEventListener('click', () => openSidebar('globalstats'));
+      el.quickMap.addEventListener('click', () => openSidebar('map'));
+      el.quickLeaderboard.addEventListener('click', () => openSidebar('leaderboard'));
+      el.quickActivity.addEventListener('click', () => openSidebar('activity'));
+      el.quickCenter.addEventListener('click', () => { centerCanvas(); openSidebar(state.currentMobileSection || 'chat'); });
+      el.quickPalette.addEventListener('click', () => {
+        if (isMobileLayout()) {
+          toggleMobilePalette();
+        } else {
+          el.uiBottom.scrollIntoView({ behavior:'smooth', block:'start' });
+        }
+      });
+
+      el.usernameInput.addEventListener('input', syncUiWithUsername);
+      el.usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmUsername(); });
+      el.usernameSaveBtn.addEventListener('click', confirmUsername);
+
+      el.adminEntry.addEventListener('click', () => state.isAuthorized ? openAdminDashboard() : openAdminLogin());
+      el.adminLoginBtn.addEventListener('click', performAdminLogin);
+      el.adminCancelBtn.addEventListener('click', hideAllModals);
+      el.closeDashboardBtn.addEventListener('click', hideAllModals);
+      el.wipeBtn.addEventListener('click', executeWipe);
+      el.refreshSettingsBtn.addEventListener('click', () => {
+        db.ref(SETTINGS_PATH).once('value').then(s => {
+          state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) };
+          updateSettingsDisplay();
+          el.tlStatus.textContent = 'Ajustes recargados.';
+        });
+      });
+      el.saveSettingsBtn.addEventListener('click', saveAdminSettings);
+      el.exportStatsBtn.addEventListener('click', () => { updateTopStats(); refreshLeaderboard(); });
+      el.tlToggleBtn.addEventListener('click', toggleTimelapseCapture);
+      el.banBtn.addEventListener('click', banUserByTarget);
+      el.unbanBtn.addEventListener('click', unbanUserByTarget);
+      el.banCloseBtn.addEventListener('click', () => hideModal(el.modalBanned));
+
+      el.toggleTimestamp.addEventListener('change', () => {
+        state.settings.timestampEnabled = el.toggleTimestamp.checked;
+        el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
+        el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
+      });
+      el.toggleTracking.addEventListener('change', () => {
+        state.settings.trackingEnabled = el.toggleTracking.checked;
+        el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
+        el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
+      });
+      el.tlFreqInput.addEventListener('input', () => {
+        const v = Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec);
+        el.tlFreqInput.value = String(v);
+      });
+      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
+
+      const activePointers = new Map();
+
+      function setPointerPosition(e) {
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+
+      function clearPointerPosition(e) {
+        activePointers.delete(e.pointerId);
+      }
+
+      function getPointerPoints() {
+        return Array.from(activePointers.values());
+      }
+
+      function isInteractiveUiTarget(target) {
+        return el.sidebar.contains(target) || document.querySelector('.modal-overlay.visible')?.contains(target);
+      }
+
+      function endViewportInteraction(e) {
+        if (!activePointers.has(e.pointerId)) return;
+        const hadDrag = state.dragging;
+        const hadMove = state.dragMoved;
+        const point = { x: e.clientX, y: e.clientY };
+
+        clearPointerPosition(e);
+
+        if (activePointers.size < 2) {
+          state.pinchDistance = null;
+        }
+
+        if (activePointers.size === 0) {
+          if (state.touchPainting || state.spaceHeld) {
+            stopPaintLoop();
+          } else if (hadDrag && !hadMove && e.pointerType === 'mouse') {
+            handlePixelCommit(e);
+          }
+          state.dragging = false;
+          state.dragMoved = false;
+          state.pinchDistance = null;
+          state.mouseIsDown = false;
+        }
+
+        updateCoordsOverlay(point.x, point.y);
+      }
+
+      el.viewport.addEventListener('pointerdown', e => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (isInteractiveUiTarget(e.target)) return;
+        unlockAudio();
+
+        setPointerPosition(e);
+        try { el.viewport.setPointerCapture(e.pointerId); } catch {}
+
+        if (activePointers.size === 2) {
+          const [p1, p2] = getPointerPoints();
+          state.pinchDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+          state.dragging = false;
+          state.dragMoved = true;
+          return;
+        }
+
+        state.mouseIsDown = true;
+        state.dragMoved = false;
+        state.lastX = e.clientX;
+        state.lastY = e.clientY;
+        updateCoordsOverlay(e.clientX, e.clientY);
+
+        if (e.pointerType === 'touch' || state.spaceHeld) {
+          state.touchPainting = e.pointerType === 'touch';
+          state.dragging = false;
+          startPaintLoop(e.pointerType === 'touch' ? 'touch' : 'space');
+          return;
+        }
+
+        state.dragging = true;
+      });
+
+      el.viewport.addEventListener('pointermove', e => {
+        if (isInteractiveUiTarget(e.target)) return;
+
+        if (!activePointers.has(e.pointerId)) {
+          if (e.pointerType === 'mouse' && !state.dragging) {
+            updateCoordsOverlay(e.clientX, e.clientY);
+          }
+          return;
+        }
+
+        setPointerPosition(e);
+
+        if (activePointers.size >= 2) {
+          const [p1, p2] = getPointerPoints();
+          const currentDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+          if (state.pinchDistance) {
+            const factor = currentDist / state.pinchDistance;
+            const midX = (p1.x + p2.x) / 2;
+            const midY = (p1.y + p2.y) / 2;
+            applyZoom(factor, midX, midY);
+          }
+          state.pinchDistance = currentDist;
+          state.dragging = false;
+          state.dragMoved = true;
+          updateCoordsOverlay(p1.x, p1.y);
+          return;
+        }
+
+        updateCoordsOverlay(e.clientX, e.clientY);
+
+        if (state.touchPainting || state.spaceHeld) {
+          startPaintLoop(e.pointerType === 'touch' ? 'touch' : 'space');
+          return;
+        }
+
+        if (!state.dragging) return;
+
+        const dist = Math.hypot(e.clientX - state.lastX, e.clientY - state.lastY);
+        if (dist > 3) state.dragMoved = true;
+
+        if (state.dragMoved) {
+          state.originX += e.clientX - state.lastX;
+          state.originY += e.clientY - state.lastY;
+          state.lastX = e.clientX;
+          state.lastY = e.clientY;
+          refreshCamera();
+        } else {
+          updateCoordsOverlay(e.clientX, e.clientY);
+        }
+      });
+
+      el.viewport.addEventListener('pointerup', endViewportInteraction);
+      el.viewport.addEventListener('pointercancel', endViewportInteraction);
+      el.viewport.addEventListener('lostpointercapture', () => {
+        activePointers.clear();
+        state.dragging = false;
+        state.dragMoved = false;
+        state.pinchDistance = null;
+        state.mouseIsDown = false;
+      });
+
+      el.viewport.addEventListener('pointerenter', e => {
+        if (e.pointerType === 'mouse') {
+          state.pointerOverCanvas = true;
+        }
+      });
+
+      el.viewport.addEventListener('pointerleave', () => {
+        state.pointerOverCanvas = false;
+        if (!state.dragging && activePointers.size === 0 && !state.spaceHeld && !state.touchPainting) {
+          state.hoverPoint = null;
+          el.pixelSelector.style.display = 'none';
+          el.coordsInfo.style.display = 'none';
+          stopPaintLoop();
+        }
+      });
+
+      window.addEventListener('keydown', e => {
+        if (isTypingTarget(e.target)) return;
+        if (e.code === 'Space' || e.key === ' ') {
+          e.preventDefault();
+          state.spaceHeld = true;
+          if (state.hoverPoint) startPaintLoop('space');
+        }
+        if (e.key === 'Escape') {
+          closeSidebar();
+          if (!state.isCapturing) hideAllModals();
+        }
+      });
+
+      window.addEventListener('keyup', e => {
+        if (e.code === 'Space' || e.key === ' ') {
+          state.spaceHeld = false;
+          if (!state.touchPainting) stopPaintLoop();
+        }
+      });
+
+      window.addEventListener('wheel', e => {
+        if (isInteractiveUiTarget(e.target)) return;
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 0.88 : 1.12;
+        applyZoom(factor, e.clientX, e.clientY);
+      }, { passive:false });
+
+      window.addEventListener('blur', () => {
+        state.dragging = false;
+        state.pinchDistance = null;
+        state.spaceHeld = false;
+        stopPaintLoop();
+      });
+    }
+
+    function initUsernameBoot() {
+      syncUiWithUsername();
+      if (state.username) {
+        el.usernameInput.value = state.username;
+        confirmUsername();
+        hideModal(el.modalUsername);
+      } else {
+        showModal(el.modalUsername);
+        el.usernameInput.focus();
+      }
+    }
+
+    function startSession() {
+      buildPalette();
+      syncPaletteVisibilityUI();
+      updateUsernameBadge();
+      updateCooldownUI(0, true);
+      clearRecentActivity();
+      renderLeaderboard();
+      centerCanvas();
+      startSessionClock();
+      initUsernameBoot();
+      loadFirebaseResources();
     }
     initUiHooks();
     startSession();
