@@ -137,49 +137,6 @@
     }
     .module-header .hint{font-size:.7rem;color:rgba(255,255,255,.55);font-weight:600;text-transform:none;letter-spacing:.1px}
     .mobile-close-btn{display:none;border:none;background:transparent;color:var(--bad);cursor:pointer;font-size:1rem;padding:0 6px;line-height:1}
-    .module-header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .module-hide-btn{
-      width:28px;height:28px;border-radius:9px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);
-      color:var(--text);display:grid;place-items:center;cursor:pointer;transition:transform .12s ease,background .12s ease,border-color .12s ease
-    }
-    .module-hide-btn:hover{transform:translateY(-1px);border-color:rgba(41,121,255,.45);background:rgba(41,121,255,.08)}
-    .module-hidden{display:none !important}
-    .loader-live-wrap{margin-top:14px}
-    .loader-live-toggle{
-      width:100%;height:40px;border-radius:11px;border:1px solid rgba(41,121,255,.35);background:rgba(41,121,255,.12);color:#fff;
-      font-weight:800;cursor:pointer;transition:transform .12s ease,filter .12s ease
-    }
-    .loader-live-toggle:hover{transform:translateY(-1px);filter:brightness(1.05)}
-    .loader-live-panel{
-      margin-top:12px;border:1px solid var(--border);border-radius:14px;background:rgba(0,0,0,.22);padding:12px
-    }
-    .loader-live-grid{display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:12px;align-items:start}
-    .loader-live-canvas-wrap{display:grid;gap:8px;justify-items:center}
-    #loader-live-canvas{
-      width:100%;max-width:180px;aspect-ratio:1/1;border-radius:12px;border:1px solid rgba(255,255,255,.08);
-      background:
-        linear-gradient(45deg, rgba(255,255,255,.18) 25%, transparent 25%),
-        linear-gradient(-45deg, rgba(255,255,255,.18) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, rgba(255,255,255,.18) 75%),
-        linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.18) 75%);
-      background-color:#ececec;
-      background-size:14px 14px;
-      background-position:0 0, 0 7px, 7px -7px, -7px 0px;
-      image-rendering:pixelated;image-rendering:crisp-edges
-    }
-    .loader-live-caption{font-size:.68rem;color:var(--dim);font-family:"Courier New",monospace;text-align:center}
-    .loader-live-side{min-width:0}
-    .loader-live-title{
-      font-size:.72rem;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:800;margin-bottom:8px
-    }
-    .loader-task-list{display:grid;gap:8px}
-    .loader-task-pill{
-      display:flex;justify-content:space-between;gap:12px;align-items:center;padding:9px 10px;border-radius:10px;
-      border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);font-size:.72rem;line-height:1.35
-    }
-    .loader-task-pill b{font-family:"Courier New",monospace;font-size:.68rem;color:var(--accent);text-transform:uppercase}
-    .loader-task-pill span{color:var(--text);text-align:right;word-break:break-word}
-    .quick-btn.brush-active{border-color:rgba(41,121,255,.5);background:rgba(41,121,255,.12);color:var(--accent)}
 
     .chat-module{min-height:440px;flex:1 1 440px}
     #chat-area{
@@ -448,6 +405,37 @@
       .palette-grid{grid-template-columns:repeat(5,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
       .cooldown-wrap{padding:0 8px 8px}
     }
+
+    .top-btn#session-btn{position:relative}
+    .top-btn#session-btn.active{background:rgba(41,121,255,.16);border-color:rgba(41,121,255,.55)}
+    .quick-btn.brush-on{border-color:rgba(41,121,255,.7);color:var(--accent);background:rgba(41,121,255,.14)}
+
+    #active-users-popover{
+      position:fixed;top:calc(var(--header-h) + 12px);right:18px;z-index:7200;width:min(92vw,320px);
+      background:rgba(14,14,14,.98);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
+      padding:12px 12px 10px;display:none;backdrop-filter:blur(16px)
+    }
+    #active-users-popover.visible{display:block}
+    .active-users-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;font-size:.75rem;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.9px}
+    #active-users-list{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto;padding-right:2px}
+    .active-user-item{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);font-size:.82rem;line-height:1.35}
+    .active-user-item strong{color:var(--text)}
+    .active-user-item span{display:block;color:var(--dim);font-size:.7rem;margin-top:3px}
+    .active-user-empty{padding:12px;border-radius:12px;border:1px dashed rgba(255,255,255,.1);color:var(--dim);font-size:.8rem}
+
+    .session-code-box{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);border-radius:14px;margin-bottom:14px}
+    .session-code-box strong{font-size:1.35rem;letter-spacing:3px;font-family:'Courier New',monospace;flex:1;word-break:break-all}
+    .session-code-box .action-btn{padding:10px 12px;white-space:nowrap}
+    .account-list{display:flex;flex-direction:column;gap:8px}
+    .account-chip{
+      display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);cursor:pointer;transition:transform .12s ease,border-color .12s ease,background .12s ease
+    }
+    .account-chip:hover{transform:translateY(-1px);border-color:rgba(41,121,255,.35);background:rgba(41,121,255,.08)}
+    .account-chip .meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .account-chip .meta strong{font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .account-chip .meta span{font-size:.68rem;color:var(--dim);font-family:'Courier New',monospace}
+    .account-chip .use{flex:0 0 auto;font-size:.68rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.4px}
   </style>
 </head>
 <body>
@@ -465,21 +453,6 @@
       </div>
       <div id="loader-status">cargando base de datos... [0 / 0]</div>
       <div id="loader-detail">Preparando recursos de Firebase...</div>
-      <div class="loader-live-wrap" id="loader-live-wrap">
-        <button class="loader-live-toggle" id="loader-live-toggle" type="button">Ver carga en vivo</button>
-        <div class="loader-live-panel" id="loader-live-panel" hidden>
-          <div class="loader-live-grid">
-            <div class="loader-live-canvas-wrap">
-              <canvas id="loader-live-canvas" width="125" height="125"></canvas>
-              <div class="loader-live-caption">Lienzo y pixeles en tiempo real</div>
-            </div>
-            <div class="loader-live-side">
-              <div class="loader-live-title">Estado de carga</div>
-              <div class="loader-task-list" id="loader-task-list"></div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -520,6 +493,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
           <span class="label">Centro</span>
         </button>
+        <button class="top-btn" id="session-btn" title="Login por código">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 12a4 4 0 0 0-8 0"></path><circle cx="12" cy="12" r="9"></circle><path d="M9 12h6"></path></svg>
+          <span class="label">ID</span>
+        </button>
         <button class="top-btn" id="mobile-menu-btn" title="Menú">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7H20M4 12H20M4 17H20"/></svg>
           <span class="label">Menú</span>
@@ -537,9 +514,8 @@
     <div class="glass-module chat-module" id="module-chat" data-mobile-section="chat">
       <div class="module-header">
         <span>Mensajes recientes</span>
-        <div class="module-header-actions">
+        <div style="display:flex;align-items:center;gap:8px">
           <span class="hint">Enter para enviar</span>
-          <button class="module-hide-btn" type="button" data-hide-target="module-chat" title="Ocultar interfaz">🙈</button>
           <button class="mobile-close-btn" id="sidebar-close-btn" aria-label="Cerrar menú">✖</button>
         </div>
       </div>
@@ -550,15 +526,12 @@
     <div class="glass-module" id="module-stats" data-mobile-section="session">
       <div class="module-header">
         <span>Datos de sesión</span>
-        <div class="module-header-actions">
-          <span class="hint">tiempo real</span>
-          <button class="module-hide-btn" type="button" data-hide-target="module-stats" title="Ocultar interfaz">🙈</button>
-        </div>
+        <span class="hint">tiempo real</span>
       </div>
       <div class="stats-module">
         <div class="stats-row"><span>Tu usuario</span><strong id="stat-user">Sin asignar</strong></div>
         <div class="stats-row"><span>Tus aportes</span><strong id="stat-mine">0</strong></div>
-        <div class="stats-row"><span>Resolución</span><strong id="stat-canvas-size">125×125 px</strong></div>
+        <div class="stats-row"><span>Resolución</span><strong>125×125 px</strong></div>
         <div class="stats-row"><span>Pintura</span><strong>Continua</strong></div>
         <div class="stats-row"><span>Tracking global</span><strong id="stat-tracking" class="warn">Desactivado</strong></div>
         <div class="stats-row"><span>Timestamp timelapse</span><strong id="stat-ts" class="good">Activo</strong></div>
@@ -569,10 +542,7 @@
     <div class="glass-module" id="module-globalstats" data-mobile-section="globalstats">
       <div class="module-header">
         <span>Estadísticas globales</span>
-        <div class="module-header-actions">
-          <span class="hint">solo móvil</span>
-          <button class="module-hide-btn" type="button" data-hide-target="module-globalstats" title="Ocultar interfaz">🙈</button>
-        </div>
+        <span class="hint">solo móvil</span>
       </div>
       <div class="stats-module">
         <div class="stats-row"><span>Usuarios activos</span><strong id="mobile-stat-online">0</strong></div>
@@ -586,10 +556,7 @@
     <div class="glass-module" id="module-map" data-mobile-section="map">
       <div class="module-header">
         <span>Minimapa</span>
-        <div class="module-header-actions">
-          <span class="hint">clic para centrar</span>
-          <button class="module-hide-btn" type="button" data-hide-target="module-map" title="Ocultar interfaz">🙈</button>
-        </div>
+        <span class="hint">clic para centrar</span>
       </div>
       <div class="minimap-wrap">
         <div class="minimap-frame">
@@ -605,10 +572,7 @@
     <div class="glass-module" id="module-leaderboard" data-mobile-section="leaderboard">
       <div class="module-header">
         <span>Top contribuidores</span>
-        <div class="module-header-actions">
-          <span class="hint">pixels colocados</span>
-          <button class="module-hide-btn" type="button" data-hide-target="module-leaderboard" title="Ocultar interfaz">🙈</button>
-        </div>
+        <span class="hint">pixels colocados</span>
       </div>
       <div class="leaderboard-list" id="leaderboard-list">
         <div class="small-note">Cargando clasificación...</div>
@@ -618,10 +582,7 @@
     <div class="glass-module" id="module-activity" data-mobile-section="activity">
       <div class="module-header">
         <span>Resumen en vivo</span>
-        <div class="module-header-actions">
-          <span class="hint">último pixel · chat · sanción</span>
-          <button class="module-hide-btn" type="button" data-hide-target="module-activity" title="Ocultar interfaz">🙈</button>
-        </div>
+        <span class="hint">último pixel · chat · sanción</span>
       </div>
       <div class="activity-list" id="activity-list">
         <div class="stats-row"><span>Último pixel</span><strong id="live-last-pixel">Sin datos</strong></div>
@@ -668,11 +629,14 @@
     <button class="quick-btn" id="quick-activity" title="Actividad">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
     </button>
+    <button class="quick-btn" id="quick-brush" title="Toggle pincel continuo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 4l2 2-8.5 8.5-3 1 1-3L18 4Z"/><path d="M4 20c1.5 0 2.5-.5 3.2-1.3.7-.8 1-1.7 1.8-2.2.8-.5 1.8-.5 3 .5"/></svg>
+    </button>
+    <button class="quick-btn" id="quick-id" title="Login por código">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 12a4 4 0 0 0-8 0"/><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>
+    </button>
     <button class="quick-btn" id="quick-palette" title="Mostrar u ocultar la paleta">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 3 3 0 0 0-3-3h-1a2 2 0 0 1-2-2V6a3 3 0 0 0-3-3Z"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="15.5" cy="10.5" r="1"/></svg>
-    </button>
-        <button class="quick-btn" id="quick-brush" title="Pincel móvil">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 22c3 0 5-1 6-4l10-10a2.5 2.5 0 0 0-3.5-3.5L4.5 14C1 15 2 22 2 22Z"/><path d="M14.5 6.5l3 3"/></svg>
     </button>
     <button class="quick-btn" id="quick-center" title="Centrar lienzo">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
@@ -794,19 +758,9 @@
 
       <div class="split-line"></div>
 
-      <div class="field-label">
-        <span>Tamaño del lienzo</span>
-        <span id="canvas-size-info">Actual: 125×125</span>
-      </div>
-      <input type="number" id="canvas-size-input" value="125" min="25" step="1">
       <div class="btn-grid">
-        <button class="action-btn btn-main" id="apply-canvas-size-btn">Aplicar tamaño</button>
-        <button class="action-btn btn-soft" id="export-stats-btn">Actualizar estadísticas</button>
-      </div>
-
-      <div class="btn-grid" style="margin-top:10px;">
         <button class="action-btn btn-ghost" id="close-dashboard-btn">Cerrar</button>
-        <button class="action-btn btn-soft" id="refresh-settings-btn">Releer ajustes</button>
+        <button class="action-btn btn-soft" id="export-stats-btn">Actualizar estadísticas</button>
       </div>
 
       <div class="small-note" style="margin-top:12px;">
@@ -840,9 +794,9 @@
     const db = firebase.database();
     const ServerValue = firebase.database.ServerValue;
 
-    let RES = 125;
+    const RES = 125;
     const EXPORT_SCALE = 10;
-    let TIMELAPSE_RES = RES * EXPORT_SCALE;
+    const TIMELAPSE_RES = RES * EXPORT_SCALE;
 
     const BOARD_PATH = 'board';
     const SETTINGS_PATH = 'settings';
@@ -850,12 +804,14 @@
     const PRESENCE_PATH = 'presence';
     const USERS_PATH = 'users';
     const USER_STATS_PATH = 'user_stats';
+    const SESSION_CODES_PATH = 'session_codes';
+    const ACCOUNT_HISTORY_KEY = 'nf_account_history';
+    const SESSION_CODE_TTL = 5 * 60 * 1000;
 
     const DEFAULT_SETTINGS = {
       timestampEnabled: true,
       trackingEnabled: false,
       usernameRequired: true,
-      canvasSize: 125,
       timelapseFps: 12,
       timelapseIntervalSec: 5
     };
@@ -918,7 +874,6 @@
       statRate: document.getElementById('stat-rate'),
       statUser: document.getElementById('stat-user'),
       statMine: document.getElementById('stat-mine'),
-      statCanvasSize: document.getElementById('stat-canvas-size'),
       statTracking: document.getElementById('stat-tracking'),
       statTs: document.getElementById('stat-ts'),
       sessionClock: document.getElementById('session-clock'),
@@ -935,15 +890,7 @@
       quickChat: document.getElementById('quick-chat'),
       quickStats: document.getElementById('quick-stats'),
       quickCenter: document.getElementById('quick-center'),
-      quickPalette: document.getElementById('quick-palette'),
-      quickBrush: document.getElementById('quick-brush'),
-      loaderLiveToggle: document.getElementById('loader-live-toggle'),
-      loaderLivePanel: document.getElementById('loader-live-panel'),
-      loaderTaskList: document.getElementById('loader-task-list'),
-      loaderLiveCanvas: document.getElementById('loader-live-canvas'),
-      canvasSizeInput: document.getElementById('canvas-size-input'),
-      applyCanvasSizeBtn: document.getElementById('apply-canvas-size-btn'),
-      canvasSizeInfo: document.getElementById('canvas-size-info')
+      quickPalette: document.getElementById('quick-palette')
     };
 
     const ctx = el.canvas.getContext('2d', { alpha: false });
@@ -993,26 +940,20 @@
       lastChatSendText: '',
       popQueue: new Map(),
       hoverPoint: null,
-      loaderVisible: false,
-      loaderPreviewRaf: 0,
-      loaderPreviewImageData: null,
-      loaderPreviewLoadedCount: 0,
-      loaderPreviewTargetCount: 0,
-      loaderLoadedMask: null,
-      loaderPreviewBufferCanvas: null,
-      loaderPreviewBufferCtx: null,
-      loaderTasks: {
-        settings: { label: 'settings', status: 'pending', detail: 'Esperando...' },
-        presence: { label: 'presence', status: 'pending', detail: 'Esperando...' },
-        users: { label: 'users', status: 'pending', detail: 'Esperando...' },
-        messages: { label: 'messages', status: 'pending', detail: 'Esperando...' },
-        board: { label: 'board', status: 'pending', detail: 'Esperando...' }
-      },
-      hiddenModules: new Set((localStorage.getItem('nf_hidden_modules') || '').split(',').map(s => s.trim()).filter(Boolean)),
-      mobileBrushEnabled: localStorage.getItem('nf_mobile_brush') === '1'
+      brushMode: false,
+      sessionCode: localStorage.getItem('nf_session_code') || '',
+      sessionCodeExpiresAt: Number(localStorage.getItem('nf_session_code_expires') || 0),
+      accountHistory: loadAccountHistory(),
+      usersSnapshot: {},
+      activeUsers: [],
+      activeUsersVisible: false,
+      activeUsersHideTimer: null,
+      presenceRef: null,
+      currentUserRef: null,
+      currentUserStatsRef: null
     };
 
-    let boardImageData = ctx.createImageData(RES, RES);
+    const boardImageData = ctx.createImageData(RES, RES);
     boardImageData.data.fill(255);
     ctx.putImageData(boardImageData, 0, 0);
 
@@ -1042,6 +983,250 @@
     function normalizeActivityText(value, maxLen = 120) {
       return String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLen);
     }
+
+    function loadAccountHistory() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(ACCOUNT_HISTORY_KEY) || '[]');
+        return Array.isArray(raw) ? raw.filter(item => item && item.uid) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveAccountHistory() {
+      try {
+        localStorage.setItem(ACCOUNT_HISTORY_KEY, JSON.stringify((state.accountHistory || []).slice(0, 8)));
+      } catch {}
+    }
+
+    function rememberAccount(uid, username) {
+      const cleanUid = String(uid || '').trim();
+      if (!cleanUid) return;
+      const cleanName = normalizeUsername(username || state.username || 'Sin asignar');
+      const next = [{ uid: cleanUid, username: cleanName, lastUsed: Date.now() }];
+      (state.accountHistory || []).forEach(item => {
+        if (!item || !item.uid || item.uid === cleanUid) return;
+        next.push({
+          uid: String(item.uid),
+          username: normalizeUsername(item.username || 'Sin asignar'),
+          lastUsed: Number(item.lastUsed) || 0
+        });
+      });
+      state.accountHistory = next.slice(0, 8);
+      saveAccountHistory();
+    }
+
+    function normalizeSessionCode(value) {
+      return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+    }
+
+    function generateSessionCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let out = '';
+      for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+      return out;
+    }
+
+    function formatRemainingTime(ms) {
+      const safe = Math.max(0, Number(ms) || 0);
+      const totalSec = Math.ceil(safe / 1000);
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function getActiveUserNamesFromSnapshot(snapshot) {
+      const entries = Object.entries(snapshot || {});
+      const seen = new Set();
+      const users = [];
+      entries.forEach(([uid, item]) => {
+        if (!item) return;
+        if (item.online === false) return;
+        const name = normalizeUsername(item.username || item.name || `USR_${String(uid).slice(-4)}`);
+        if (!name) return;
+        const key = name.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        users.push({ uid, username: name, lastSeen: Number(item.lastSeen) || 0 });
+      });
+      users.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0) || a.username.localeCompare(b.username));
+      return users;
+    }
+
+    function renderActiveUsersPopover(list = state.activeUsers) {
+      const users = Array.isArray(list) ? list : [];
+      if (el.activeUsersCount) el.activeUsersCount.textContent = String(users.length);
+      if (!el.activeUsersList) return;
+      el.activeUsersList.innerHTML = '';
+      if (!users.length) {
+        const empty = document.createElement('div');
+        empty.className = 'active-user-empty';
+        empty.textContent = 'No hay usuarios activos ahora mismo.';
+        el.activeUsersList.appendChild(empty);
+        return;
+      }
+      users.forEach(user => {
+        const item = document.createElement('div');
+        item.className = 'active-user-item';
+        item.innerHTML = `<strong>${escapeHtmlText(user.username)}</strong><span>UID ${escapeHtmlText(String(user.uid).slice(-8))}</span>`;
+        el.activeUsersList.appendChild(item);
+      });
+    }
+
+    function showActiveUsersPopover() {
+      if (!el.activeUsersPopover) return;
+      if (state.activeUsersHideTimer) {
+        clearTimeout(state.activeUsersHideTimer);
+        state.activeUsersHideTimer = null;
+      }
+      el.activeUsersPopover.classList.add('visible');
+      state.activeUsersVisible = true;
+      renderActiveUsersPopover();
+    }
+
+    function hideActiveUsersPopover(delay = 0) {
+      if (!el.activeUsersPopover) return;
+      if (state.activeUsersHideTimer) clearTimeout(state.activeUsersHideTimer);
+      const doHide = () => {
+        el.activeUsersPopover.classList.remove('visible');
+        state.activeUsersVisible = false;
+      };
+      if (delay > 0) {
+        state.activeUsersHideTimer = setTimeout(doHide, delay);
+      } else {
+        doHide();
+      }
+    }
+
+    async function refreshActiveUsersSnapshot() {
+      try {
+        const snap = await db.ref(USERS_PATH).once('value');
+        state.usersSnapshot = snap.val() || {};
+        state.activeUsers = getActiveUserNamesFromSnapshot(state.usersSnapshot);
+        renderActiveUsersPopover();
+        return state.activeUsers;
+      } catch {
+        state.activeUsers = [];
+        renderActiveUsersPopover([]);
+        return [];
+      }
+    }
+
+    async function ensureSessionCode(forceNew = false) {
+      const uid = ensureUid();
+      const username = normalizeUsername(state.username || localStorage.getItem('nf_username') || 'Sin asignar') || 'Sin asignar';
+      const now = Date.now();
+      if (!forceNew && state.sessionCode && state.sessionCodeExpiresAt > now) {
+        return state.sessionCode;
+      }
+      const code = generateSessionCode();
+      const payload = {
+        uid,
+        username,
+        createdAt: now,
+        expiresAt: now + SESSION_CODE_TTL
+      };
+      await db.ref(`${SESSION_CODES_PATH}/${code}`).set(payload);
+      state.sessionCode = code;
+      state.sessionCodeExpiresAt = payload.expiresAt;
+      localStorage.setItem('nf_session_code', code);
+      localStorage.setItem('nf_session_code_expires', String(payload.expiresAt));
+      updateSessionLoginModal();
+      return code;
+    }
+
+    function updateSessionLoginModal() {
+      if (el.sessionAccountName) el.sessionAccountName.textContent = state.username || 'Sin asignar';
+      if (el.sessionCodeValue) el.sessionCodeValue.textContent = state.sessionCode || '— — — — — —';
+      if (el.sessionCodeExpiry) {
+        if (state.sessionCode && state.sessionCodeExpiresAt > Date.now()) {
+          el.sessionCodeExpiry.textContent = `expira en ${formatRemainingTime(state.sessionCodeExpiresAt - Date.now())}`;
+        } else {
+          el.sessionCodeExpiry.textContent = 'sin código activo';
+        }
+      }
+      if (el.sessionAccountList) {
+        el.sessionAccountList.innerHTML = '';
+        if (!state.accountHistory.length) {
+          const empty = document.createElement('div');
+          empty.className = 'active-user-empty';
+          empty.textContent = 'No hay cuentas guardadas en este navegador.';
+          el.sessionAccountList.appendChild(empty);
+        } else {
+          state.accountHistory.forEach(account => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'account-chip';
+            chip.innerHTML = `<div class="meta"><strong>${escapeHtmlText(account.username || 'Sin asignar')}</strong><span>${escapeHtmlText(account.uid)}</span></div><span class="use">Usar</span>`;
+            chip.addEventListener('click', () => switchToAccount(account.uid, account.username, { keepHistory: true, source: 'local-history' }));
+            el.sessionAccountList.appendChild(chip);
+          });
+        }
+      }
+    }
+
+    function renderAccountHistory() {
+      updateSessionLoginModal();
+    }
+
+    function openSessionLoginModal() {
+      updateSessionLoginModal();
+      showModal(el.modalSessionLogin);
+      ensureSessionCode().then(() => updateSessionLoginModal()).catch(() => {});
+      renderAccountHistory();
+      if (el.sessionCodeInput) el.sessionCodeInput.value = '';
+      if (el.sessionCodeInput) setTimeout(() => el.sessionCodeInput.focus(), 50);
+    }
+
+    async function switchToAccount(uid, username, options = {}) {
+      const cleanUid = String(uid || '').trim();
+      if (!cleanUid) return;
+      const previousUid = state.uid || '';
+      const previousUsername = state.username || '';
+      if (previousUid && previousUid !== cleanUid && !options.skipPreviousOffline) {
+        try {
+          await db.ref(`${USERS_PATH}/${previousUid}`).update({ online: false, lastSeen: Date.now(), username: previousUsername || 'Anónimo' });
+        } catch {}
+      }
+      state.uid = cleanUid;
+      localStorage.setItem('nf_uid', cleanUid);
+      if (username !== undefined && username !== null) {
+        const cleanName = normalizeUsername(username);
+        if (cleanName) {
+          state.username = cleanName;
+          localStorage.setItem('nf_username', cleanName);
+        }
+      }
+      if (!state.username) state.username = normalizeUsername(localStorage.getItem('nf_username') || '') || 'Sin asignar';
+      if (!options.keepHistory) rememberAccount(cleanUid, state.username);
+      updateUsernameBadge();
+      syncUsers();
+      syncPresence();
+      await refreshActiveUsersSnapshot();
+      updateSessionLoginModal();
+      return cleanUid;
+    }
+
+    async function redeemSessionCode(rawCode) {
+      const code = normalizeSessionCode(rawCode);
+      if (!code) {
+        if (el.sessionCodeInput) el.sessionCodeInput.focus();
+        return { ok: false, reason: 'empty' };
+      }
+      const snap = await db.ref(`${SESSION_CODES_PATH}/${code}`).once('value');
+      const payload = snap.val();
+      if (!payload) {
+        return { ok: false, reason: 'missing' };
+      }
+      if (Number(payload.expiresAt) <= Date.now()) {
+        await db.ref(`${SESSION_CODES_PATH}/${code}`).remove().catch(() => {});
+        return { ok: false, reason: 'expired' };
+      }
+      rememberAccount(ensureUid(), state.username || localStorage.getItem('nf_username') || 'Sin asignar');
+      await switchToAccount(payload.uid, payload.username, { keepHistory: true, source: 'session-code' });
+      return { ok: true, payload };
+    }
+
     function showModal(node) { node.classList.add('visible'); }
     function hideModal(node) { node.classList.remove('visible'); }
     function hideAllModals() { [el.modalUsername, el.modalLogin, el.modalDashboard].forEach(hideModal); }
@@ -1050,107 +1235,6 @@
       const n = hex.replace('#','').trim();
       const val = parseInt(n.length===3 ? n.split('').map(c=>c+c).join('') : n, 16);
       return [(val>>16)&255, (val>>8)&255, val&255, 255];
-    }
-
-    function createCheckerboardImageData(size) {
-      const image = ctx.createImageData(size, size);
-      const data = image.data;
-      const light = [243, 243, 243, 255];
-      const dark = [223, 223, 223, 255];
-      const tile = Math.max(4, Math.floor(size / 18));
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const useDark = ((Math.floor(x / tile) + Math.floor(y / tile)) % 2) === 1;
-          const src = useDark ? dark : light;
-          const idx = (y * size + x) * 4;
-          data[idx] = src[0];
-          data[idx + 1] = src[1];
-          data[idx + 2] = src[2];
-          data[idx + 3] = src[3];
-        }
-      }
-      return image;
-    }
-
-    function ensureLoaderPreviewBuffers(forceReset = false) {
-      const needsRebuild = forceReset || !state.loaderPreviewImageData || state.loaderPreviewImageData.width !== RES || state.loaderPreviewImageData.height !== RES;
-      if (needsRebuild) {
-        state.loaderPreviewImageData = createCheckerboardImageData(RES);
-        state.loaderLoadedMask = new Uint8Array(RES * RES);
-        state.loaderPreviewLoadedCount = 0;
-        state.loaderPreviewTargetCount = 0;
-      } else if (!state.loaderLoadedMask || state.loaderLoadedMask.length !== RES * RES) {
-        state.loaderLoadedMask = new Uint8Array(RES * RES);
-      }
-      if (el.loaderLiveCanvas) {
-        el.loaderLiveCanvas.width = RES;
-        el.loaderLiveCanvas.height = RES;
-      }
-    }
-
-    function resetLoaderPreviewCanvas() {
-      ensureLoaderPreviewBuffers(true);
-      renderLoaderPreviewCanvas(false);
-    }
-
-    function markLoaderPreviewPixel(x, y, color) {
-      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-      ensureLoaderPreviewBuffers();
-      if (!state.loaderLoadedMask) return;
-      const idx = y * RES + x;
-      if (idx < 0 || idx >= state.loaderLoadedMask.length) return;
-      if (state.loaderLoadedMask[idx]) return;
-      state.loaderLoadedMask[idx] = 1;
-      state.loaderPreviewLoadedCount = Math.min(state.loaderPreviewLoadedCount + 1, state.loaderPreviewTargetCount || state.loaderLoadedMask.length);
-      const di = idx * 4;
-      const [r, g, b, a] = hexToRgba(color || '#ffffff');
-      state.loaderPreviewImageData.data[di] = r;
-      state.loaderPreviewImageData.data[di + 1] = g;
-      state.loaderPreviewImageData.data[di + 2] = b;
-      state.loaderPreviewImageData.data[di + 3] = a;
-    }
-
-    function syncLoaderPreviewToBoard() {
-      if (!state.loaderPreviewImageData || state.loaderPreviewImageData.width !== RES || state.loaderPreviewImageData.height !== RES) {
-        state.loaderPreviewImageData = ctx.createImageData(RES, RES);
-      }
-      state.loaderPreviewImageData.data.set(boardImageData.data);
-      if (!state.loaderLoadedMask || state.loaderLoadedMask.length !== RES * RES) {
-        state.loaderLoadedMask = new Uint8Array(RES * RES);
-      }
-      state.loaderLoadedMask.fill(1);
-      state.loaderPreviewLoadedCount = state.loaderPreviewTargetCount || RES * RES;
-      renderLoaderPreviewCanvas(true);
-    }
-
-    function renderLoaderPreviewCanvas(drawOverlay = true) {
-      if (!el.loaderLiveCanvas) return;
-      const lctx = el.loaderLiveCanvas.getContext('2d', { alpha:false });
-      const w = el.loaderLiveCanvas.width || RES;
-      const h = el.loaderLiveCanvas.height || RES;
-      lctx.imageSmoothingEnabled = false;
-      if (state.boardLoaded) {
-        lctx.putImageData(boardImageData, 0, 0);
-      } else {
-        ensureLoaderPreviewBuffers();
-        if (state.loaderPreviewImageData) lctx.putImageData(state.loaderPreviewImageData, 0, 0);
-      }
-      if (!drawOverlay) return;
-      const total = Math.max(1, state.loaderPreviewTargetCount || 0);
-      const loaded = Math.max(0, Math.min(state.loaderPreviewLoadedCount || 0, total));
-      const pct = total ? loaded / total : 0;
-      const barH = Math.max(10, Math.round(Math.min(w, h) * 0.12));
-      lctx.fillStyle = 'rgba(0,0,0,.52)';
-      lctx.fillRect(0, 0, w, barH);
-      lctx.fillStyle = 'rgba(41,121,255,.35)';
-      lctx.fillRect(0, 0, Math.max(1, Math.round(w * pct)), barH);
-      lctx.fillStyle = 'rgba(255,255,255,.95)';
-      lctx.font = `700 ${Math.max(8, Math.floor(Math.min(w, h) / 11))}px "Courier New", monospace`;
-      lctx.textBaseline = 'middle';
-      lctx.fillText(`${formatNumber(loaded)} / ${formatNumber(total)} · ${Math.round(pct * 100)}%`, 4, Math.max(6, Math.round(barH / 2)));
-      lctx.strokeStyle = 'rgba(0,0,0,.22)';
-      lctx.lineWidth = 1;
-      lctx.strokeRect(0.5, 0.5, w - 1, h - 1);
     }
 
     function setLoaderProgress(current, total, message, detail) {
@@ -1169,124 +1253,6 @@
         `cargando base de datos... [${formatNumber(state.loadingDone)} / ${formatNumber(state.loadingTotal)}]`,
         state.boardLoaded ? 'Lienzo sincronizado y listo para pintar.' : 'Sincronizando settings, usuarios, chat, presencia y tablero...'
       );
-      if (state.loaderVisible) renderLoaderPreviewCanvas(true);
-    }
-
-    function updateLoaderTaskUI() {
-      if (!el.loaderTaskList) return;
-      el.loaderTaskList.innerHTML = '';
-      const order = ['settings', 'presence', 'users', 'messages', 'board'];
-      for (const key of order) {
-        const task = state.loaderTasks[key];
-        if (!task) continue;
-        const row = document.createElement('div');
-        row.className = 'loader-task-pill';
-        const left = document.createElement('b');
-        left.textContent = task.label;
-        const right = document.createElement('span');
-        right.textContent = `${task.status} · ${task.detail}`;
-        row.appendChild(left);
-        row.appendChild(right);
-        el.loaderTaskList.appendChild(row);
-      }
-    }
-
-    function setLoaderTask(key, status, detail = '') {
-      if (!state.loaderTasks[key]) return;
-      state.loaderTasks[key].status = status;
-      state.loaderTasks[key].detail = detail;
-      updateLoaderTaskUI();
-    }
-
-    function syncLoaderCanvasPreview() {
-      renderLoaderPreviewCanvas(true);
-    }
-
-    function startLoaderLivePreviewLoop() {
-      if (state.loaderPreviewRaf) return;
-      const loop = () => {
-        if (!state.loaderVisible) {
-          state.loaderPreviewRaf = 0;
-          return;
-        }
-        renderLoaderPreviewCanvas(true);
-        state.loaderPreviewRaf = requestAnimationFrame(loop);
-      };
-      state.loaderPreviewRaf = requestAnimationFrame(loop);
-    }
-
-    function stopLoaderLivePreviewLoop() {
-      if (state.loaderPreviewRaf) {
-        cancelAnimationFrame(state.loaderPreviewRaf);
-        state.loaderPreviewRaf = 0;
-      }
-    }
-
-    function toggleLoaderLivePanel(force) {
-      state.loaderVisible = typeof force === 'boolean' ? force : !state.loaderVisible;
-      if (el.loaderLivePanel) el.loaderLivePanel.hidden = !state.loaderVisible;
-      if (el.loaderLiveToggle) el.loaderLiveToggle.textContent = state.loaderVisible ? 'Ocultar carga en vivo' : 'Ver carga en vivo';
-      if (state.loaderVisible) {
-        ensureLoaderPreviewBuffers();
-        updateLoaderTaskUI();
-        renderLoaderPreviewCanvas(true);
-        startLoaderLivePreviewLoop();
-      } else {
-        stopLoaderLivePreviewLoop();
-      }
-    }
-
-    function setCanvasSize(nextSize, options = {}) {
-      const size = Math.max(25, Math.min(500, parseInt(nextSize, 10) || 125));
-      const oldSize = RES;
-      const oldCanvas = document.createElement('canvas');
-      oldCanvas.width = oldSize;
-      oldCanvas.height = oldSize;
-      const oldCtx = oldCanvas.getContext('2d', { alpha:false });
-      oldCtx.imageSmoothingEnabled = false;
-      oldCtx.drawImage(el.canvas, 0, 0, oldSize, oldSize);
-      const oldImage = oldCtx.getImageData(0, 0, oldSize, oldSize);
-
-      RES = size;
-      TIMELAPSE_RES = RES * EXPORT_SCALE;
-      el.canvas.width = RES;
-      el.canvas.height = RES;
-      el.minimap.width = RES;
-      el.minimap.height = RES;
-      el.canvas.style.width = RES + 'px';
-      el.canvas.style.height = RES + 'px';
-      if (el.loaderLiveCanvas) {
-        el.loaderLiveCanvas.width = RES;
-        el.loaderLiveCanvas.height = RES;
-      }
-      if (state.loaderPreviewBufferCanvas) {
-        state.loaderPreviewBufferCanvas.width = RES;
-        state.loaderPreviewBufferCanvas.height = RES;
-      }
-      ensureLoaderPreviewBuffers(true);
-      boardImageData = ctx.createImageData(RES, RES);
-      boardImageData.data.fill(255);
-      const copyW = Math.min(oldSize, RES);
-      const copyH = Math.min(oldSize, RES);
-      for (let y = 0; y < copyH; y++) {
-        for (let x = 0; x < copyW; x++) {
-          const oldIdx = (y * oldSize + x) * 4;
-          const newIdx = (y * RES + x) * 4;
-          boardImageData.data[newIdx] = oldImage.data[oldIdx];
-          boardImageData.data[newIdx + 1] = oldImage.data[oldIdx + 1];
-          boardImageData.data[newIdx + 2] = oldImage.data[oldIdx + 2];
-          boardImageData.data[newIdx + 3] = oldImage.data[oldIdx + 3];
-        }
-      }
-      ctx.putImageData(boardImageData, 0, 0);
-      if (el.canvasSizeInfo) el.canvasSizeInfo.textContent = `Actual: ${RES}×${RES}`;
-      if (el.canvasSizeInput && document.activeElement !== el.canvasSizeInput) el.canvasSizeInput.value = String(RES);
-      state.settings.canvasSize = RES;
-      if (!options.skipRefresh) {
-        scheduleCanvasFlush();
-        requestMinimapRefresh();
-      }
-      updateTopStats();
     }
 
     function ensureWhiteCanvas() {
@@ -1323,12 +1289,7 @@
       requestAnimationFrame(() => {
         state.pendingFlush = false;
         ctx.putImageData(boardImageData, 0, 0);
-        minimapCtx.clearRect(0, 0, RES, RES);
-        minimapCtx.fillStyle = '#ffffff';
-        minimapCtx.fillRect(0, 0, RES, RES);
-        minimapCtx.drawImage(el.canvas, 0, 0, RES, RES);
-        renderMinimapViewport();
-        if (state.loaderVisible) syncLoaderCanvasPreview();
+        requestMinimapRefresh();
       });
     }
 
@@ -1338,13 +1299,9 @@
         const raw = data[key];
         const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
         const [x, y] = key.split('_').map(Number);
-        if (Number.isFinite(x) && Number.isFinite(y)) {
-          setPixel(x, y, color);
-          if (state.loaderVisible && !state.boardLoaded) markLoaderPreviewPixel(x, y, color);
-        }
+        if (Number.isFinite(x) && Number.isFinite(y)) setPixel(x, y, color);
       });
       scheduleCanvasFlush();
-      if (state.loaderVisible && !state.boardLoaded) renderLoaderPreviewCanvas(true);
     }
 
     function setLoadingTotal(total) {
@@ -1360,39 +1317,41 @@
     function finishBoardLoading() {
       state.boardLoaded = true;
       updateLoadingUI();
-      syncLoaderPreviewToBoard();
-      setTimeout(() => el.loader.classList.add('hidden'), 220);
+      const elapsed = performance.now() - state.bootStartedAt;
+      setTimeout(() => el.loader.classList.add('hidden'), Math.max(0, 220 - elapsed));
     }
 
     function updateUsernameBadge() {
       el.statUser.textContent = state.username || 'Sin asignar';
+      el.headerSubtitle.textContent = state.username ? `Conectado como ${state.username}` : 'Lienzo colaborativo en tiempo real';
       el.chatInput.disabled = !state.username;
       el.chatInput.placeholder = state.username ? `Enviar mensaje como ${state.username}...` : 'Debes crear un usuario primero';
+      updateSessionLoginModal();
     }
 
     function updateTopStats() {
       const activeUsers = Number(state.activeUserCount || 0);
       const totalPlaced = Number(state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS);
       const contributors = Number(state.contributorCount || GLOBAL_STATS_SEED_CONTRIBUTORS);
+      const rate = Number(state.pixelRate || 0);
+
       el.statMine.textContent = formatNumber(state.myPixels);
       el.statTotal.textContent = formatNumber(totalPlaced);
       el.statOnline.textContent = formatNumber(activeUsers);
       el.statUnique.textContent = formatNumber(contributors);
-      el.statRate.textContent = formatNumber(state.pixelRate);
+      el.statRate.textContent = formatNumber(rate);
       el.toggleTracking.disabled = !state.isAuthorized;
       el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
       el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
       el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
+      el.minimapZoom.textContent = `${state.scale.toFixed(1)}×`;
+
       if (el.mobileStatOnline) el.mobileStatOnline.textContent = formatNumber(activeUsers);
       if (el.mobileStatTotal) el.mobileStatTotal.textContent = formatNumber(totalPlaced);
-      if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(state.pixelRate)}/min`;
+      if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(rate)}/min`;
       if (el.mobileStatUnique) el.mobileStatUnique.textContent = formatNumber(contributors);
-      if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent || '00:00:00';
-      if (el.canvasSizeInfo) el.canvasSizeInfo.textContent = `Actual: ${RES}×${RES}`;
-      if (el.canvasSizeInput && document.activeElement !== el.canvasSizeInput) el.canvasSizeInput.value = String(RES);
-      el.minimapZoom.textContent = `${state.scale.toFixed(1)}×`;
-      updatePaintModeUI();
+      if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent;
     }
 
     function updateCooldownUI(percent, ready) {
@@ -1748,12 +1707,17 @@
     }
 
     function syncPresence() {
+      if (state.presenceRef) {
+        try { state.presenceRef.remove(); } catch {}
+      }
       const ref = db.ref(PRESENCE_PATH).push({
         uid: ensureUid(),
         username: state.username || 'Anónimo',
         ts: Date.now()
       });
+      state.presenceRef = ref;
       ref.onDisconnect().remove();
+      db.ref(PRESENCE_PATH).off('value');
       db.ref(PRESENCE_PATH).on('value', snap => {
         state.onlineCount = snap.numChildren() || 0;
         el.statOnline.textContent = formatNumber(state.onlineCount);
@@ -1762,11 +1726,28 @@
 
     function syncUsers() {
       const ref = db.ref(`${USERS_PATH}/${ensureUid()}`);
-      ref.update({ username: state.username || 'Anónimo', lastSeen: Date.now(), online: true });
+      state.currentUserRef = ref;
+      ref.update({ uid: ensureUid(), username: state.username || 'Anónimo', lastSeen: Date.now(), online: true });
       ref.onDisconnect().update({ online: false, lastSeen: Date.now() });
+      if (state.currentUserStatsRef) {
+        try { state.currentUserStatsRef.off('value'); } catch {}
+      }
+      state.currentUserStatsRef = db.ref(`${USER_STATS_PATH}/${ensureUid()}/pixels`);
+      state.currentUserStatsRef.off('value');
+      state.currentUserStatsRef.on('value', snap => {
+        state.myPixels = Number(snap.val()) || 0;
+        localStorage.setItem('nf_my_pixels', String(state.myPixels));
+        el.statMine.textContent = formatNumber(state.myPixels);
+        updateTopStats();
+      });
+      db.ref(USERS_PATH).off('value');
       db.ref(USERS_PATH).on('value', snap => {
+        const users = snap.val() || {};
+        state.usersSnapshot = users;
         state.uniqueCount = snap.numChildren() || 0;
         el.statUnique.textContent = formatNumber(state.uniqueCount);
+        state.activeUsers = getActiveUserNamesFromSnapshot(users);
+        if (state.activeUsersVisible) renderActiveUsersPopover();
       });
     }
 
@@ -1848,20 +1829,21 @@
 
     function attachBoardListeners() {
       const boardRef = db.ref(BOARD_PATH);
+
       boardRef.on('child_added', snap => {
         const key = snap.key;
         if (state.knownBoardKeys.has(key)) return;
         state.knownBoardKeys.add(key);
         state.boardCount += 1;
         applyRealtimeBoardChange(key, snap.val());
-        if (state.loaderVisible) syncLoaderCanvasPreview();
         updateTopStats();
       });
+
       boardRef.on('child_changed', snap => {
         applyRealtimeBoardChange(snap.key, snap.val());
-        if (state.loaderVisible) syncLoaderCanvasPreview();
         updateTopStats();
       });
+
       boardRef.on('child_removed', snap => {
         const key = snap.key;
         if (state.knownBoardKeys.has(key)) {
@@ -1872,86 +1854,63 @@
         if (Number.isFinite(x) && Number.isFinite(y)) {
           setPixel(x, y, '#ffffff');
           scheduleCanvasFlush();
-          if (state.loaderVisible) syncLoaderCanvasPreview();
         }
         updateTopStats();
-      });
-    }
-
-    function loadBoardObjectProgressively(data, opts = {}) {
-      const entries = Object.entries(data || {});
-      const label = opts.label || 'board';
-      const chunkSize = Math.max(12, Math.min(50, Math.floor(entries.length / 90) || 16));
-      const chunkDelay = Math.max(6, Math.min(18, opts.delayMs ?? 10));
-      state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
-      updateLoadingUI();
-      ensureWhiteCanvas();
-      ensureLoaderPreviewBuffers(true);
-      state.loaderPreviewTargetCount = entries.length;
-      state.loaderPreviewLoadedCount = 0;
-      if (state.loaderLoadedMask && state.loaderLoadedMask.length === RES * RES) state.loaderLoadedMask.fill(0);
-      state.knownBoardKeys = new Set();
-      state.boardCount = 0;
-      setLoaderTask(label, 'loading', `${formatNumber(entries.length)} pixeles`);
-      if (state.loaderVisible) renderLoaderPreviewCanvas(true);
-      updateTopStats();
-
-      return new Promise(resolve => {
-        let index = 0;
-        let chunkIndex = 0;
-
-        const processChunk = () => {
-          const end = Math.min(index + chunkSize, entries.length);
-          const startIndex = index;
-
-          for (; index < end; index++) {
-            const [key, raw] = entries[index];
-            const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
-            const [x, y] = String(key).split('_').map(Number);
-            if (Number.isFinite(x) && Number.isFinite(y)) {
-              setPixel(x, y, color);
-              markLoaderPreviewPixel(x, y, color);
-              state.knownBoardKeys.add(key);
-            }
-          }
-
-          state.boardCount = state.knownBoardKeys.size;
-          addLoadingDone(index - startIndex);
-          scheduleCanvasFlush();
-          if (state.loaderVisible) renderLoaderPreviewCanvas(true);
-          updateTopStats();
-
-          if (index < entries.length) {
-            chunkIndex += 1;
-            const pct = entries.length ? Math.round((index / entries.length) * 100) : 100;
-            setLoaderTask(label, 'loading', `${formatNumber(index)} / ${formatNumber(entries.length)} · ${pct}%`);
-            setTimeout(() => requestAnimationFrame(processChunk), chunkDelay);
-          } else {
-            try { persistBoardCache(data); } catch {}
-            state.lastBoardSyncAt = Date.now();
-            setLoaderTask(label, 'ok', `${formatNumber(entries.length)} pixeles`);
-            scheduleCanvasFlush();
-            if (state.loaderVisible) syncLoaderPreviewToBoard();
-            resolve();
-          }
-        };
-
-        setTimeout(() => requestAnimationFrame(processChunk), chunkDelay);
       });
     }
 
     function loadBoardCacheAndShow() {
       const cached = loadBoardCache();
       if (cached) {
-        loadBoardObjectProgressively(cached, { label: 'board' });
+        setBoardFromObject(cached);
+        const keys = Object.keys(cached);
+        state.knownBoardKeys = new Set(keys);
+        state.boardCount = keys.length;
+        state.loadingDone = keys.length;
+        updateTopStats();
+        updateLoadingUI();
       }
     }
 
     function processBoardSnapshot(boardSnap) {
       const data = boardSnap.val() || {};
-      loadBoardObjectProgressively(data, { label: 'board' }).then(() => {
-        finishBoardLoading();
-      });
+      const entries = Object.entries(data);
+      state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
+      updateLoadingUI();
+      ensureWhiteCanvas();
+
+      const chunkSize = 220;
+      let index = 0;
+
+      const processChunk = () => {
+        const end = Math.min(index + chunkSize, entries.length);
+        const startIndex = index;
+
+        for (; index < end; index++) {
+          const [key, raw] = entries[index];
+          const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
+          const [x, y] = key.split('_').map(Number);
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            setPixel(x, y, color);
+            state.knownBoardKeys.add(key);
+          }
+        }
+
+        state.boardCount = state.knownBoardKeys.size;
+        addLoadingDone(index - startIndex);
+        scheduleCanvasFlush();
+        updateTopStats();
+
+        if (index < entries.length) {
+          requestAnimationFrame(processChunk);
+        } else {
+          persistBoardCache(data);
+          state.lastBoardSyncAt = Date.now();
+          finishBoardLoading();
+        }
+      };
+
+      requestAnimationFrame(processChunk);
     }
 
     function updateActivityFromMeta(meta) {
@@ -2001,11 +1960,11 @@
     function openSidebar(section = 'chat') {
       el.sidebar.classList.add('show');
       el.mobileMenuBtn.classList.add('active');
-      setMobileSection(section);
-      if (!isMobileLayout()) {
-        const moduleId = getSectionModuleId(section);
-        document.getElementById(moduleId)?.scrollIntoView({ behavior:'smooth', block:'start' });
-      }
+      if (section === 'chat') document.getElementById('module-chat').scrollIntoView({ behavior:'smooth', block:'start' });
+      if (section === 'stats') document.getElementById('module-stats').scrollIntoView({ behavior:'smooth', block:'start' });
+      if (section === 'map') document.getElementById('module-map').scrollIntoView({ behavior:'smooth', block:'start' });
+      if (section === 'activity') document.getElementById('module-activity').scrollIntoView({ behavior:'smooth', block:'start' });
+      if (section === 'leaderboard') document.getElementById('module-leaderboard').scrollIntoView({ behavior:'smooth', block:'start' });
     }
 
     function closeSidebar() {
@@ -2024,7 +1983,9 @@
       if (el.quickPalette) {
         el.quickPalette.classList.toggle('active', mobile ? state.paletteVisibleMobile : true);
         el.quickPalette.setAttribute('aria-pressed', String(visible));
-        el.quickPalette.title = mobile ? (state.paletteVisibleMobile ? 'Ocultar paleta' : 'Mostrar paleta') : 'Paleta';
+        el.quickPalette.title = mobile
+          ? (state.paletteVisibleMobile ? 'Ocultar paleta' : 'Mostrar paleta')
+          : 'Paleta';
       }
     }
 
@@ -2041,11 +2002,8 @@
     }
 
     function toggleSidebar() {
-      if (el.sidebar.classList.contains('show')) {
-        closeSidebar();
-      } else {
-        openSidebar(state.currentMobileSection || 'chat');
-      }
+      el.sidebar.classList.toggle('show');
+      el.mobileMenuBtn.classList.toggle('active');
     }
 
     function unlockAudio() {
@@ -2328,63 +2286,16 @@
       if (state.settings.usernameRequired) el.tlStatus.textContent = `Usuario configurado como ${name}.`;
     }
 
-    function applyCanvasSizeFromAdmin() {
-      if (!state.isAuthorized) return;
-      const raw = parseInt(el.canvasSizeInput?.value, 10);
-      const nextSize = Math.max(25, Math.min(500, Number.isFinite(raw) ? raw : RES));
-      if (nextSize === RES) {
-        el.tlStatus.textContent = 'El tamaño ya coincide con el actual.';
-        return;
-      }
-      const currentSize = RES;
-      el.tlStatus.textContent = 'Guardando respaldo del lienzo actual...';
-      db.ref(BOARD_PATH).once('value').then(snap => {
-        const boardData = snap.val() || {};
-        const archiveId = `${Date.now()}_${currentSize}`;
-        const archivePayload = {
-          size: currentSize,
-          nextSize,
-          createdAt: Date.now(),
-          createdBy: state.username || 'admin',
-          pixels: boardData
-        };
-        const updates = {};
-        updates[`board_archives/${archiveId}`] = archivePayload;
-        updates[`${SETTINGS_PATH}/canvasSize`] = nextSize;
-        if (nextSize < currentSize) {
-          Object.entries(boardData).forEach(([key, value]) => {
-            const [x, y] = String(key).split('_').map(Number);
-            if (Number.isFinite(x) && Number.isFinite(y) && (x >= nextSize || y >= nextSize)) {
-              updates[`${BOARD_PATH}/${key}`] = null;
-            }
-          });
-        }
-        return db.ref().update(updates).then(() => {
-          state.settings.canvasSize = nextSize;
-          setCanvasSize(nextSize);
-          el.tlStatus.textContent = `Lienzo actualizado a ${nextSize}×${nextSize}.`;
-        });
-      }).catch(err => {
-        console.error(err);
-        el.tlStatus.textContent = 'No se pudo cambiar el tamaño del lienzo.';
-      });
-    }
-
-    function updateUsernameUi() {
+    function syncUiWithUsername() {
       el.usernameCharCount.textContent = `${normalizeUsername(el.usernameInput.value).length} / 20`;
       el.usernameSaveBtn.disabled = !normalizeUsername(el.usernameInput.value);
     }
-
-    window.updateUsernameUi = updateUsernameUi;
-    window.syncUiWithUsername = updateUsernameUi;
 
     function openAdminDashboard() {
       el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
       el.toggleTracking.checked = !!state.settings.trackingEnabled;
       el.toggleTracking.disabled = false;
       el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
-      if (el.canvasSizeInput) el.canvasSizeInput.value = String(state.settings.canvasSize || RES);
-      if (el.canvasSizeInfo) el.canvasSizeInfo.textContent = `Actual: ${RES}×${RES}`;
       showModal(el.modalDashboard);
     }
 
@@ -2437,7 +2348,6 @@
       const patch = {
         timestampEnabled: !!el.toggleTimestamp.checked,
         trackingEnabled: !!el.toggleTracking.checked,
-        canvasSize: Math.max(25, Math.min(500, parseInt(el.canvasSizeInput?.value, 10) || RES)),
         timelapseIntervalSec: Math.max(1, Number.isFinite(rawInterval) ? rawInterval : DEFAULT_SETTINGS.timelapseIntervalSec),
         timelapseFps: Math.max(1, Number.isFinite(rawFps) ? rawFps : DEFAULT_SETTINGS.timelapseFps)
       };
@@ -2461,9 +2371,9 @@
       const start = Date.now();
       setInterval(() => {
         const total = Math.floor((Date.now() - start) / 1000);
-        const h = String(Math.floor(total / 3600)).padStart(2, '0');
-        const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
-        const s = String(total % 60).padStart(2, '0');
+        const h = String(Math.floor(total / 3600)).padStart(2,'0');
+        const m = String(Math.floor((total % 3600) / 60)).padStart(2,'0');
+        const s = String(total % 60).padStart(2,'0');
         const clockValue = `${h}:${m}:${s}`;
         el.sessionClock.textContent = clockValue;
         if (el.mobileSessionClock) el.mobileSessionClock.textContent = clockValue;
@@ -2479,44 +2389,19 @@
       updateTopStats();
       renderLeaderboard();
       normalizeSidebarForMobile();
-      applyModuleVisibility();
-      updatePaintModeUI();
-      if (el.loaderLiveToggle) {
-        el.loaderLiveToggle.addEventListener('click', () => toggleLoaderLivePanel());
-      }
-      if (el.quickBrush) {
-        el.quickBrush.addEventListener('click', () => {
-          state.mobileBrushEnabled = !state.mobileBrushEnabled;
-          try { localStorage.setItem('nf_mobile_brush', state.mobileBrushEnabled ? '1' : '0'); } catch {}
-          updatePaintModeUI();
-        });
-      }
 
       el.mobileMenuBtn.addEventListener('click', toggleSidebar);
       el.chatBtn.addEventListener('click', () => openSidebar('chat'));
       el.statsBtn.addEventListener('click', () => openSidebar('stats'));
-      el.centerBtn.addEventListener('click', () => { centerCanvas(); if (isMobileLayout()) closeSidebar(); });
+      el.centerBtn.addEventListener('click', centerCanvas);
+      el.sessionBtn.addEventListener('click', openSessionLoginModal);
       el.sidebarCloseBtn.addEventListener('click', closeSidebar);
 
       el.quickChat.addEventListener('click', () => openSidebar('chat'));
       el.quickStats.addEventListener('click', () => openSidebar('stats'));
-      el.quickCenter.addEventListener('click', () => { centerCanvas(); if (isMobileLayout()) closeSidebar(); });
-      if (el.quickBrush) {
-        el.quickBrush.addEventListener('click', () => {
-          state.mobileBrushEnabled = !state.mobileBrushEnabled;
-          try { localStorage.setItem('nf_mobile_brush', state.mobileBrushEnabled ? '1' : '0'); } catch {}
-          updatePaintModeUI();
-        });
-      }
-      el.quickPalette.addEventListener('click', () => {
-        if (isMobileLayout()) {
-          toggleMobilePalette();
-        } else {
-          el.uiBottom.scrollIntoView({ behavior:'smooth', block:'start' });
-        }
-      });
+      el.quickCenter.addEventListener('click', centerCanvas);
 
-      el.usernameInput.addEventListener('input', updateUsernameUi);
+      el.usernameInput.addEventListener('input', syncUiWithUsername);
       el.usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmUsername(); });
       el.usernameSaveBtn.addEventListener('click', confirmUsername);
 
@@ -2525,18 +2410,44 @@
       el.adminCancelBtn.addEventListener('click', hideAllModals);
       el.closeDashboardBtn.addEventListener('click', hideAllModals);
       el.wipeBtn.addEventListener('click', executeWipe);
+      el.sessionCodeRefreshBtn.addEventListener('click', () => ensureSessionCode(true).then(() => updateSessionLoginModal()));
+      el.sessionCodeCopyBtn.addEventListener('click', async () => {
+        try {
+          await ensureSessionCode();
+          await navigator.clipboard.writeText(state.sessionCode || '');
+          el.sessionCodeCopyBtn.textContent = 'Copiado';
+          setTimeout(() => { if (el.sessionCodeCopyBtn) el.sessionCodeCopyBtn.textContent = 'Copiar'; }, 1000);
+        } catch {
+          el.sessionCodeCopyBtn.textContent = 'Error';
+          setTimeout(() => { if (el.sessionCodeCopyBtn) el.sessionCodeCopyBtn.textContent = 'Copiar'; }, 1000);
+        }
+      });
+      el.sessionCodeLoginBtn.addEventListener('click', async () => {
+        const result = await redeemSessionCode(el.sessionCodeInput.value);
+        if (result.ok) {
+          hideModal(el.modalSessionLogin);
+          el.sessionCodeInput.value = '';
+        } else if (result.reason === 'expired') {
+          alert('Ese código ya expiró. Genera uno nuevo.');
+        } else {
+          alert('Código inválido.');
+        }
+      });
+      el.sessionCodeCloseBtn.addEventListener('click', () => hideModal(el.modalSessionLogin));
+      el.sessionCodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') el.sessionCodeLoginBtn.click(); });
       el.refreshSettingsBtn.addEventListener('click', () => {
         db.ref(SETTINGS_PATH).once('value').then(s => {
           state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) };
-          updateSettingsDisplay();
-          if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
           el.tlStatus.textContent = 'Ajustes recargados.';
+          el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
+          el.toggleTracking.checked = !!state.settings.trackingEnabled;
+          el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
+          updateTopStats();
         });
       });
       el.saveSettingsBtn.addEventListener('click', saveAdminSettings);
       el.exportStatsBtn.addEventListener('click', () => { updateTopStats(); refreshLeaderboard(); });
       el.tlToggleBtn.addEventListener('click', toggleTimelapseCapture);
-      if (el.applyCanvasSizeBtn) el.applyCanvasSizeBtn.addEventListener('click', applyCanvasSizeFromAdmin);
 
       el.toggleTimestamp.addEventListener('change', () => {
         state.settings.timestampEnabled = el.toggleTimestamp.checked;
@@ -2553,10 +2464,50 @@
         el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       });
       el.tlFreqInput.addEventListener('input', () => {
-        const v = Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec);
+        const parsed = parseInt(el.tlFreqInput.value, 10);
+        const v = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SETTINGS.timelapseIntervalSec;
         el.tlFreqInput.value = String(v);
       });
+      if (el.tlFpsInput) {
+        el.tlFpsInput.addEventListener('input', () => {
+          const parsed = parseInt(el.tlFpsInput.value, 10);
+          const v = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SETTINGS.timelapseFps;
+          el.tlFpsInput.value = String(v);
+        });
+      }
       el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
+      el.minimap.addEventListener('click', e => {
+        const rect = el.minimap.getBoundingClientRect();
+        const x = clamp(((e.clientX - rect.left) / rect.width) * RES, 0, RES - 1);
+        const y = clamp(((e.clientY - rect.top) / rect.height) * RES, 0, RES - 1);
+        state.originX = (el.viewport.clientWidth / 2) - ((x + 0.5) * state.scale);
+        state.originY = (el.viewport.clientHeight / 2) - ((y + 0.5) * state.scale);
+        refreshCamera();
+      });
+
+      window.addEventListener('wheel', e => {
+        if (isInteractiveUiTarget(e.target)) return;
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 0.88 : 1.12;
+        applyZoom(factor, e.clientX, e.clientY);
+      }, { passive:false });
+
+      window.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          closeSidebar();
+          if (!state.isCapturing) hideAllModals();
+        }
+      });
+
+      window.addEventListener('pointerdown', unlockAudio, { passive:true });
+      window.addEventListener('blur', () => { state.dragging = false; state.pinchDistance = null; });
+
+      window.addEventListener('wheel', e => {
+        if (el.sidebar.contains(e.target) || document.querySelector('.modal-overlay.visible')?.contains(e.target)) return;
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 0.88 : 1.12;
+        applyZoom(factor, e.clientX, e.clientY);
+      }, { passive:false });
 
       const activePointers = new Map();
 
@@ -2572,62 +2523,6 @@
         return Array.from(activePointers.values());
       }
 
-      function isInteractiveUiTarget(target) {
-        return el.sidebar.contains(target) || document.querySelector('.modal-overlay.visible')?.contains(target);
-      }
-
-      function clearTouchHoldTimer() {
-        if (state.touchHoldTimer) {
-          clearTimeout(state.touchHoldTimer);
-          state.touchHoldTimer = null;
-        }
-      }
-
-      function stopTouchPaintLoop() {
-        state.touchPainting = false;
-        state.touchHoldActive = false;
-        state.touchHoldPointerId = null;
-        state.touchHoldMoved = false;
-        clearTouchHoldTimer();
-        stopPaintLoop();
-      }
-
-      function armTouchHold(e) {
-        clearTouchHoldTimer();
-        state.touchHoldPointerId = e.pointerId;
-        state.touchHoldStart = { x: e.clientX, y: e.clientY, ts: Date.now() };
-        state.touchHoldMoved = false;
-        state.touchHoldActive = false;
-        state.touchPainting = false;
-        state.touchHoldTimer = setTimeout(() => {
-          if (!activePointers.has(e.pointerId)) return;
-          if (activePointers.size !== 1) return;
-          if (state.pinchDistance != null || state.dragMoved) return;
-          state.touchHoldActive = true;
-          state.touchPainting = true;
-          startPaintLoop('touch');
-        }, 1500);
-      }
-
-      function cancelTouchHold() {
-        clearTouchHoldTimer();
-        state.touchHoldActive = false;
-        state.touchHoldPointerId = null;
-        state.touchHoldMoved = false;
-      }
-
-      function paintStrokeFromTo(fromPoint, toPoint, source) {
-        if (!fromPoint || !toPoint) return;
-        const dx = toPoint.clientX - fromPoint.clientX;
-        const dy = toPoint.clientY - fromPoint.clientY;
-        const distance = Math.max(1, Math.hypot(dx, dy));
-        const steps = Math.max(1, Math.ceil(distance / 6));
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          commitPixelAt(fromPoint.clientX + dx * t, fromPoint.clientY + dy * t, source);
-        }
-      }
-
       function endViewportInteraction(e) {
         if (!activePointers.has(e.pointerId)) return;
         const hadDrag = state.dragging;
@@ -2640,23 +2535,11 @@
           state.pinchDistance = null;
         }
 
-        if (e.pointerType === 'touch' && state.mobileBrushEnabled && state.touchPainting) {
-          paintStrokeFromTo(state.lastTouchPaintPoint || { clientX: e.clientX, clientY: e.clientY }, { clientX: e.clientX, clientY: e.clientY }, 'touch-brush');
-        }
-
         if (activePointers.size === 0) {
-          if (state.spaceHeld) {
-            stopPaintLoop();
-          } else if (state.touchPainting) {
-            stopTouchPaintLoop();
-          } else if (hadDrag && !hadMove && e.pointerType === 'mouse') {
-            handlePixelCommit(e);
-          }
+          if (hadDrag && !hadMove) handlePixelCommit(e);
           state.dragging = false;
           state.dragMoved = false;
           state.pinchDistance = null;
-          state.mouseIsDown = false;
-          cancelTouchHold();
         }
 
         updateCoordsOverlay(point.x, point.y);
@@ -2664,7 +2547,7 @@
 
       el.viewport.addEventListener('pointerdown', e => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
-        if (isInteractiveUiTarget(e.target)) return;
+        if (el.sidebar.contains(e.target) || document.querySelector('.modal-overlay.visible')?.contains(e.target)) return;
         unlockAudio();
 
         setPointerPosition(e);
@@ -2675,53 +2558,21 @@
           state.pinchDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
           state.dragging = false;
           state.dragMoved = true;
-          cancelTouchHold();
-          return;
-        }
-
-        state.mouseIsDown = true;
-        state.dragMoved = false;
-        state.lastX = e.clientX;
-        state.lastY = e.clientY;
-        updateCoordsOverlay(e.clientX, e.clientY);
-
-        if (e.pointerType === 'touch') {
-          if (state.mobileBrushEnabled) {
-            state.dragging = false;
-            state.touchPainting = true;
-            state.lastTouchPaintPoint = { clientX: e.clientX, clientY: e.clientY };
-            commitPixelAt(e.clientX, e.clientY, 'touch-brush');
-            startPaintLoop('touch-brush');
-            return;
-          }
-          state.dragging = false;
-          armTouchHold(e);
-          return;
-        }
-
-        if (state.spaceHeld) {
-          state.dragging = false;
-          startPaintLoop('space');
           return;
         }
 
         state.dragging = true;
+        state.dragMoved = false;
+        state.lastX = e.clientX;
+        state.lastY = e.clientY;
+        updateCoordsOverlay(e.clientX, e.clientY);
       });
 
       el.viewport.addEventListener('pointermove', e => {
-        if (isInteractiveUiTarget(e.target)) return;
-
-        if (!activePointers.has(e.pointerId)) {
-          if (e.pointerType === 'mouse' && !state.dragging) {
-            updateCoordsOverlay(e.clientX, e.clientY);
-          }
-          return;
-        }
-
+        if (!activePointers.has(e.pointerId)) return;
         setPointerPosition(e);
 
         if (activePointers.size >= 2) {
-          cancelTouchHold();
           const [p1, p2] = getPointerPoints();
           const currentDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
           if (state.pinchDistance) {
@@ -2734,34 +2585,6 @@
           state.dragging = false;
           state.dragMoved = true;
           updateCoordsOverlay(p1.x, p1.y);
-          return;
-        }
-
-        updateCoordsOverlay(e.clientX, e.clientY);
-
-        if (state.mobileBrushEnabled && e.pointerType === 'touch') {
-          const prev = state.lastTouchPaintPoint || { clientX: e.clientX, clientY: e.clientY };
-          paintStrokeFromTo(prev, { clientX: e.clientX, clientY: e.clientY }, 'touch-brush');
-          state.lastTouchPaintPoint = { clientX: e.clientX, clientY: e.clientY };
-          return;
-        }
-
-        if (state.touchHoldActive || state.touchPainting) {
-          startPaintLoop('touch');
-          return;
-        }
-
-        if (e.pointerType === 'touch' && state.touchHoldTimer) {
-          const distToStart = Math.hypot(e.clientX - state.touchHoldStart.x, e.clientY - state.touchHoldStart.y);
-          if (distToStart > 8) {
-            state.dragging = true;
-            state.dragMoved = true;
-            cancelTouchHold();
-          }
-        }
-
-        if (state.spaceHeld) {
-          startPaintLoop('space');
           return;
         }
 
@@ -2788,59 +2611,116 @@
         state.dragging = false;
         state.dragMoved = false;
         state.pinchDistance = null;
-        state.mouseIsDown = false;
-        cancelTouchHold();
       });
 
-      el.viewport.addEventListener('pointerenter', e => {
-        if (e.pointerType === 'mouse') {
-          state.pointerOverCanvas = true;
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: state.username || 'Anónimo', lastSeen: Date.now(), online: true });
         }
       });
 
-      el.viewport.addEventListener('pointerleave', () => {
-        state.pointerOverCanvas = false;
-        if (!state.dragging && activePointers.size === 0 && !state.spaceHeld && !state.touchPainting) {
-          state.hoverPoint = null;
-          el.pixelSelector.style.display = 'none';
-          el.coordsInfo.style.display = 'none';
-          stopPaintLoop();
+      window.addEventListener('beforeunload', () => {
+        try {
+          db.ref(`${USERS_PATH}/${ensureUid()}`).update({ online:false, lastSeen: Date.now() });
+        } catch {}
+      });
+    }
+
+    function initUsernameBoot() {
+      syncUiWithUsername();
+      if (state.username) {
+        el.usernameInput.value = state.username;
+        confirmUsername();
+        hideModal(el.modalUsername);
+      } else {
+        showModal(el.modalUsername);
+        el.usernameInput.focus();
+      }
+    }
+
+    async function loadFirebaseResources() {
+      loadBoardCacheAndShow();
+
+      const tasks = [
+        {
+          name:'settings',
+          promise: db.ref(SETTINGS_PATH).once('value').then(s => { state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) }; addLoadingDone(1); }).catch(() => addLoadingDone(1))
+        },
+        {
+          name:'presence',
+          promise: db.ref(PRESENCE_PATH).once('value').then(s => { state.onlineCount = s.numChildren() || 0; el.statOnline.textContent = formatNumber(state.onlineCount); addLoadingDone(1); }).catch(() => addLoadingDone(1))
+        },
+        {
+          name:'users',
+          promise: db.ref(USERS_PATH).once('value').then(s => { state.uniqueCount = s.numChildren() || 0; el.statUnique.textContent = formatNumber(state.uniqueCount); addLoadingDone(1); }).catch(() => addLoadingDone(1))
+        },
+        {
+          name:'messages',
+          promise: db.ref(MESSAGES_PATH).limitToLast(20).once('value').then(s => {
+            el.chatArea.innerHTML = '';
+            const data = s.val() || {};
+            Object.values(data).slice(-20).forEach(m => {
+              const div = document.createElement('div');
+              div.className = 'msg';
+              div.innerHTML = `
+                <div class="meta">
+                  <span class="user">${escapeHtmlText(m.username || 'Anónimo')}</span>
+                  <span class="time">${escapeHtmlText(m.time ? formatShortTime(m.time) : '')}</span>
+                </div>
+                <div class="text">${escapeHtmlText(m.content || '')}</div>
+              `;
+              el.chatArea.appendChild(div);
+            });
+            el.chatArea.scrollTop = el.chatArea.scrollHeight;
+            const maxTs = Object.values(data).reduce((acc, m) => Math.max(acc, Number(m && m.time) || 0), 0);
+            state.lastMessageTime = Math.max(state.lastMessageTime, maxTs);
+            addLoadingDone(1);
+          }).catch(() => addLoadingDone(1))
         }
+      ];
+
+      setLoadingTotal(tasks.length);
+
+      const boardPromise = db.ref(BOARD_PATH).once('value').then(snap => {
+        processBoardSnapshot(snap);
+      }).catch(() => {
+        ensureWhiteCanvas();
+        scheduleCanvasFlush();
+        finishBoardLoading();
       });
 
-      window.addEventListener('keydown', e => {
-        if (isTypingTarget(e.target)) return;
-        if (e.code === 'Space' || e.key === ' ') {
-          e.preventDefault();
-          state.spaceHeld = true;
-          if (state.hoverPoint) startPaintLoop('space');
-        }
-        if (e.key === 'Escape') {
-          closeSidebar();
-          if (!state.isCapturing) hideAllModals();
-        }
-      });
+      await Promise.allSettled(tasks.map(t => t.promise));
+      await boardPromise;
 
-      window.addEventListener('keyup', e => {
-        if (e.code === 'Space' || e.key === ' ') {
-          state.spaceHeld = false;
-          if (!state.touchPainting) stopPaintLoop();
-        }
-      });
+      if (state.loadingDone < state.loadingTotal) {
+        state.loadingDone = state.loadingTotal;
+        updateLoadingUI();
+      }
 
-      window.addEventListener('wheel', e => {
-        if (isInteractiveUiTarget(e.target)) return;
-        e.preventDefault();
-        const factor = e.deltaY > 0 ? 0.88 : 1.12;
-        applyZoom(factor, e.clientX, e.clientY);
-      }, { passive:false });
+      attachBoardListeners();
+      attachChatListeners();
+      attachActivityListeners();
+      syncSettings();
+      syncPresence();
+      syncUsers();
+      refreshActiveUsersSnapshot();
+      refreshLeaderboard();
+      updateTopStats();
+    }
 
-      window.addEventListener('blur', () => {
-        state.dragging = false;
-        state.pinchDistance = null;
-        state.spaceHeld = false;
-        stopTouchPaintLoop();
-      });
+    function startSession() {
+      buildPalette();
+      syncPaletteVisibilityUI();
+      updateUsernameBadge();
+      updateBrushButtonUI();
+      updateSessionLoginModal();
+      updateCooldownUI(0, true);
+      clearRecentActivity();
+      renderLeaderboard();
+      centerCanvas();
+      startSessionClock();
+      initUsernameBoot();
+      loadFirebaseResources();
     }
 
     function startSessionClock() {
@@ -2860,8 +2740,6 @@
       el.toggleTracking.disabled = !state.isAuthorized;
       el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
       if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
-      if (el.canvasSizeInput) el.canvasSizeInput.value = String(state.settings.canvasSize || RES);
-      if (el.canvasSizeInfo) el.canvasSizeInfo.textContent = `Actual: ${RES}×${RES}`;
       el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
       el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
       el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
@@ -3101,10 +2979,9 @@
       if (state.username) {
         el.usernameInput.value = state.username;
       }
-      updateUsernameUi();
+      syncUiWithUsername();
       attachBanWatchers();
       initUsernameBoot();
-      if (el.loaderLiveToggle) el.loaderLiveToggle.addEventListener('click', () => toggleLoaderLivePanel());
       loadFirebaseResources();
     });
 
@@ -3138,7 +3015,21 @@
         {
           name:'messages',
           promise: db.ref(MESSAGES_PATH).limitToLast(20).once('value').then(s => {
-            appendLoadedMessagesOnce(s.val());
+            el.chatArea.innerHTML = '';
+            const data = s.val() || {};
+            Object.values(data).slice(-20).forEach(m => {
+              const div = document.createElement('div');
+              div.className = 'msg';
+              div.innerHTML = `
+                <div class="meta">
+                  <span class="user">${escapeHtmlText(m.username || 'Anónimo')}</span>
+                  <span class="time">${escapeHtmlText(m.time ? formatShortTime(m.time) : '')}</span>
+                </div>
+                <div class="text">${escapeHtmlText(m.content || '')}</div>
+              `;
+              el.chatArea.appendChild(div);
+            });
+            el.chatArea.scrollTop = el.chatArea.scrollHeight;
             addLoadingDone(1);
           }).catch(() => addLoadingDone(1))
         }
@@ -3234,26 +3125,12 @@
       el.mobileMenuBtn.addEventListener('click', toggleSidebar);
       el.chatBtn.addEventListener('click', () => openSidebar('chat'));
       el.statsBtn.addEventListener('click', () => openSidebar('stats'));
-      el.centerBtn.addEventListener('click', () => { centerCanvas(); if (isMobileLayout()) closeSidebar(); });
+      el.centerBtn.addEventListener('click', centerCanvas);
       el.sidebarCloseBtn.addEventListener('click', closeSidebar);
 
       el.quickChat.addEventListener('click', () => openSidebar('chat'));
       el.quickStats.addEventListener('click', () => openSidebar('stats'));
-      el.quickCenter.addEventListener('click', () => { centerCanvas(); if (isMobileLayout()) closeSidebar(); });
-      if (el.quickBrush) {
-        el.quickBrush.addEventListener('click', () => {
-          state.mobileBrushEnabled = !state.mobileBrushEnabled;
-          try { localStorage.setItem('nf_mobile_brush', state.mobileBrushEnabled ? '1' : '0'); } catch {}
-          updatePaintModeUI();
-        });
-      }
-      if (el.quickBrush) {
-        el.quickBrush.addEventListener('click', () => {
-          state.mobileBrushEnabled = !state.mobileBrushEnabled;
-          try { localStorage.setItem('nf_mobile_brush', state.mobileBrushEnabled ? '1' : '0'); } catch {}
-          updatePaintModeUI();
-        });
-      }
+      el.quickCenter.addEventListener('click', centerCanvas);
       el.quickPalette.addEventListener('click', () => {
         if (isMobileLayout()) {
           toggleMobilePalette();
@@ -3262,7 +3139,7 @@
         }
       });
 
-      el.usernameInput.addEventListener('input', updateUsernameUi);
+      el.usernameInput.addEventListener('input', syncUiWithUsername);
       el.usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmUsername(); });
       el.usernameSaveBtn.addEventListener('click', confirmUsername);
 
@@ -3282,7 +3159,6 @@
       el.saveSettingsBtn.addEventListener('click', saveAdminSettings);
       el.exportStatsBtn.addEventListener('click', () => { updateTopStats(); refreshLeaderboard(); });
       el.tlToggleBtn.addEventListener('click', toggleTimelapseCapture);
-      if (el.applyCanvasSizeBtn) el.applyCanvasSizeBtn.addEventListener('click', applyCanvasSizeFromAdmin);
 
       el.toggleTimestamp.addEventListener('change', () => {
         state.settings.timestampEnabled = el.toggleTimestamp.checked;
@@ -3303,6 +3179,17 @@
         el.tlFreqInput.value = String(v);
       });
       el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
+      const statsHoverTarget = el.header.querySelector('.global-stats');
+      if (statsHoverTarget) {
+        statsHoverTarget.addEventListener('pointerenter', () => { if (!isMobileLayout()) showActiveUsersPopover(); });
+        statsHoverTarget.addEventListener('pointerleave', () => { if (!isMobileLayout()) hideActiveUsersPopover(140); });
+        statsHoverTarget.addEventListener('click', () => { if (isMobileLayout()) showActiveUsersPopover(); });
+      }
+      [document.getElementById('module-stats'), document.getElementById('module-globalstats')].filter(Boolean).forEach(node => {
+        node.addEventListener('click', () => { if (isMobileLayout()) showActiveUsersPopover(); });
+      });
+      updateBrushButtonUI();
+      updateSessionLoginModal();
 
       const activePointers = new Map();
 
@@ -3322,63 +3209,10 @@
         return el.sidebar.contains(target) || document.querySelector('.modal-overlay.visible')?.contains(target);
       }
 
-      function clearTouchHoldTimer() {
-        if (state.touchHoldTimer) {
-          clearTimeout(state.touchHoldTimer);
-          state.touchHoldTimer = null;
-        }
-      }
-
-      function stopTouchPaintLoop() {
-        state.touchPainting = false;
-        state.touchHoldActive = false;
-        state.touchHoldPointerId = null;
-        state.touchHoldMoved = false;
-        clearTouchHoldTimer();
-        stopPaintLoop();
-      }
-
-      function armTouchHold(e) {
-        clearTouchHoldTimer();
-        state.touchHoldPointerId = e.pointerId;
-        state.touchHoldStart = { x: e.clientX, y: e.clientY, ts: Date.now() };
-        state.touchHoldMoved = false;
-        state.touchHoldActive = false;
-        state.touchPainting = false;
-        state.touchHoldTimer = setTimeout(() => {
-          if (!activePointers.has(e.pointerId)) return;
-          if (activePointers.size !== 1) return;
-          if (state.pinchDistance != null || state.dragMoved) return;
-          state.touchHoldActive = true;
-          state.touchPainting = true;
-          startPaintLoop('touch');
-        }, 1500);
-      }
-
-      function cancelTouchHold() {
-        clearTouchHoldTimer();
-        state.touchHoldActive = false;
-        state.touchHoldPointerId = null;
-        state.touchHoldMoved = false;
-      }
-
-      function paintStrokeFromTo(fromPoint, toPoint, source) {
-        if (!fromPoint || !toPoint) return;
-        const dx = toPoint.clientX - fromPoint.clientX;
-        const dy = toPoint.clientY - fromPoint.clientY;
-        const distance = Math.max(1, Math.hypot(dx, dy));
-        const steps = Math.max(1, Math.ceil(distance / 6));
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          commitPixelAt(fromPoint.clientX + dx * t, fromPoint.clientY + dy * t, source);
-        }
-      }
-
       function endViewportInteraction(e) {
         if (!activePointers.has(e.pointerId)) return;
         const hadDrag = state.dragging;
         const hadMove = state.dragMoved;
-        const wasTouchHoldActive = state.touchHoldActive;
         const point = { x: e.clientX, y: e.clientY };
 
         clearPointerPosition(e);
@@ -3387,23 +3221,11 @@
           state.pinchDistance = null;
         }
 
-        if (e.pointerType === 'touch' && state.mobileBrushEnabled && state.touchPainting) {
-          paintStrokeFromTo(state.lastTouchPaintPoint || { clientX: e.clientX, clientY: e.clientY }, { clientX: e.clientX, clientY: e.clientY }, 'touch-brush');
-        }
-
         if (activePointers.size === 0) {
-          if (state.spaceHeld) {
-            stopPaintLoop();
-          } else if (state.touchPainting) {
-            stopTouchPaintLoop();
-          } else if (hadDrag && !hadMove && e.pointerType === 'mouse') {
-            handlePixelCommit(e);
-          }
+          if (hadDrag && !hadMove) handlePixelCommit(e);
           state.dragging = false;
           state.dragMoved = false;
           state.pinchDistance = null;
-          state.mouseIsDown = false;
-          cancelTouchHold();
         }
 
         updateCoordsOverlay(point.x, point.y);
@@ -3422,37 +3244,14 @@
           state.pinchDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
           state.dragging = false;
           state.dragMoved = true;
-          cancelTouchHold();
-          return;
-        }
-
-        state.mouseIsDown = true;
-        state.dragMoved = false;
-        state.lastX = e.clientX;
-        state.lastY = e.clientY;
-        updateCoordsOverlay(e.clientX, e.clientY);
-
-        if (e.pointerType === 'touch') {
-          if (state.mobileBrushEnabled) {
-            state.dragging = false;
-            state.touchPainting = true;
-            state.lastTouchPaintPoint = { clientX: e.clientX, clientY: e.clientY };
-            commitPixelAt(e.clientX, e.clientY, 'touch-brush');
-            startPaintLoop('touch-brush');
-            return;
-          }
-          state.dragging = false;
-          armTouchHold(e);
-          return;
-        }
-
-        if (state.spaceHeld) {
-          state.dragging = false;
-          startPaintLoop('space');
           return;
         }
 
         state.dragging = true;
+        state.dragMoved = false;
+        state.lastX = e.clientX;
+        state.lastY = e.clientY;
+        updateCoordsOverlay(e.clientX, e.clientY);
       });
 
       el.viewport.addEventListener('pointermove', e => {
@@ -3468,7 +3267,6 @@
         setPointerPosition(e);
 
         if (activePointers.size >= 2) {
-          cancelTouchHold();
           const [p1, p2] = getPointerPoints();
           const currentDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
           if (state.pinchDistance) {
@@ -3481,34 +3279,6 @@
           state.dragging = false;
           state.dragMoved = true;
           updateCoordsOverlay(p1.x, p1.y);
-          return;
-        }
-
-        updateCoordsOverlay(e.clientX, e.clientY);
-
-        if (state.mobileBrushEnabled && e.pointerType === 'touch') {
-          const prev = state.lastTouchPaintPoint || { clientX: e.clientX, clientY: e.clientY };
-          paintStrokeFromTo(prev, { clientX: e.clientX, clientY: e.clientY }, 'touch-brush');
-          state.lastTouchPaintPoint = { clientX: e.clientX, clientY: e.clientY };
-          return;
-        }
-
-        if (state.touchHoldActive || state.touchPainting) {
-          startPaintLoop('touch');
-          return;
-        }
-
-        if (e.pointerType === 'touch' && state.touchHoldTimer) {
-          const distToStart = Math.hypot(e.clientX - state.touchHoldStart.x, e.clientY - state.touchHoldStart.y);
-          if (distToStart > 8) {
-            state.dragging = true;
-            state.dragMoved = true;
-            cancelTouchHold();
-          }
-        }
-
-        if (state.spaceHeld) {
-          startPaintLoop('space');
           return;
         }
 
@@ -3535,43 +3305,13 @@
         state.dragging = false;
         state.dragMoved = false;
         state.pinchDistance = null;
-        state.mouseIsDown = false;
-        cancelTouchHold();
-      });
-
-      el.viewport.addEventListener('pointerenter', e => {
-        if (e.pointerType === 'mouse') {
-          state.pointerOverCanvas = true;
-        }
       });
 
       el.viewport.addEventListener('pointerleave', () => {
-        state.pointerOverCanvas = false;
-        if (!state.dragging && activePointers.size === 0 && !state.spaceHeld && !state.touchPainting) {
+        if (!state.dragging && activePointers.size === 0) {
           state.hoverPoint = null;
           el.pixelSelector.style.display = 'none';
           el.coordsInfo.style.display = 'none';
-          stopPaintLoop();
-        }
-      });
-
-      window.addEventListener('keydown', e => {
-        if (isTypingTarget(e.target)) return;
-        if (e.code === 'Space' || e.key === ' ') {
-          e.preventDefault();
-          state.spaceHeld = true;
-          if (state.hoverPoint) startPaintLoop('space');
-        }
-        if (e.key === 'Escape') {
-          closeSidebar();
-          if (!state.isCapturing) hideAllModals();
-        }
-      });
-
-      window.addEventListener('keyup', e => {
-        if (e.code === 'Space' || e.key === ' ') {
-          state.spaceHeld = false;
-          if (!state.touchPainting) stopPaintLoop();
         }
       });
 
@@ -3582,11 +3322,16 @@
         applyZoom(factor, e.clientX, e.clientY);
       }, { passive:false });
 
+      window.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          closeSidebar();
+          if (!state.isCapturing) hideAllModals();
+        }
+      });
+
       window.addEventListener('blur', () => {
         state.dragging = false;
         state.pinchDistance = null;
-        state.spaceHeld = false;
-        stopTouchPaintLoop();
       });
     }
 
@@ -3596,10 +3341,26 @@
       mobileStatRate: document.getElementById('mobile-stat-rate'),
       mobileStatUnique: document.getElementById('mobile-stat-unique'),
       mobileSessionClock: document.getElementById('mobile-session-clock'),
+      sessionBtn: document.getElementById('session-btn'),
+      quickBrush: document.getElementById('quick-brush'),
+      quickId: document.getElementById('quick-id'),
       quickSession: document.getElementById('quick-session'),
       quickMap: document.getElementById('quick-map'),
       quickLeaderboard: document.getElementById('quick-leaderboard'),
       quickGlobalStats: document.getElementById('quick-globalstats'),
+      modalSessionLogin: document.getElementById('modal-session-login'),
+      sessionAccountName: document.getElementById('session-account-name'),
+      sessionCodeValue: document.getElementById('session-code-value'),
+      sessionCodeInput: document.getElementById('session-code-input'),
+      sessionCodeRefreshBtn: document.getElementById('session-code-refresh'),
+      sessionCodeLoginBtn: document.getElementById('session-code-login-btn'),
+      sessionCodeCloseBtn: document.getElementById('session-code-close-btn'),
+      sessionCodeCopyBtn: document.getElementById('session-code-copy'),
+      sessionCodeExpiry: document.getElementById('session-code-expiry'),
+      sessionAccountList: document.getElementById('session-account-list'),
+      activeUsersPopover: document.getElementById('active-users-popover'),
+      activeUsersList: document.getElementById('active-users-list'),
+      activeUsersCount: document.getElementById('active-users-count'),
       modalBanned: document.getElementById('modal-banned'),
       banMessage: document.getElementById('ban-message'),
       banDetail: document.getElementById('ban-detail'),
@@ -3608,8 +3369,7 @@
       banReasonInput: document.getElementById('ban-reason'),
       banBtn: document.getElementById('ban-btn'),
       unbanBtn: document.getElementById('unban-btn'),
-      banStatus: document.getElementById('ban-status'),
-      moduleHideButtons: Array.from(document.querySelectorAll('.module-hide-btn'))
+      banStatus: document.getElementById('ban-status')
     });
 
     function isTypingTarget(target) {
@@ -3643,56 +3403,27 @@
         globalstats: el.quickGlobalStats,
         map: el.quickMap,
         leaderboard: el.quickLeaderboard,
-        activity: el.quickActivity,
         palette: el.quickPalette,
-        brush: el.quickBrush,
         center: el.quickCenter
       };
       if (activeMap[next]) activeMap[next].classList.add('active');
-      if (next === 'palette') setMobilePaletteVisible(true);
-      if (next === 'brush') {
-        state.mobileBrushEnabled = true;
-        try { localStorage.setItem('nf_mobile_brush', '1'); } catch {}
-        updatePaintModeUI();
+      if (next === 'palette') {
+        setMobilePaletteVisible(true);
       }
-      if (next === 'center') centerCanvas();
-      if (isMobileLayout() && !['palette', 'brush', 'center'].includes(next)) {
+      if (next === 'center') {
+        centerCanvas();
+      }
+      if (isMobileLayout() && next !== 'palette' && next !== 'center') {
         const moduleId = getSectionModuleId(next);
         const target = document.getElementById(moduleId);
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
 
-    function isModuleHidden(moduleId) {
-      return state.hiddenModules.has(moduleId);
-    }
-
-    function applyModuleVisibility() {
-      const ids = ['module-chat','module-stats','module-globalstats','module-map','module-leaderboard','module-activity'];
-      ids.forEach(id => {
-        const node = document.getElementById(id);
-        if (!node) return;
-        node.classList.toggle('module-hidden', state.hiddenModules.has(id));
-      });
-      try { localStorage.setItem('nf_hidden_modules', Array.from(state.hiddenModules).join(',')); } catch {}
-    }
-
-    function toggleModuleVisibility(moduleId) {
-      if (!moduleId) return;
-      if (state.hiddenModules.has(moduleId)) state.hiddenModules.delete(moduleId); else state.hiddenModules.add(moduleId);
-      applyModuleVisibility();
-    }
-
     function updatePaintModeUI() {
-      const active = !!(state.mobileBrushEnabled && isMobileLayout());
       el.cooldownBar.style.width = '100%';
-      el.cooldownText.textContent = active ? 'Pincel móvil' : 'Pintura continua';
-      el.cooldownValue.textContent = active ? 'ON' : '∞';
-      if (el.quickBrush) {
-        el.quickBrush.classList.toggle('brush-active', active);
-        el.quickBrush.setAttribute('aria-pressed', String(active));
-        el.quickBrush.title = active ? 'Desactivar pincel móvil' : 'Activar pincel móvil';
-      }
+      el.cooldownText.textContent = 'Pintura continua';
+      el.cooldownValue.textContent = '∞';
     }
 
     function updateTopStats() {
@@ -3714,7 +3445,6 @@
       if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(state.pixelRate)}/min`;
       if (el.mobileStatUnique) el.mobileStatUnique.textContent = formatNumber(contributors);
       if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent || '00:00:00';
-      if (el.statCanvasSize) el.statCanvasSize.textContent = `${RES}×${RES} px`;
       el.minimapZoom.textContent = `${state.scale.toFixed(1)}×`;
       updatePaintModeUI();
     }
@@ -3955,7 +3685,7 @@
           stopPaintLoop();
           return;
         }
-        if ((state.spaceHeld || state.touchPainting) && state.hoverPoint) {
+        if ((state.spaceHeld || state.touchPainting || state.brushMode) && state.hoverPoint) {
           commitPixelAt(state.hoverPoint.clientX, state.hoverPoint.clientY, mode);
         }
       };
@@ -4050,9 +3780,13 @@
       if (banned) return;
       state.username = name;
       localStorage.setItem('nf_username', name);
+      rememberAccount(uid, name);
       updateUsernameBadge();
       hideModal(el.modalUsername);
       db.ref(`${USERS_PATH}/${uid}`).update({ username: name, createdAt: Date.now(), lastSeen: Date.now(), online: true });
+      syncUsers();
+      syncPresence();
+      updateSessionLoginModal();
       logActivity({
         type: 'join',
         username: name,
@@ -4188,17 +3922,11 @@
         const incoming = snap.val() || {};
         const trackingOn = !!incoming.trackingEnabled;
         state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: trackingOn };
-        if (Number.isFinite(Number(state.settings.canvasSize))) {
-          const nextSize = Math.max(25, Math.min(500, parseInt(state.settings.canvasSize, 10) || RES));
-          if (nextSize !== RES) setCanvasSize(nextSize, { skipRefresh: false });
-        }
         el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
         el.toggleTracking.checked = !!state.settings.trackingEnabled;
         el.toggleTracking.disabled = !state.isAuthorized;
         el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
         if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
-        if (el.canvasSizeInput) el.canvasSizeInput.value = String(state.settings.canvasSize || RES);
-        if (el.canvasSizeInfo) el.canvasSizeInfo.textContent = `Actual: ${RES}×${RES}`;
         updateTopStats();
         el.tlStatus.textContent = `Ajustes sincronizados · tracking ${state.settings.trackingEnabled ? 'activo' : 'inactivo'} · timestamp ${state.settings.timestampEnabled ? 'visible' : 'oculto'}.`;
       });
@@ -4210,8 +3938,6 @@
       el.toggleTracking.disabled = !state.isAuthorized;
       el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
       if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
-      if (el.canvasSizeInput) el.canvasSizeInput.value = String(state.settings.canvasSize || RES);
-      if (el.canvasSizeInfo) el.canvasSizeInfo.textContent = `Actual: ${RES}×${RES}`;
       el.toggleTracking.disabled = !state.isAuthorized;
       el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
       el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
@@ -4259,17 +3985,55 @@
     function loadBoardCacheAndShow() {
       const cached = loadBoardCache();
       if (cached) {
-        loadBoardObjectProgressively(cached, { label: 'board-cache', delayMs: 34 }).then(() => {
-          if (!state.boardLoaded) finishBoardLoading();
-        });
+        setBoardFromObject(cached);
+        const keys = Object.keys(cached);
+        state.knownBoardKeys = new Set(keys);
+        state.boardCount = keys.length;
+        state.loadingDone = keys.length;
+        updateTopStats();
+        updateLoadingUI();
       }
     }
 
     function processBoardSnapshot(boardSnap) {
       const data = boardSnap.val() || {};
-      loadBoardObjectProgressively(data, { label: 'board', delayMs: 30 }).then(() => {
-        finishBoardLoading();
-      });
+      const entries = Object.entries(data);
+      state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
+      updateLoadingUI();
+      ensureWhiteCanvas();
+
+      const chunkSize = 220;
+      let index = 0;
+
+      const processChunk = () => {
+        const end = Math.min(index + chunkSize, entries.length);
+        const startIndex = index;
+
+        for (; index < end; index++) {
+          const [key, raw] = entries[index];
+          const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
+          const [x, y] = key.split('_').map(Number);
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            setPixel(x, y, color);
+            state.knownBoardKeys.add(key);
+          }
+        }
+
+        state.boardCount = state.knownBoardKeys.size;
+        addLoadingDone(index - startIndex);
+        scheduleCanvasFlush();
+        updateTopStats();
+
+        if (index < entries.length) {
+          requestAnimationFrame(processChunk);
+        } else {
+          persistBoardCache(data);
+          state.lastBoardSyncAt = Date.now();
+          finishBoardLoading();
+        }
+      };
+
+      requestAnimationFrame(processChunk);
     }
 
     function attachBoardListeners() {
@@ -4338,6 +4102,61 @@
       state.lastMessageTime = Math.max(state.lastMessageTime, maxTs);
     }
 
+    async function loadFirebaseResources() {
+      loadBoardCacheAndShow();
+      setLoadingTotal(4);
+
+      const settingsPromise = db.ref(SETTINGS_PATH).once('value').then(s => {
+        state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) };
+        addLoadingDone(1);
+      }).catch(() => addLoadingDone(1));
+
+      const usersPromise = db.ref(USERS_PATH).once('value').then(s => {
+        state.usersSnapshot = s.val() || {};
+        recomputeActiveUsers();
+        addLoadingDone(1);
+      }).catch(() => addLoadingDone(1));
+
+      const messagesPromise = db.ref(MESSAGES_PATH).limitToLast(30).once('value').then(s => {
+        el.chatArea.innerHTML = '';
+        state.renderedMessageKeys = new Set();
+        appendLoadedMessagesOnce(s.val() || {});
+        el.chatArea.scrollTop = el.chatArea.scrollHeight;
+        addLoadingDone(1);
+      }).catch(() => addLoadingDone(1));
+
+      const globalStatsPromise = Promise.all([
+        db.ref(`${GLOBAL_STATS_PATH}/totalPixelsPlaced`).once('value'),
+        db.ref(`${GLOBAL_STATS_PATH}/contributorsCount`).once('value')
+      ]).then(([totalSnap, contributorsSnap]) => {
+        state.totalPixelsPlaced = Number(totalSnap.val()) || state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS;
+        state.contributorCount = Number(contributorsSnap.val()) || state.contributorCount || GLOBAL_STATS_SEED_CONTRIBUTORS;
+        localStorage.setItem('nf_total_pixels', String(state.totalPixelsPlaced));
+        localStorage.setItem('nf_contributor_count', String(state.contributorCount));
+        addLoadingDone(1);
+      }).catch(() => addLoadingDone(1));
+
+      const boardPromise = db.ref(BOARD_PATH).once('value').then(snap => {
+        processBoardSnapshot(snap);
+      }).catch(() => {
+        ensureWhiteCanvas();
+        scheduleCanvasFlush();
+        finishBoardLoading();
+      });
+
+      await Promise.allSettled([settingsPromise, usersPromise, messagesPromise, globalStatsPromise]);
+      await boardPromise;
+
+      attachBoardListeners();
+      attachChatListeners();
+      syncSettings();
+      syncPresence();
+      syncUsers();
+      syncGlobalStats();
+      refreshLeaderboard();
+      updateTopStats();
+    }
+
     function performAdminLogin() {
       if (el.adminKeyInput.value === "Isaias2013Cerrado") {
         state.isAuthorized = true;
@@ -4378,7 +4197,6 @@
       const patch = {
         timestampEnabled: !!el.toggleTimestamp.checked,
         trackingEnabled: !!el.toggleTracking.checked,
-        canvasSize: Math.max(25, Math.min(500, parseInt(el.canvasSizeInput?.value, 10) || RES)),
         timelapseIntervalSec: Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec)
       };
       state.settings = { ...state.settings, ...patch };
@@ -4396,8 +4214,6 @@
     function openAdminDashboard() {
       updateSettingsDisplay();
       if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
-      if (el.canvasSizeInput) el.canvasSizeInput.value = String(state.settings.canvasSize || RES);
-      if (el.canvasSizeInfo) el.canvasSizeInfo.textContent = `Actual: ${RES}×${RES}`;
       showModal(el.modalDashboard);
       setBanStatus('Introduce el objetivo y una razón para aplicar una sanción.', '');
     }
@@ -4410,6 +4226,26 @@
       if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent || '00:00:00';
     }
 
+    function updateBrushButtonUI() {
+      if (!el.quickBrush) return;
+      el.quickBrush.classList.toggle('brush-on', !!state.brushMode);
+      el.quickBrush.setAttribute('aria-pressed', String(!!state.brushMode));
+      el.quickBrush.title = state.brushMode ? 'Pincel continuo activo' : 'Activar pincel continuo';
+    }
+
+    function setBrushMode(enabled) {
+      state.brushMode = !!enabled;
+      if (!state.brushMode) {
+        stopTouchPaintLoop();
+        stopPaintLoop();
+      }
+      updateBrushButtonUI();
+    }
+
+    function toggleBrushMode() {
+      setBrushMode(!state.brushMode);
+    }
+
     function startSessionClock() {
       const start = Date.now();
       setInterval(() => {
@@ -4419,6 +4255,15 @@
         const s = String(total % 60).padStart(2, '0');
         el.sessionClock.textContent = `${h}:${m}:${s}`;
         updateSessionClockMobile();
+        if (state.sessionCode && state.sessionCodeExpiresAt > Date.now()) {
+          updateSessionLoginModal();
+        } else if (state.sessionCode && state.sessionCodeExpiresAt <= Date.now()) {
+          state.sessionCode = '';
+          state.sessionCodeExpiresAt = 0;
+          localStorage.removeItem('nf_session_code');
+          localStorage.removeItem('nf_session_code_expires');
+          updateSessionLoginModal();
+        }
       }, 1000);
     }
 
@@ -4432,7 +4277,7 @@
       el.mobileMenuBtn.addEventListener('click', () => toggleSidebar());
       el.chatBtn.addEventListener('click', () => openSidebar('chat'));
       el.statsBtn.addEventListener('click', () => openSidebar('session'));
-      el.centerBtn.addEventListener('click', () => { centerCanvas(); if (isMobileLayout()) closeSidebar(); });
+      el.centerBtn.addEventListener('click', centerCanvas);
       el.sidebarCloseBtn.addEventListener('click', closeSidebar);
 
       el.quickChat.addEventListener('click', () => openSidebar('chat'));
@@ -4440,14 +4285,9 @@
       el.quickGlobalStats.addEventListener('click', () => openSidebar('globalstats'));
       el.quickMap.addEventListener('click', () => openSidebar('map'));
       el.quickLeaderboard.addEventListener('click', () => openSidebar('leaderboard'));
-      el.quickCenter.addEventListener('click', () => { centerCanvas(); if (isMobileLayout()) closeSidebar(); });
-      if (el.quickBrush) {
-        el.quickBrush.addEventListener('click', () => {
-          state.mobileBrushEnabled = !state.mobileBrushEnabled;
-          try { localStorage.setItem('nf_mobile_brush', state.mobileBrushEnabled ? '1' : '0'); } catch {}
-          updatePaintModeUI();
-        });
-      }
+      el.quickCenter.addEventListener('click', () => { centerCanvas(); openSidebar(state.currentMobileSection || 'chat'); });
+      el.quickBrush.addEventListener('click', () => { toggleBrushMode(); });
+      el.quickId.addEventListener('click', openSessionLoginModal);
       el.quickPalette.addEventListener('click', () => {
         if (isMobileLayout()) {
           toggleMobilePalette();
@@ -4456,7 +4296,7 @@
         }
       });
 
-      el.usernameInput.addEventListener('input', updateUsernameUi);
+      el.usernameInput.addEventListener('input', syncUiWithUsername);
       el.usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmUsername(); });
       el.usernameSaveBtn.addEventListener('click', confirmUsername);
 
@@ -4478,13 +4318,6 @@
       el.banBtn.addEventListener('click', banUserByTarget);
       el.unbanBtn.addEventListener('click', unbanUserByTarget);
       el.banCloseBtn.addEventListener('click', () => hideModal(el.modalBanned));
-
-      el.moduleHideButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const target = btn.getAttribute('data-hide-target');
-          toggleModuleVisibility(target);
-        });
-      });
 
       el.toggleTimestamp.addEventListener('change', () => {
         state.settings.timestampEnabled = el.toggleTimestamp.checked;
@@ -4607,6 +4440,17 @@
         setPointerPosition(e);
         try { el.viewport.setPointerCapture(e.pointerId); } catch {}
 
+        if (state.brushMode && e.pointerType !== 'mouse') {
+          state.mouseIsDown = true;
+          state.dragging = false;
+          state.dragMoved = true;
+          state.touchPainting = true;
+          cancelTouchHold();
+          updateCoordsOverlay(e.clientX, e.clientY);
+          startPaintLoop('brush');
+          return;
+        }
+
         if (activePointers.size === 2) {
           const [p1, p2] = getPointerPoints();
           state.pinchDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
@@ -4623,6 +4467,13 @@
         updateCoordsOverlay(e.clientX, e.clientY);
 
         if (e.pointerType === 'touch') {
+          if (state.brushMode) {
+            state.dragging = false;
+            state.touchPainting = true;
+            cancelTouchHold();
+            startPaintLoop('brush');
+            return;
+          }
           state.dragging = false;
           armTouchHold(e);
           return;
@@ -4648,6 +4499,16 @@
         }
 
         setPointerPosition(e);
+
+        if (state.brushMode && e.pointerType !== 'mouse') {
+          state.dragging = false;
+          state.dragMoved = true;
+          state.touchPainting = true;
+          cancelTouchHold();
+          updateCoordsOverlay(e.clientX, e.clientY);
+          startPaintLoop('brush');
+          return;
+        }
 
         if (activePointers.size >= 2) {
           cancelTouchHold();
@@ -4761,12 +4622,23 @@
         state.dragging = false;
         state.pinchDistance = null;
         state.spaceHeld = false;
+        hideActiveUsersPopover();
         stopTouchPaintLoop();
+      });
+
+      document.addEventListener('pointerdown', e => {
+        if (!state.activeUsersVisible) return;
+        if (el.activeUsersPopover && el.activeUsersPopover.contains(e.target)) return;
+        if (el.header.querySelector('.global-stats')?.contains(e.target)) return;
+        if (document.getElementById('module-stats')?.contains(e.target)) return;
+        if (document.getElementById('module-globalstats')?.contains(e.target)) return;
+        if (el.sessionBtn?.contains(e.target)) return;
+        hideActiveUsersPopover();
       });
     }
 
     function initUsernameBoot() {
-      updateUsernameUi();
+      syncUiWithUsername();
       if (state.username) {
         el.usernameInput.value = state.username;
         confirmUsername();
@@ -4781,20 +4653,65 @@
       buildPalette();
       syncPaletteVisibilityUI();
       updateUsernameBadge();
+      updateBrushButtonUI();
+      updateSessionLoginModal();
       updateCooldownUI(0, true);
       clearRecentActivity();
       renderLeaderboard();
       centerCanvas();
       startSessionClock();
       initUsernameBoot();
-      if (el.loaderLiveToggle) el.loaderLiveToggle.addEventListener('click', () => toggleLoaderLivePanel());
-      toggleLoaderLivePanel(true);
-      applyModuleVisibility();
-      updatePaintModeUI();
       loadFirebaseResources();
     }
     initUiHooks();
     startSession();
   </script>
+
+  <div id="modal-session-login" class="modal-overlay">
+    <div class="modal-content wide">
+      <h2>Login por código</h2>
+      <p>Genera un código temporal de 5 minutos para abrir esta cuenta en otro dispositivo y sincronizar la misma sesión.</p>
+
+      <div class="username-badge">
+        <span>Cuenta actual:</span> <strong id="session-account-name">Sin asignar</strong>
+      </div>
+
+      <div class="field-label">
+        <span>Código activo</span>
+        <span id="session-code-expiry">sin generar</span>
+      </div>
+      <div class="session-code-box">
+        <strong id="session-code-value">— — — — — —</strong>
+        <button class="action-btn btn-main" type="button" id="session-code-refresh">Generar</button>
+        <button class="action-btn btn-ghost" type="button" id="session-code-copy">Copiar</button>
+      </div>
+
+      <div class="field-label">
+        <span>Entrar con código</span>
+        <span>otro dispositivo</span>
+      </div>
+      <input type="text" id="session-code-input" placeholder="Escribe el código" maxlength="12" autocomplete="off">
+
+      <div class="btn-grid">
+        <button class="action-btn btn-main" id="session-code-login-btn">Entrar</button>
+        <button class="action-btn btn-ghost" id="session-code-close-btn">Cerrar</button>
+      </div>
+
+      <div class="split-line"></div>
+      <div class="field-label">
+        <span>Cuentas guardadas</span>
+        <span>local</span>
+      </div>
+      <div id="session-account-list" class="account-list"></div>
+    </div>
+  </div>
+
+  <div id="active-users-popover" aria-live="polite">
+    <div class="active-users-title">
+      <span>Usuarios activos</span>
+      <span id="active-users-count">0</span>
+    </div>
+    <div id="active-users-list"></div>
+  </div>
 </body>
 </html>
