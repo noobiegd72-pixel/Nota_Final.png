@@ -59,6 +59,16 @@
     #loader-progress{width:0%;height:100%;background:linear-gradient(90deg,var(--accent),#6aa4ff);border-radius:999px;transition:width .12s linear}
     #loader-status{margin-top:12px;font-size:.76rem;line-height:1.5;color:#cfcfcf;font-family:"Courier New",monospace;min-height:22px}
     #loader-detail{margin-top:7px;font-size:.68rem;color:var(--dim);font-family:"Courier New",monospace;min-height:18px}
+    #loader-preview-wrap{margin-top:14px;display:grid;gap:10px}
+    #loader-preview-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    #loader-preview-toolbar small{font-size:.68rem;color:var(--dim);font-family:"Courier New",monospace}
+    #loader-preview-btn{height:34px;padding:0 11px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);cursor:pointer;font-size:.7rem;font-weight:800;letter-spacing:.25px;transition:transform .15s ease,border-color .15s ease,background .15s ease,opacity .15s ease}
+    #loader-preview-btn:hover{transform:translateY(-1px);border-color:rgba(41,121,255,.45);background:rgba(41,121,255,.08)}
+    #loader-preview-shell{width:100%;display:none;grid-template-columns:1fr;gap:8px;justify-items:center}
+    #loader-preview-shell.visible{display:grid}
+    #loader-preview-frame{position:relative;width:min(100%,260px);aspect-ratio:1/1;max-width:260px;max-height:220px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:#fff;box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);transition:aspect-ratio .2s ease,transform .2s ease,opacity .2s ease}
+    #loader-preview{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges;transition:opacity .18s ease,transform .18s ease,filter .18s ease}
+    #loader-preview-meta{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:.68rem;color:var(--dim);font-family:"Courier New",monospace;flex-wrap:wrap;width:min(100%,260px)}
 
     #coords-info{
       position:fixed;pointer-events:none;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);
@@ -77,7 +87,8 @@
     canvas#canvas{
       position:absolute;left:0;top:0;width:125px;height:125px;display:block;pointer-events:none;
       image-rendering:pixelated;image-rendering:crisp-edges;background:#fff;
-      box-shadow:0 0 60px rgba(0,0,0,.78);transform-origin:0 0;will-change:transform
+      box-shadow:0 0 60px rgba(0,0,0,.78);transform-origin:0 0;will-change:transform;
+      transition:transform .16s cubic-bezier(.2,.8,.2,1),opacity .16s ease,filter .16s ease
     }
 
     #pixel-selector{
@@ -110,38 +121,48 @@
     .brand h1{font-size:.98rem;font-weight:800;letter-spacing:.7px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .brand small{display:block;font-size:.67rem;color:var(--dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .header-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-    .global-stats{display:flex;gap:16px;align-items:center;color:var(--dim);font-size:.72rem;font-family:"Courier New",monospace;white-space:nowrap}
+    .global-stats{display:flex;gap:16px;align-items:center;color:var(--dim);font-size:.72rem;font-family:"Courier New",monospace;white-space:nowrap;cursor:pointer}
     .global-stats b{color:var(--accent)}
     .top-actions{display:flex;gap:8px;align-items:center}
     .top-btn{
       height:38px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.02);color:var(--text);
       padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
-      transition:transform .12s ease,border-color .12s ease,background .12s ease;font-size:.75rem;font-weight:700;letter-spacing:.2px
+      transition:transform .12s ease,border-color .12s ease,background .12s ease,opacity .12s ease,filter .12s ease;
+      font-size:.75rem;font-weight:700;letter-spacing:.2px
     }
     .top-btn:hover{transform:translateY(-1px);border-color:rgba(41,121,255,.45);background:rgba(41,121,255,.08)}
     .top-btn.active{background:rgba(41,121,255,.16);border-color:rgba(41,121,255,.55)}
+    #desktop-sidebar-toggle{display:inline-flex}
     #mobile-menu-btn{display:none}
 
     #sidebar-right{
       position:fixed;top:calc(var(--header-h) + 12px);right:18px;bottom:12px;width:var(--sidebar-w);
-      display:flex;flex-direction:column;gap:14px;z-index:2000;overflow-y:auto;overflow-x:hidden;padding-right:2px
+      display:flex;flex-direction:column;gap:14px;z-index:2000;overflow-y:auto;overflow-x:hidden;padding-right:2px;
+      transition:transform .22s ease,opacity .22s ease,filter .22s ease,width .22s ease,right .22s ease
     }
+    #sidebar-right.hidden-desktop{transform:translateX(calc(100% + 22px));opacity:0;pointer-events:none;filter:blur(1px)}
     .glass-module{
       background:var(--panel2);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:var(--r);
-      display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow);min-height:0
+      display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow);min-height:0;
+      transition:transform .18s ease,opacity .18s ease,border-color .18s ease,box-shadow .18s ease
     }
     .module-header{
       padding:12px 14px;font-size:.78rem;font-weight:800;color:var(--dim);background:rgba(255,255,255,.03);
       border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:1px;
       display:flex;justify-content:space-between;align-items:center;gap:10px
     }
+    .module-header .header-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+    .module-header .header-actions .hint{white-space:nowrap}
+    .module-header .header-actions .mobile-close-btn{display:none}
     .module-header .hint{font-size:.7rem;color:rgba(255,255,255,.55);font-weight:600;text-transform:none;letter-spacing:.1px}
-    .mobile-close-btn{display:none;border:none;background:transparent;color:var(--bad);cursor:pointer;font-size:1rem;padding:0 6px;line-height:1}
+    .mobile-close-btn{display:none;border:none;background:transparent;color:var(--bad);cursor:pointer;font-size:1rem;padding:0 6px;line-height:1;transition:transform .15s ease,opacity .15s ease,color .15s ease}
+    .mobile-close-btn:hover{transform:scale(1.08);opacity:.95}
+    .desktop-sidebar-toggle{display:inline-flex}
 
-    .chat-module{min-height:440px;flex:1 1 440px}
+    .chat-module{min-height:440px;flex:1 1 440px;max-height:100%}
     #chat-area{
-      flex:1;padding:12px;overflow-y:auto;overscroll-behavior:contain;font-size:.85rem;display:flex;flex-direction:column;gap:8px;
-      min-height:340px;touch-action:pan-y
+      flex:1 1 auto;padding:12px;overflow-y:auto;overscroll-behavior:contain;font-size:.85rem;display:flex;flex-direction:column;gap:8px;
+      min-height:0;touch-action:pan-y;scrollbar-gutter:stable
     }
     .msg{line-height:1.45;border-left:2px solid var(--accent);padding-left:8px;word-break:break-word}
     .msg .meta{display:flex;align-items:center;gap:8px;margin-bottom:2px;font-size:.72rem;color:var(--dim)}
@@ -166,7 +187,8 @@
     .stats-row .warn{color:var(--warn)}
 
     .activity-list{
-      padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px;min-height:290px;max-height:none;overflow:auto
+      padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px;min-height:290px;max-height:none;overflow:auto;
+      transition:opacity .18s ease,transform .18s ease
     }
     .activity-item{
       padding:11px 12px;border:1px solid rgba(255,255,255,.06);border-radius:12px;background:rgba(255,255,255,.02);
@@ -179,7 +201,7 @@
 
     .minimap-wrap{padding:12px 14px 14px;display:grid;gap:10px}
     .minimap-frame{
-      position:relative;width:100%;aspect-ratio:1 / 1;min-height:330px;border-radius:14px;overflow:hidden;
+      position:relative;width:100%;aspect-ratio:1 / 1;min-height:330px;border-radius:14px;overflow:hidden;transition:aspect-ratio .2s ease,transform .2s ease,opacity .2s ease;
       border:1px solid rgba(255,255,255,.08);background:#fff;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)
     }
     #minimap{
@@ -248,6 +270,7 @@
       overflow:auto;
       scrollbar-gutter:stable;
     }
+    .modal-content.wide .wide-grid{display:grid;gap:10px}
     .modal-content h2{font-size:1.08rem;margin-bottom:8px;color:var(--accent);letter-spacing:.2px}
     .modal-content p{color:var(--dim);font-size:.76rem;line-height:1.55;margin-bottom:16px}
     .field-label{
@@ -411,13 +434,15 @@
     .quick-btn.brush-on{border-color:rgba(41,121,255,.7);color:var(--accent);background:rgba(41,121,255,.14)}
 
     #active-users-popover{
-      position:fixed;top:calc(var(--header-h) + 12px);right:18px;z-index:7200;width:min(92vw,320px);
+      position:fixed;top:calc(var(--header-h) + 12px);right:18px;z-index:7200;width:min(92vw,340px);
       background:rgba(14,14,14,.98);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
-      padding:12px 12px 10px;display:none;backdrop-filter:blur(16px)
+      padding:12px 12px 10px;display:block;backdrop-filter:blur(16px);
+      pointer-events:none;opacity:0;transform:translateY(-8px);visibility:hidden;
+      transition:opacity .16s ease,transform .16s ease,visibility .16s ease
     }
-    #active-users-popover.visible{display:block}
+    #active-users-popover.visible{pointer-events:auto;opacity:1;transform:translateY(0);visibility:visible}
     .active-users-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;font-size:.75rem;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.9px}
-    #active-users-list{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto;padding-right:2px}
+    #active-users-list{display:flex;flex-direction:column;gap:8px;max-height:320px;overflow:auto;padding-right:2px}
     .active-user-item{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);font-size:.82rem;line-height:1.35}
     .active-user-item strong{color:var(--text)}
     .active-user-item span{display:block;color:var(--dim);font-size:.7rem;margin-top:3px}
@@ -453,6 +478,21 @@
       </div>
       <div id="loader-status">cargando base de datos... [0 / 0]</div>
       <div id="loader-detail">Preparando recursos de Firebase...</div>
+      <div id="loader-preview-wrap">
+        <div id="loader-preview-toolbar">
+          <small>Vista previa progresiva</small>
+          <button type="button" id="loader-preview-btn">Ocultar vista previa</button>
+        </div>
+        <div id="loader-preview-shell" class="visible">
+          <div id="loader-preview-frame">
+            <canvas id="loader-preview" width="125" height="125"></canvas>
+          </div>
+          <div id="loader-preview-meta">
+            <span id="loader-preview-progress">0%</span>
+            <span id="loader-preview-eta">ETA --:--</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -493,6 +533,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
           <span class="label">Centro</span>
         </button>
+        <button class="top-btn desktop-sidebar-toggle" id="desktop-sidebar-toggle" title="Ocultar o mostrar la interfaz lateral">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>
+          <span class="label">Lateral</span>
+        </button>
         <button class="top-btn" id="session-btn" title="Login por código">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 12a4 4 0 0 0-8 0"></path><circle cx="12" cy="12" r="9"></circle><path d="M9 12h6"></path></svg>
           <span class="label">ID</span>
@@ -514,9 +558,9 @@
     <div class="glass-module chat-module" id="module-chat" data-mobile-section="chat">
       <div class="module-header">
         <span>Mensajes recientes</span>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div class="header-actions">
           <span class="hint">Enter para enviar</span>
-          <button class="mobile-close-btn" id="sidebar-close-btn" aria-label="Cerrar menú">✖</button>
+          <button class="mobile-close-btn" id="sidebar-close-btn" data-close-sidebar aria-label="Cerrar menú">✖</button>
         </div>
       </div>
       <div id="chat-area"></div>
@@ -526,12 +570,15 @@
     <div class="glass-module" id="module-stats" data-mobile-section="session">
       <div class="module-header">
         <span>Datos de sesión</span>
-        <span class="hint">tiempo real</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="hint">tiempo real</span>
+          <button class="mobile-close-btn" type="button" data-close-sidebar aria-label="Cerrar menú">✖</button>
+        </div>
       </div>
       <div class="stats-module">
         <div class="stats-row"><span>Tu usuario</span><strong id="stat-user">Sin asignar</strong></div>
         <div class="stats-row"><span>Tus aportes</span><strong id="stat-mine">0</strong></div>
-        <div class="stats-row"><span>Resolución</span><strong>125×125 px</strong></div>
+        <div class="stats-row"><span>Resolución</span><strong id="board-size-stats">125×125 px</strong></div>
         <div class="stats-row"><span>Pintura</span><strong>Continua</strong></div>
         <div class="stats-row"><span>Tracking global</span><strong id="stat-tracking" class="warn">Desactivado</strong></div>
         <div class="stats-row"><span>Timestamp timelapse</span><strong id="stat-ts" class="good">Activo</strong></div>
@@ -542,7 +589,10 @@
     <div class="glass-module" id="module-globalstats" data-mobile-section="globalstats">
       <div class="module-header">
         <span>Estadísticas globales</span>
-        <span class="hint">solo móvil</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="hint">solo móvil</span>
+          <button class="mobile-close-btn" type="button" data-close-sidebar aria-label="Cerrar menú">✖</button>
+        </div>
       </div>
       <div class="stats-module">
         <div class="stats-row"><span>Usuarios activos</span><strong id="mobile-stat-online">0</strong></div>
@@ -556,7 +606,10 @@
     <div class="glass-module" id="module-map" data-mobile-section="map">
       <div class="module-header">
         <span>Minimapa</span>
-        <span class="hint">clic para centrar</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="hint">clic para centrar</span>
+          <button class="mobile-close-btn" type="button" data-close-sidebar aria-label="Cerrar menú">✖</button>
+        </div>
       </div>
       <div class="minimap-wrap">
         <div class="minimap-frame">
@@ -572,7 +625,10 @@
     <div class="glass-module" id="module-leaderboard" data-mobile-section="leaderboard">
       <div class="module-header">
         <span>Top contribuidores</span>
-        <span class="hint">pixels colocados</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="hint">pixels colocados</span>
+          <button class="mobile-close-btn" type="button" data-close-sidebar aria-label="Cerrar menú">✖</button>
+        </div>
       </div>
       <div class="leaderboard-list" id="leaderboard-list">
         <div class="small-note">Cargando clasificación...</div>
@@ -582,7 +638,10 @@
     <div class="glass-module" id="module-activity" data-mobile-section="activity">
       <div class="module-header">
         <span>Resumen en vivo</span>
-        <span class="hint">último pixel · chat · sanción</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="hint">último pixel · chat · sanción</span>
+          <button class="mobile-close-btn" type="button" data-close-sidebar aria-label="Cerrar menú">✖</button>
+        </div>
       </div>
       <div class="activity-list" id="activity-list">
         <div class="stats-row"><span>Último pixel</span><strong id="live-last-pixel">Sin datos</strong></div>
@@ -697,6 +756,27 @@
 
       <div class="split-line"></div>
 
+      <div class="field-label">
+        <span>Resolución del lienzo</span>
+        <span id="board-size-info">125×125 px</span>
+      </div>
+      <div class="btn-grid">
+        <div>
+          <div class="field-label" style="margin-top:0">
+            <span>Ancho (X)</span>
+            <span>px</span>
+          </div>
+          <input type="number" id="board-width-input" value="125" min="25" step="1">
+        </div>
+        <div>
+          <div class="field-label" style="margin-top:0">
+            <span>Alto (Y)</span>
+            <span>px</span>
+          </div>
+          <input type="number" id="board-height-input" value="125" min="25" step="1">
+        </div>
+      </div>
+
       <div class="toggle-row">
         <div class="toggle-copy">
           <strong>Timestamp en timelapse</strong>
@@ -715,6 +795,30 @@
 
       <div class="toggle-row">
         <div class="toggle-copy">
+          <strong>Timelapse: texto con píxeles</strong>
+          <span>Muestra cuántos píxeles estaban colocados al capturar cada fotograma.</span>
+        </div>
+        <input type="checkbox" id="toggle-timelapse-pixels">
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-copy">
+          <strong>Timelapse: contribuidores</strong>
+          <span>Muestra el total de usuarios que ya habían contribuido hasta ese momento.</span>
+        </div>
+        <input type="checkbox" id="toggle-timelapse-contributors">
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-copy">
+          <strong>Timelapse: usuarios activos</strong>
+          <span>Muestra los usuarios conectados en el instante de la captura.</span>
+        </div>
+        <input type="checkbox" id="toggle-timelapse-activeusers">
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-copy">
           <strong>Usuario obligatorio</strong>
           <span>Evita pintar y chatear si no hay nombre configurado localmente.</span>
         </div>
@@ -725,7 +829,7 @@
 
       <div class="field-label">
         <span>Frecuencia de captura (segundos)</span>
-        <span id="tl-frames-info">Video 1250×1250</span>
+        <span id="tl-frames-info">Video dinámico</span>
       </div>
       <input type="number" id="tl-freq" value="5" min="1" step="1">
 
@@ -764,7 +868,7 @@
       </div>
 
       <div class="small-note" style="margin-top:12px;">
-        El timelapse exporta a 1250×1250 px, escalando cada pixel del lienzo a 10×10 sin cambiar la resolución del canvas base.
+        El timelapse exporta a resolución dinámica según el lienzo, escalando cada pixel del canvas a 10×10 sin cambiar el tamaño base de captura.
       </div>
     </div>
   </div>
@@ -779,6 +883,53 @@
       </div>
     </div>
   </div>
+  <div id="modal-session-login" class="modal-overlay">
+    <div class="modal-content wide">
+      <h2>Login por código</h2>
+      <p>Genera un código temporal de 5 minutos para abrir esta cuenta en otro dispositivo y sincronizar la misma sesión.</p>
+
+      <div class="username-badge">
+        <span>Cuenta actual:</span> <strong id="session-account-name">Sin asignar</strong>
+      </div>
+
+      <div class="field-label">
+        <span>Código activo</span>
+        <span id="session-code-expiry">sin generar</span>
+      </div>
+      <div class="session-code-box">
+        <strong id="session-code-value">— — — — — —</strong>
+        <button class="action-btn btn-main" type="button" id="session-code-refresh">Generar</button>
+        <button class="action-btn btn-ghost" type="button" id="session-code-copy">Copiar</button>
+      </div>
+
+      <div class="field-label">
+        <span>Entrar con código</span>
+        <span>otro dispositivo</span>
+      </div>
+      <input type="text" id="session-code-input" placeholder="Escribe el código" maxlength="12" autocomplete="off">
+
+      <div class="btn-grid">
+        <button class="action-btn btn-main" id="session-code-login-btn">Entrar</button>
+        <button class="action-btn btn-ghost" id="session-code-close-btn">Cerrar</button>
+      </div>
+
+      <div class="split-line"></div>
+      <div class="field-label">
+        <span>Cuentas guardadas</span>
+        <span>local</span>
+      </div>
+      <div id="session-account-list" class="account-list"></div>
+    </div>
+  </div>
+
+  <div id="active-users-popover" aria-live="polite" aria-hidden="true">
+    <div class="active-users-title">
+      <span>Usuarios activos</span>
+      <span id="active-users-count">0</span>
+    </div>
+    <div id="active-users-list"></div>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAtTbxuzHMQqSpQt9ZHZP1a0qZykY_NvWA",
@@ -794,9 +945,11 @@
     const db = firebase.database();
     const ServerValue = firebase.database.ServerValue;
 
-    const RES = 125;
+    const DEFAULT_BOARD_SIZE = 125;
     const EXPORT_SCALE = 10;
-    const TIMELAPSE_RES = RES * EXPORT_SCALE;
+    function getTimelapseRes() {
+      return Math.max(getBoardWidth(), getBoardHeight()) * EXPORT_SCALE;
+    }
 
     const BOARD_PATH = 'board';
     const SETTINGS_PATH = 'settings';
@@ -813,7 +966,11 @@
       trackingEnabled: false,
       usernameRequired: true,
       timelapseFps: 12,
-      timelapseIntervalSec: 5
+      timelapseIntervalSec: 5,
+      boardSize: 125,
+      timelapseShowPixels: false,
+      timelapseShowContributors: false,
+      timelapseShowActiveUsers: false
     };
 
     const colorPalette = [
@@ -830,6 +987,12 @@
       loaderProgress: document.getElementById('loader-progress'),
       loaderStatus: document.getElementById('loader-status'),
       loaderDetail: document.getElementById('loader-detail'),
+      loaderPreviewShell: document.getElementById('loader-preview-shell'),
+      loaderPreviewBtn: document.getElementById('loader-preview-btn'),
+      loaderPreviewFrame: document.getElementById('loader-preview-frame'),
+      loaderPreview: document.getElementById('loader-preview'),
+      loaderPreviewProgress: document.getElementById('loader-preview-progress'),
+      loaderPreviewEta: document.getElementById('loader-preview-eta'),
       coordsInfo: document.getElementById('coords-info'),
       viewport: document.getElementById('viewport'),
       canvas: document.getElementById('canvas'),
@@ -862,9 +1025,17 @@
       refreshSettingsBtn: document.getElementById('refresh-settings-btn'),
       saveSettingsBtn: document.getElementById('save-settings-btn'),
       exportStatsBtn: document.getElementById('export-stats-btn'),
+      desktopSidebarToggle: document.getElementById('desktop-sidebar-toggle'),
+      boardWidthInput: document.getElementById('board-width-input'),
+      boardHeightInput: document.getElementById('board-height-input'),
+      boardSizeInfo: document.getElementById('board-size-info'),
+      toggleTimelapsePixels: document.getElementById('toggle-timelapse-pixels'),
+      toggleTimelapseContributors: document.getElementById('toggle-timelapse-contributors'),
+      toggleTimelapseActiveUsers: document.getElementById('toggle-timelapse-activeusers'),
       tlToggleBtn: document.getElementById('tl-toggle'),
       tlFreqInput: document.getElementById('tl-freq'),
       tlFpsInput: document.getElementById('tl-fps'),
+      tlFramesInfo: document.getElementById('tl-frames-info'),
       tlStatus: document.getElementById('tl-status'),
       toggleTimestamp: document.getElementById('toggle-timestamp'),
       toggleTracking: document.getElementById('toggle-tracking'),
@@ -874,6 +1045,7 @@
       statRate: document.getElementById('stat-rate'),
       statUser: document.getElementById('stat-user'),
       statMine: document.getElementById('stat-mine'),
+      boardSizeStats: document.getElementById('board-size-stats'),
       statTracking: document.getElementById('stat-tracking'),
       statTs: document.getElementById('stat-ts'),
       sessionClock: document.getElementById('session-clock'),
@@ -883,10 +1055,14 @@
       liveLastBan: document.getElementById('live-last-ban'),
       headerSubtitle: document.getElementById('header-subtitle'),
       minimap: document.getElementById('minimap'),
+      minimapFrame: document.querySelector('#module-map .minimap-frame'),
       minimapInfo: document.getElementById('minimap-info'),
       minimapZoom: document.getElementById('minimap-zoom'),
       leaderboardList: document.getElementById('leaderboard-list'),
       uiBottom: document.getElementById('ui-bottom'),
+      activeUsersPopover: document.getElementById('active-users-popover'),
+      activeUsersCount: document.getElementById('active-users-count'),
+      activeUsersList: document.getElementById('active-users-list'),
       quickChat: document.getElementById('quick-chat'),
       quickStats: document.getElementById('quick-stats'),
       quickCenter: document.getElementById('quick-center'),
@@ -895,6 +1071,61 @@
 
     const ctx = el.canvas.getContext('2d', { alpha: false });
     const minimapCtx = el.minimap.getContext('2d', { alpha: false });
+
+    function getBoardWidth() {
+      const value = Number(state?.boardWidth ?? state?.boardSize ?? state?.settings?.boardWidth ?? state?.settings?.boardSize ?? DEFAULT_BOARD_SIZE);
+      return clamp(Number.isFinite(value) ? Math.round(value) : DEFAULT_BOARD_SIZE, 25, 1000);
+    }
+
+    function getBoardHeight() {
+      const value = Number(state?.boardHeight ?? state?.boardSize ?? state?.settings?.boardHeight ?? state?.settings?.boardSize ?? DEFAULT_BOARD_SIZE);
+      return clamp(Number.isFinite(value) ? Math.round(value) : DEFAULT_BOARD_SIZE, 25, 1000);
+    }
+
+    function getBoardSize() {
+      return Math.max(getBoardWidth(), getBoardHeight());
+    }
+
+    function getTimelapseWidth() {
+      return getBoardWidth() * EXPORT_SCALE;
+    }
+
+    function getTimelapseHeight() {
+      return getBoardHeight() * EXPORT_SCALE;
+    }
+
+    function formatBoardDims() {
+      return `${getBoardWidth()}×${getBoardHeight()} px`;
+    }
+
+    function initBoardImageData() {
+      const width = getBoardWidth();
+      const height = getBoardHeight();
+      boardImageData = ctx.createImageData(width, height);
+      boardImageData.data.fill(255);
+      ctx.putImageData(boardImageData, 0, 0);
+      el.canvas.width = width;
+      el.canvas.height = height;
+      el.minimap.width = width;
+      el.minimap.height = height;
+      if (el.loaderPreview) {
+        el.loaderPreview.width = width;
+        el.loaderPreview.height = height;
+      }
+      if (el.loaderPreviewFrame) {
+        el.loaderPreviewFrame.style.aspectRatio = `${width} / ${height}`;
+      }
+      if (el.minimapFrame) {
+        el.minimapFrame.style.aspectRatio = `${width} / ${height}`;
+      }
+      if (el.boardSizeInfo) el.boardSizeInfo.textContent = formatBoardDims();
+      if (el.boardSizeStats) el.boardSizeStats.textContent = formatBoardDims();
+      if (el.tlFramesInfo) el.tlFramesInfo.textContent = `Video ${getTimelapseWidth()}×${getTimelapseHeight()}`;
+      if (el.boardWidthInput) el.boardWidthInput.value = String(width);
+      if (el.boardHeightInput) el.boardHeightInput.value = String(height);
+    }
+
+    let boardImageData;
 
     const state = {
       scale: 4,
@@ -923,8 +1154,14 @@
       loadingTotal: 1,
       loadingDone: 0,
       bootStartedAt: performance.now(),
-      cacheKey: 'nf_board_cache_v3',
+      cacheKey: 'nf_board_cache_v4',
       settings: { ...DEFAULT_SETTINGS },
+      boardWidth: Number(localStorage.getItem('nf_board_width') || localStorage.getItem('nf_board_size') || DEFAULT_BOARD_SIZE),
+      boardHeight: Number(localStorage.getItem('nf_board_height') || localStorage.getItem('nf_board_size') || DEFAULT_BOARD_SIZE),
+      boardSize: Number(localStorage.getItem('nf_board_size') || DEFAULT_BOARD_SIZE),
+      boardData: {},
+      loaderPreviewVisible: localStorage.getItem('nf_loader_preview_visible') !== '0',
+      lastActiveUsersRefreshAt: 0,
       isAuthorized: false,
       isCapturing: false,
       captureFrames: [],
@@ -953,9 +1190,7 @@
       currentUserStatsRef: null
     };
 
-    const boardImageData = ctx.createImageData(RES, RES);
-    boardImageData.data.fill(255);
-    ctx.putImageData(boardImageData, 0, 0);
+    initBoardImageData();
 
     function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
     function formatNumber(v) { return Number(v || 0).toLocaleString('en-US'); }
@@ -1035,19 +1270,118 @@
       return `${m}:${String(s).padStart(2, '0')}`;
     }
 
+    function formatEtaFromMs(ms) {
+      const safe = Math.max(0, Number(ms) || 0);
+      if (!Number.isFinite(safe) || safe === 0) return 'ETA 00:00';
+      const totalSec = Math.ceil(safe / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      if (h > 0) return `ETA ${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      return `ETA ${m}:${String(s).padStart(2,'0')}`;
+    }
+
+    function nowString() {
+      return new Date().toLocaleString('es-ES', {
+        year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'
+      });
+    }
+
+    function getBoardSnapshotObject(value) {
+      if (!value) return {};
+      if (value && typeof value === 'object' && value.data && typeof value.data === 'object') return value.data;
+      if (value && typeof value === 'object') return value;
+      return {};
+    }
+
+    function setLoaderPreviewVisibility(visible, persist = true) {
+      state.loaderPreviewVisible = !!visible;
+      if (persist) {
+        try { localStorage.setItem('nf_loader_preview_visible', state.loaderPreviewVisible ? '1' : '0'); } catch {}
+      }
+      if (el.loaderPreviewShell) el.loaderPreviewShell.classList.toggle('visible', state.loaderPreviewVisible);
+      if (el.loaderPreviewBtn) el.loaderPreviewBtn.textContent = state.loaderPreviewVisible ? 'Ocultar vista previa' : 'Mostrar vista previa';
+    }
+
+    function updateLoaderPreview() {
+      if (!el.loaderPreview || !boardImageData) return;
+      const pctx = el.loaderPreview.getContext('2d', { alpha:false });
+      if (!pctx) return;
+      pctx.imageSmoothingEnabled = false;
+      pctx.clearRect(0, 0, el.loaderPreview.width, el.loaderPreview.height);
+      pctx.putImageData(boardImageData, 0, 0);
+    }
+
+    function updateLoaderStats() {
+      if (!el.loaderPreviewProgress) return;
+      const total = Math.max(1, state.loadingTotal || 1);
+      const done = clamp(state.loadingDone || 0, 0, total);
+      const pct = Math.round((done / total) * 100);
+      el.loaderPreviewProgress.textContent = `${pct}%`;
+      const elapsed = Math.max(1, performance.now() - state.bootStartedAt);
+      const speed = done / elapsed;
+      const remaining = Math.max(0, total - done);
+      const etaMs = speed > 0 ? remaining / speed : 0;
+      if (el.loaderPreviewEta) el.loaderPreviewEta.textContent = formatEtaFromMs(etaMs);
+      if (el.loaderPreviewShell) el.loaderPreviewShell.style.opacity = state.loadingDone >= state.loadingTotal ? '1' : '.98';
+      if (el.loaderPreviewFrame) {
+        const w = Math.max(1, getBoardWidth());
+        const h = Math.max(1, getBoardHeight());
+        el.loaderPreviewFrame.style.aspectRatio = `${w} / ${h}`;
+      }
+    }
+
+    function resizeBoardCanvas(nextWidth, nextHeight, persist = false) {
+      const width = clamp(Math.round(Number(nextWidth) || DEFAULT_BOARD_SIZE), 25, 1000);
+      const height = clamp(Math.round(Number(nextHeight) || DEFAULT_BOARD_SIZE), 25, 1000);
+      state.boardWidth = width;
+      state.boardHeight = height;
+      state.boardSize = Math.max(width, height);
+      if (persist) {
+        localStorage.setItem('nf_board_width', String(width));
+        localStorage.setItem('nf_board_height', String(height));
+        localStorage.setItem('nf_board_size', String(Math.max(width, height)));
+      }
+      initBoardImageData();
+      state.knownBoardKeys = state.knownBoardKeys || new Set();
+      renderBoardFromData(state.boardData || {});
+      requestMinimapRefresh();
+      updateTopStats();
+      updateLoaderPreview();
+      if (el.boardSizeInfo) el.boardSizeInfo.textContent = `${width}×${height} px`;
+      if (el.boardSizeStats) el.boardSizeStats.textContent = `${width}×${height} px`;
+      if (el.tlFramesInfo) el.tlFramesInfo.textContent = `Video ${width * EXPORT_SCALE}×${height * EXPORT_SCALE}`;
+      if (el.tlStatus && state.isCapturing) el.tlStatus.textContent = `Lienzo ajustado a ${width}×${height} px.`;
+    }
+
+    function renderBoardFromData(data) {
+      ensureWhiteCanvas();
+      Object.keys(data || {}).forEach(key => {
+        const raw = data[key];
+        const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
+        const [x, y] = String(key).split('_').map(Number);
+        if (Number.isFinite(x) && Number.isFinite(y)) setPixel(x, y, color);
+      });
+      scheduleCanvasFlush();
+      updateLoaderPreview();
+    }
+
     function getActiveUserNamesFromSnapshot(snapshot) {
       const entries = Object.entries(snapshot || {});
       const seen = new Set();
       const users = [];
+      const now = Date.now();
       entries.forEach(([uid, item]) => {
         if (!item) return;
         if (item.online === false) return;
-        const name = normalizeUsername(item.username || item.name || `USR_${String(uid).slice(-4)}`);
+        const lastSeen = Number(item.lastSeen) || Number(item.ts) || 0;
+        if (lastSeen && (now - lastSeen) > ACTIVE_USER_WINDOW_MS) return;
+        const name = normalizeUsername(item.username || item.name || item.displayName || `USR_${String(uid).slice(-4)}`);
         if (!name) return;
-        const key = name.toLowerCase();
+        const key = `${uid}:${name}`.toLowerCase();
         if (seen.has(key)) return;
         seen.add(key);
-        users.push({ uid, username: name, lastSeen: Number(item.lastSeen) || 0 });
+        users.push({ uid, username: name, lastSeen });
       });
       users.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0) || a.username.localeCompare(b.username));
       return users;
@@ -1079,9 +1413,11 @@
         clearTimeout(state.activeUsersHideTimer);
         state.activeUsersHideTimer = null;
       }
+      state.activeUsers = getActiveUserNamesFromSnapshot(state.usersSnapshot || {});
+      renderActiveUsersPopover(state.activeUsers);
       el.activeUsersPopover.classList.add('visible');
+      el.activeUsersPopover.setAttribute('aria-hidden', 'false');
       state.activeUsersVisible = true;
-      renderActiveUsersPopover();
     }
 
     function hideActiveUsersPopover(delay = 0) {
@@ -1089,6 +1425,7 @@
       if (state.activeUsersHideTimer) clearTimeout(state.activeUsersHideTimer);
       const doHide = () => {
         el.activeUsersPopover.classList.remove('visible');
+        el.activeUsersPopover.setAttribute('aria-hidden', 'true');
         state.activeUsersVisible = false;
       };
       if (delay > 0) {
@@ -1098,16 +1435,32 @@
       }
     }
 
+    function keepCanvasAliveAfterSleep() {
+      try {
+        renderBoardFromData(state.boardData || {});
+        scheduleCanvasFlush();
+        requestMinimapRefresh();
+      } catch (err) {
+        console.error('No se pudo refrescar el lienzo tras volver a la pestaña:', err);
+      }
+    }
+
     async function refreshActiveUsersSnapshot() {
       try {
-        const snap = await db.ref(USERS_PATH).once('value');
-        state.usersSnapshot = snap.val() || {};
-        state.activeUsers = getActiveUserNamesFromSnapshot(state.usersSnapshot);
-        renderActiveUsersPopover();
+        const snap = await db.ref(PRESENCE_PATH).once('value');
+        const presence = snap.val() || {};
+        state.presenceSnapshot = presence;
+        state.activeUsers = getActiveUserNamesFromSnapshot(presence);
+        state.activeUserCount = state.activeUsers.length;
+        state.onlineCount = state.activeUserCount;
+        renderActiveUsersPopover(state.activeUsers);
+        updateTopStats();
         return state.activeUsers;
       } catch {
         state.activeUsers = [];
+        state.activeUserCount = 0;
         renderActiveUsersPopover([]);
+        updateTopStats();
         return [];
       }
     }
@@ -1253,15 +1606,16 @@
         `cargando base de datos... [${formatNumber(state.loadingDone)} / ${formatNumber(state.loadingTotal)}]`,
         state.boardLoaded ? 'Lienzo sincronizado y listo para pintar.' : 'Sincronizando settings, usuarios, chat, presencia y tablero...'
       );
+      updateLoaderStats();
     }
 
     function ensureWhiteCanvas() {
       ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, RES, RES);
+      ctx.fillRect(0, 0, getBoardWidth(), getBoardHeight());
     }
 
     function persistBoardCache(data) {
-      try { localStorage.setItem(state.cacheKey, JSON.stringify({ ts: Date.now(), data })); } catch {}
+      try { localStorage.setItem(state.cacheKey, JSON.stringify({ ts: Date.now(), width: getBoardWidth(), height: getBoardHeight(), size: Math.max(getBoardWidth(), getBoardHeight()), data })); } catch {}
     }
 
     function loadBoardCache() {
@@ -1269,13 +1623,15 @@
         const raw = localStorage.getItem(state.cacheKey);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        return parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : null;
+        if (parsed && parsed.data && typeof parsed.data === 'object') return parsed;
+        if (parsed && typeof parsed === 'object') return { width: getBoardWidth(), height: getBoardHeight(), size: Math.max(getBoardWidth(), getBoardHeight()), data: parsed };
+        return null;
       } catch { return null; }
     }
 
     function setPixel(x, y, color) {
-      if (x < 0 || x >= RES || y < 0 || y >= RES) return;
-      const idx = (y * RES + x) * 4;
+      if (x < 0 || x >= getBoardWidth() || y < 0 || y >= getBoardHeight()) return;
+      const idx = (y * getBoardWidth() + x) * 4;
       const [r,g,b,a] = hexToRgba(color || '#ffffff');
       boardImageData.data[idx] = r;
       boardImageData.data[idx+1] = g;
@@ -1290,18 +1646,13 @@
         state.pendingFlush = false;
         ctx.putImageData(boardImageData, 0, 0);
         requestMinimapRefresh();
+        updateLoaderPreview();
       });
     }
 
     function setBoardFromObject(data) {
-      ensureWhiteCanvas();
-      Object.keys(data || {}).forEach(key => {
-        const raw = data[key];
-        const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
-        const [x, y] = key.split('_').map(Number);
-        if (Number.isFinite(x) && Number.isFinite(y)) setPixel(x, y, color);
-      });
-      scheduleCanvasFlush();
+      state.boardData = { ...(data || {}) };
+      renderBoardFromData(state.boardData);
     }
 
     function setLoadingTotal(total) {
@@ -1317,6 +1668,7 @@
     function finishBoardLoading() {
       state.boardLoaded = true;
       updateLoadingUI();
+      updateLoaderPreview();
       const elapsed = performance.now() - state.bootStartedAt;
       setTimeout(() => el.loader.classList.add('hidden'), Math.max(0, 220 - elapsed));
     }
@@ -1330,7 +1682,7 @@
     }
 
     function updateTopStats() {
-      const activeUsers = Number(state.activeUserCount || 0);
+      const activeUsers = Number((state.activeUsers && state.activeUsers.length) || state.activeUserCount || 0);
       const totalPlaced = Number(state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS);
       const contributors = Number(state.contributorCount || GLOBAL_STATS_SEED_CONTRIBUTORS);
       const rate = Number(state.pixelRate || 0);
@@ -1346,12 +1698,16 @@
       el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
       el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
       el.minimapZoom.textContent = `${state.scale.toFixed(1)}×`;
+      if (el.boardSizeInfo) el.boardSizeInfo.textContent = formatBoardDims();
+      if (el.boardSizeStats) el.boardSizeStats.textContent = formatBoardDims();
+      if (el.tlFramesInfo) el.tlFramesInfo.textContent = `Video ${getTimelapseWidth()}×${getTimelapseHeight()}`;
 
       if (el.mobileStatOnline) el.mobileStatOnline.textContent = formatNumber(activeUsers);
       if (el.mobileStatTotal) el.mobileStatTotal.textContent = formatNumber(totalPlaced);
       if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(rate)}/min`;
       if (el.mobileStatUnique) el.mobileStatUnique.textContent = formatNumber(contributors);
       if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent;
+      if (el.boardSizeStats) el.boardSizeStats.textContent = formatBoardDims();
     }
 
     function updateCooldownUI(percent, ready) {
@@ -1432,8 +1788,8 @@
       const vw = el.viewport.clientWidth;
       const vh = el.viewport.clientHeight;
       state.scale = 4;
-      state.originX = (vw - RES * state.scale) / 2;
-      state.originY = (vh - RES * state.scale) / 2;
+      state.originX = (vw - getBoardWidth() * state.scale) / 2;
+      state.originY = (vh - getBoardHeight() * state.scale) / 2;
       refreshCamera();
       requestAnimationFrame(() => requestMinimapRefresh());
     }
@@ -1457,17 +1813,17 @@
       const rect = el.canvas.getBoundingClientRect();
       const localX = clientX - rect.left;
       const localY = clientY - rect.top;
-      const x = Math.floor((localX * RES) / rect.width);
-      const y = Math.floor((localY * RES) / rect.height);
+      const x = Math.floor((localX * getBoardWidth()) / rect.width);
+      const y = Math.floor((localY * getBoardHeight()) / rect.height);
       return { x, y, rect };
     }
 
     function updateCoordsOverlay(clientX, clientY) {
       const { x, y, rect } = getCanvasCoords(clientX, clientY);
-      if (x >= 0 && x < RES && y >= 0 && y < RES) {
+      if (x >= 0 && x < getBoardWidth() && y >= 0 && y < getBoardHeight()) {
         const viewportRect = el.viewport.getBoundingClientRect();
-        const cellW = rect.width / RES;
-        const cellH = rect.height / RES;
+        const cellW = rect.width / getBoardWidth();
+        const cellH = rect.height / getBoardHeight();
         const left = Math.floor((rect.left - viewportRect.left) + x * cellW);
         const top = Math.floor((rect.top - viewportRect.top) + y * cellH);
         const sizeW = Math.max(1, Math.ceil(cellW));
@@ -1713,14 +2069,17 @@
       const ref = db.ref(PRESENCE_PATH).push({
         uid: ensureUid(),
         username: state.username || 'Anónimo',
-        ts: Date.now()
+        ts: Date.now(),
+        boardWidth: getBoardWidth(),
+        boardHeight: getBoardHeight(),
+        boardSize: Math.max(getBoardWidth(), getBoardHeight())
       });
       state.presenceRef = ref;
       ref.onDisconnect().remove();
       db.ref(PRESENCE_PATH).off('value');
       db.ref(PRESENCE_PATH).on('value', snap => {
         state.onlineCount = snap.numChildren() || 0;
-        el.statOnline.textContent = formatNumber(state.onlineCount);
+        el.statOnline.textContent = formatNumber(state.activeUsers.length || state.onlineCount || 0);
       });
     }
 
@@ -1747,7 +2106,8 @@
         state.uniqueCount = snap.numChildren() || 0;
         el.statUnique.textContent = formatNumber(state.uniqueCount);
         state.activeUsers = getActiveUserNamesFromSnapshot(users);
-        if (state.activeUsersVisible) renderActiveUsersPopover();
+        state.activeUserCount = state.activeUsers.length;
+        if (state.activeUsersVisible) renderActiveUsersPopover(state.activeUsers);
       });
     }
 
@@ -1756,11 +2116,30 @@
         const incoming = snap.val() || {};
         const trackingOn = !!incoming.trackingEnabled;
         state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: trackingOn };
+        const incomingWidth = incoming.boardWidth ?? incoming.boardSize;
+        const incomingHeight = incoming.boardHeight ?? incoming.boardSize;
+        if (incomingWidth || incomingHeight) {
+          state.boardWidth = clamp(Math.round(Number(incomingWidth) || DEFAULT_BOARD_SIZE), 25, 1000);
+          state.boardHeight = clamp(Math.round(Number(incomingHeight) || incomingWidth || DEFAULT_BOARD_SIZE), 25, 1000);
+          state.boardSize = Math.max(state.boardWidth, state.boardHeight);
+          localStorage.setItem('nf_board_width', String(state.boardWidth));
+          localStorage.setItem('nf_board_height', String(state.boardHeight));
+          localStorage.setItem('nf_board_size', String(state.boardSize));
+          if (el.boardWidthInput) el.boardWidthInput.value = String(state.boardWidth);
+          if (el.boardHeightInput) el.boardHeightInput.value = String(state.boardHeight);
+        }
+        if (incoming.timelapseShowPixels !== undefined) state.settings.timelapseShowPixels = !!incoming.timelapseShowPixels;
+        if (incoming.timelapseShowContributors !== undefined) state.settings.timelapseShowContributors = !!incoming.timelapseShowContributors;
+        if (incoming.timelapseShowActiveUsers !== undefined) state.settings.timelapseShowActiveUsers = !!incoming.timelapseShowActiveUsers;
         el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
         el.toggleTracking.checked = !!state.settings.trackingEnabled;
         el.toggleTracking.disabled = !state.isAuthorized;
         el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
         if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
+        if (el.toggleTimelapsePixels) el.toggleTimelapsePixels.checked = !!state.settings.timelapseShowPixels;
+        if (el.toggleTimelapseContributors) el.toggleTimelapseContributors.checked = !!state.settings.timelapseShowContributors;
+        if (el.toggleTimelapseActiveUsers) el.toggleTimelapseActiveUsers.checked = !!state.settings.timelapseShowActiveUsers;
+        resizeBoardCanvas(state.boardWidth || state.boardSize, state.boardHeight || state.boardSize, false);
         updateTopStats();
         el.tlStatus.textContent = `Ajustes sincronizados · tracking ${state.settings.trackingEnabled ? 'activo' : 'inactivo'} · timestamp ${state.settings.timestampEnabled ? 'visible' : 'oculto'}.`;
       });
@@ -1768,19 +2147,19 @@
 
     function renderMinimapBoard() {
       minimapCtx.imageSmoothingEnabled = false;
-      minimapCtx.clearRect(0, 0, RES, RES);
+      minimapCtx.clearRect(0, 0, getBoardWidth(), getBoardHeight());
       minimapCtx.fillStyle = '#ffffff';
-      minimapCtx.fillRect(0, 0, RES, RES);
-      minimapCtx.drawImage(el.canvas, 0, 0, RES, RES);
+      minimapCtx.fillRect(0, 0, getBoardWidth(), getBoardHeight());
+      minimapCtx.drawImage(el.canvas, 0, 0, getBoardWidth(), getBoardHeight());
     }
 
     function renderMinimapViewport() {
       const vw = el.viewport.clientWidth;
       const vh = el.viewport.clientHeight;
-      const visibleW = clamp(vw / state.scale, 1, RES);
-      const visibleH = clamp(vh / state.scale, 1, RES);
-      const left = clamp((-state.originX) / state.scale, 0, Math.max(0, RES - visibleW));
-      const top = clamp((-state.originY) / state.scale, 0, Math.max(0, RES - visibleH));
+      const visibleW = clamp(vw / state.scale, 1, getBoardWidth());
+      const visibleH = clamp(vh / state.scale, 1, getBoardHeight());
+      const left = clamp((-state.originX) / state.scale, 0, Math.max(0, getBoardWidth() - visibleW));
+      const top = clamp((-state.originY) / state.scale, 0, Math.max(0, getBoardHeight() - visibleH));
       minimapCtx.save();
       minimapCtx.strokeStyle = 'rgba(0,0,0,0.9)';
       minimapCtx.lineWidth = 2;
@@ -1807,6 +2186,8 @@
       if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
       const rawObject = rawValue && typeof rawValue === 'object' ? rawValue : null;
       const color = typeof rawValue === 'string' ? rawValue : (rawObject && typeof rawObject.color === 'string' ? rawObject.color : '#ffffff');
+      state.boardData = state.boardData || {};
+      state.boardData[String(key)] = rawValue;
       setPixel(x, y, color);
       scheduleCanvasFlush();
 
@@ -1852,6 +2233,7 @@
         }
         const [x, y] = String(key).split('_').map(Number);
         if (Number.isFinite(x) && Number.isFinite(y)) {
+          delete (state.boardData || {})[key];
           setPixel(x, y, '#ffffff');
           scheduleCanvasFlush();
         }
@@ -1859,27 +2241,18 @@
       });
     }
 
-    function loadBoardCacheAndShow() {
-      const cached = loadBoardCache();
-      if (cached) {
-        setBoardFromObject(cached);
-        const keys = Object.keys(cached);
-        state.knownBoardKeys = new Set(keys);
-        state.boardCount = keys.length;
-        state.loadingDone = keys.length;
-        updateTopStats();
-        updateLoadingUI();
-      }
-    }
-
-    function processBoardSnapshot(boardSnap) {
-      const data = boardSnap.val() || {};
-      const entries = Object.entries(data);
-      state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
+    function processBoardDataProgressively(data, options = {}) {
+      const entries = Object.entries(data || {});
+      state.boardData = { ...(data || {}) };
+      state.knownBoardKeys = new Set();
+      state.boardCount = 0;
+      const extraLoading = Number(options.extraLoading || 4);
+      state.loadingTotal = Math.max(state.loadingTotal || 1, entries.length + extraLoading);
+      state.loadingDone = 0;
       updateLoadingUI();
       ensureWhiteCanvas();
 
-      const chunkSize = 220;
+      const chunkSize = clamp(Math.ceil(Math.max(1, entries.length) / 48), 24, 180);
       let index = 0;
 
       const processChunk = () => {
@@ -1889,7 +2262,7 @@
         for (; index < end; index++) {
           const [key, raw] = entries[index];
           const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
-          const [x, y] = key.split('_').map(Number);
+          const [x, y] = String(key).split('_').map(Number);
           if (Number.isFinite(x) && Number.isFinite(y)) {
             setPixel(x, y, color);
             state.knownBoardKeys.add(key);
@@ -1899,10 +2272,12 @@
         state.boardCount = state.knownBoardKeys.size;
         addLoadingDone(index - startIndex);
         scheduleCanvasFlush();
+        updateLoaderPreview();
         updateTopStats();
 
         if (index < entries.length) {
-          requestAnimationFrame(processChunk);
+          const delay = clamp(Math.round(20 + (entries.length / 200)), 18, 48);
+          setTimeout(processChunk, delay);
         } else {
           persistBoardCache(data);
           state.lastBoardSyncAt = Date.now();
@@ -1911,6 +2286,18 @@
       };
 
       requestAnimationFrame(processChunk);
+    }
+
+    function loadBoardCacheAndShow() {
+      const cached = loadBoardCache();
+      if (cached) {
+        processBoardDataProgressively(cached.data || {}, { source: 'cache' });
+      }
+    }
+
+    function processBoardSnapshot(boardSnap) {
+      const data = boardSnap.val() || {};
+      processBoardDataProgressively(data, { source: 'firebase' });
     }
 
     function updateActivityFromMeta(meta) {
@@ -1959,6 +2346,7 @@
 
     function openSidebar(section = 'chat') {
       el.sidebar.classList.add('show');
+      el.sidebar.classList.remove('hidden-desktop');
       el.mobileMenuBtn.classList.add('active');
       if (section === 'chat') document.getElementById('module-chat').scrollIntoView({ behavior:'smooth', block:'start' });
       if (section === 'stats') document.getElementById('module-stats').scrollIntoView({ behavior:'smooth', block:'start' });
@@ -1970,6 +2358,10 @@
     function closeSidebar() {
       el.sidebar.classList.remove('show');
       el.mobileMenuBtn.classList.remove('active');
+    }
+
+    function toggleDesktopSidebar() {
+      el.sidebar.classList.toggle('hidden-desktop');
     }
 
     function isMobileLayout() {
@@ -2131,7 +2523,7 @@
       const name = normalizeUsername(username || '');
       if (!name) return;
       const rect = el.canvas.getBoundingClientRect();
-      const cell = rect.width / RES;
+      const cell = rect.width / getBoardWidth();
       const popup = document.createElement('div');
       popup.className = 'pixel-pop';
       popup.textContent = name;
@@ -2168,8 +2560,8 @@
     }
 
     function getCurrentPixelHex(x, y) {
-      if (x < 0 || x >= RES || y < 0 || y >= RES) return '#ffffff';
-      const idx = (y * RES + x) * 4;
+      if (x < 0 || x >= getBoardWidth() || y < 0 || y >= getBoardHeight()) return '#ffffff';
+      const idx = (y * getBoardWidth() + x) * 4;
       return rgbaToHex(
         boardImageData.data[idx],
         boardImageData.data[idx + 1],
@@ -2181,7 +2573,7 @@
       if (!state.paintReady) return;
       if (!state.username) { showModal(el.modalUsername); return; }
       const { x, y } = getCanvasCoords(input.clientX, input.clientY);
-      if (x < 0 || x >= RES || y < 0 || y >= RES) return;
+      if (x < 0 || x >= getBoardWidth() || y < 0 || y >= getBoardHeight()) return;
 
       const key = `${x}_${y}`;
       const ts = Date.now();
@@ -2189,6 +2581,8 @@
       const color = state.activeColor;
 
       state.popQueue.set(key, { username: user, color, ts });
+      state.boardData[key] = color;
+      applyRealtimeBoardChange(key, color);
 
       const updates = {};
       updates[`${BOARD_PATH}/${key}`] = color;
@@ -2263,7 +2657,7 @@
     }
 
     function saveSettingsToFirebase(settingsPatch) {
-      const payload = { ...settingsPatch, updatedAt: Date.now(), updatedBy: state.username || 'admin' };
+      const payload = { ...settingsPatch, updatedAt: Date.now(), updatedBy: state.username || 'admin', boardWidth: state.boardWidth, boardHeight: state.boardHeight, boardSize: Math.max(state.boardWidth, state.boardHeight) };
       return db.ref(SETTINGS_PATH).update(payload);
     }
 
@@ -2292,10 +2686,8 @@
     }
 
     function openAdminDashboard() {
-      el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
-      el.toggleTracking.checked = !!state.settings.trackingEnabled;
+      updateSettingsDisplay();
       el.toggleTracking.disabled = false;
-      el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
       showModal(el.modalDashboard);
     }
 
@@ -2310,9 +2702,9 @@
         db.ref(SETTINGS_PATH).once('value').then(s => {
           const incoming = s.val() || {};
           state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: !!incoming.trackingEnabled };
-          el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
-          el.toggleTracking.checked = !!state.settings.trackingEnabled;
-          el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
+          if (incoming.boardSize) state.boardSize = clamp(Math.round(Number(incoming.boardSize) || DEFAULT_BOARD_SIZE), 25, 1000);
+          updateSettingsDisplay();
+          resizeBoardCanvas(state.boardWidth || state.boardSize, state.boardHeight || state.boardSize, false);
           updateTopStats();
           hideAllModals();
           openAdminDashboard();
@@ -2328,6 +2720,7 @@
       db.ref(BOARD_PATH).remove().then(() => {
         state.knownBoardKeys.clear();
         state.boardCount = 0;
+        state.boardData = {};
         ensureWhiteCanvas();
         scheduleCanvasFlush();
         persistBoardCache({});
@@ -2345,13 +2738,30 @@
     function saveAdminSettings() {
       const rawInterval = parseInt(el.tlFreqInput.value, 10);
       const rawFps = parseInt(el.tlFpsInput?.value, 10);
+      const rawBoardWidth = parseInt(el.boardWidthInput?.value, 10);
+      const rawBoardHeight = parseInt(el.boardHeightInput?.value, 10);
+      const width = clamp(Number.isFinite(rawBoardWidth) ? rawBoardWidth : DEFAULT_SETTINGS.boardSize, 25, 1000);
+      const height = clamp(Number.isFinite(rawBoardHeight) ? rawBoardHeight : DEFAULT_SETTINGS.boardSize, 25, 1000);
       const patch = {
         timestampEnabled: !!el.toggleTimestamp.checked,
         trackingEnabled: !!el.toggleTracking.checked,
         timelapseIntervalSec: Math.max(1, Number.isFinite(rawInterval) ? rawInterval : DEFAULT_SETTINGS.timelapseIntervalSec),
-        timelapseFps: Math.max(1, Number.isFinite(rawFps) ? rawFps : DEFAULT_SETTINGS.timelapseFps)
+        timelapseFps: Math.max(1, Number.isFinite(rawFps) ? rawFps : DEFAULT_SETTINGS.timelapseFps),
+        boardWidth: width,
+        boardHeight: height,
+        boardSize: Math.max(width, height),
+        timelapseShowPixels: !!el.toggleTimelapsePixels?.checked,
+        timelapseShowContributors: !!el.toggleTimelapseContributors?.checked,
+        timelapseShowActiveUsers: !!el.toggleTimelapseActiveUsers?.checked
       };
       state.settings = { ...state.settings, ...patch };
+      state.boardWidth = width;
+      state.boardHeight = height;
+      state.boardSize = Math.max(width, height);
+      localStorage.setItem('nf_board_width', String(width));
+      localStorage.setItem('nf_board_height', String(height));
+      localStorage.setItem('nf_board_size', String(state.boardSize));
+      resizeBoardCanvas(width, height, false);
       saveSettingsToFirebase(patch)
         .then(() => {
           el.tlStatus.textContent = 'Ajustes guardados y sincronizados.';
@@ -2385,12 +2795,25 @@
       syncPaletteVisibilityUI();
       updateUsernameBadge();
       updateCooldownUI(0, true);
+      updateSettingsDisplay();
       clearRecentActivity();
       updateTopStats();
       renderLeaderboard();
       normalizeSidebarForMobile();
+      setLoaderPreviewVisibility(state.loaderPreviewVisible, false);
+      if (el.loaderPreviewBtn) el.loaderPreviewBtn.addEventListener('click', () => setLoaderPreviewVisibility(!state.loaderPreviewVisible));
+      if (el.loaderPreviewFrame) el.loaderPreviewFrame.style.aspectRatio = `${getBoardWidth()} / ${getBoardHeight()}`;
+      setInterval(() => {
+        if (document.hidden) return;
+        updateTopStats();
+        updateSessionClockMobile();
+        if (!state.activeUsersVisible) {
+          refreshActiveUsersSnapshot().catch(() => {});
+        }
+      }, 5000);
 
       el.mobileMenuBtn.addEventListener('click', toggleSidebar);
+      if (el.desktopSidebarToggle) el.desktopSidebarToggle.addEventListener('click', toggleDesktopSidebar);
       el.chatBtn.addEventListener('click', () => openSidebar('chat'));
       el.statsBtn.addEventListener('click', () => openSidebar('stats'));
       el.centerBtn.addEventListener('click', centerCanvas);
@@ -2438,10 +2861,10 @@
       el.refreshSettingsBtn.addEventListener('click', () => {
         db.ref(SETTINGS_PATH).once('value').then(s => {
           state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) };
+          if (state.settings.boardSize) state.boardSize = clamp(Math.round(Number(state.settings.boardSize) || DEFAULT_BOARD_SIZE), 25, 1000);
           el.tlStatus.textContent = 'Ajustes recargados.';
-          el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
-          el.toggleTracking.checked = !!state.settings.trackingEnabled;
-          el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
+          updateSettingsDisplay();
+          resizeBoardCanvas(state.boardWidth || state.boardSize, state.boardHeight || state.boardSize, false);
           updateTopStats();
         });
       });
@@ -2454,6 +2877,50 @@
         el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
         el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
       });
+      if (el.boardWidthInput) {
+        el.boardWidthInput.addEventListener('input', () => {
+          const parsed = parseInt(el.boardWidthInput.value, 10);
+          const width = clamp(Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_BOARD_SIZE, 25, 1000);
+          el.boardWidthInput.value = String(width);
+          el.boardSizeInfo.textContent = `${width}×${el.boardHeightInput ? clamp(parseInt(el.boardHeightInput.value, 10) || DEFAULT_BOARD_SIZE, 25, 1000) : getBoardHeight()} px`;
+        });
+        el.boardWidthInput.addEventListener('change', () => {
+          const width = clamp(Math.round(Number(el.boardWidthInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
+          const height = clamp(Math.round(Number(el.boardHeightInput?.value) || state.boardHeight || DEFAULT_BOARD_SIZE), 25, 1000);
+          state.boardWidth = width;
+          state.boardHeight = height;
+          state.boardSize = Math.max(width, height);
+          localStorage.setItem('nf_board_width', String(width));
+          localStorage.setItem('nf_board_height', String(height));
+          localStorage.setItem('nf_board_size', String(state.boardSize));
+          resizeBoardCanvas(width, height, true);
+          state.settings.boardWidth = width;
+          state.settings.boardHeight = height;
+          state.settings.boardSize = state.boardSize;
+        });
+      }
+      if (el.boardHeightInput) {
+        el.boardHeightInput.addEventListener('input', () => {
+          const parsed = parseInt(el.boardHeightInput.value, 10);
+          const height = clamp(Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_BOARD_SIZE, 25, 1000);
+          el.boardHeightInput.value = String(height);
+          el.boardSizeInfo.textContent = `${el.boardWidthInput ? clamp(parseInt(el.boardWidthInput.value, 10) || DEFAULT_BOARD_SIZE, 25, 1000) : getBoardWidth()}×${height} px`;
+        });
+        el.boardHeightInput.addEventListener('change', () => {
+          const width = clamp(Math.round(Number(el.boardWidthInput?.value) || state.boardWidth || DEFAULT_BOARD_SIZE), 25, 1000);
+          const height = clamp(Math.round(Number(el.boardHeightInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
+          state.boardWidth = width;
+          state.boardHeight = height;
+          state.boardSize = Math.max(width, height);
+          localStorage.setItem('nf_board_width', String(width));
+          localStorage.setItem('nf_board_height', String(height));
+          localStorage.setItem('nf_board_size', String(state.boardSize));
+          resizeBoardCanvas(width, height, true);
+          state.settings.boardWidth = width;
+          state.settings.boardHeight = height;
+          state.settings.boardSize = state.boardSize;
+        });
+      }
       el.toggleTracking.addEventListener('change', () => {
         if (!state.isAuthorized) {
           el.toggleTracking.checked = !!state.settings.trackingEnabled;
@@ -2463,6 +2930,21 @@
         el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
         el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       });
+      if (el.toggleTimelapsePixels) {
+        el.toggleTimelapsePixels.addEventListener('change', () => {
+          state.settings.timelapseShowPixels = el.toggleTimelapsePixels.checked;
+        });
+      }
+      if (el.toggleTimelapseContributors) {
+        el.toggleTimelapseContributors.addEventListener('change', () => {
+          state.settings.timelapseShowContributors = el.toggleTimelapseContributors.checked;
+        });
+      }
+      if (el.toggleTimelapseActiveUsers) {
+        el.toggleTimelapseActiveUsers.addEventListener('change', () => {
+          state.settings.timelapseShowActiveUsers = el.toggleTimelapseActiveUsers.checked;
+        });
+      }
       el.tlFreqInput.addEventListener('input', () => {
         const parsed = parseInt(el.tlFreqInput.value, 10);
         const v = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SETTINGS.timelapseIntervalSec;
@@ -2478,8 +2960,8 @@
       el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
       el.minimap.addEventListener('click', e => {
         const rect = el.minimap.getBoundingClientRect();
-        const x = clamp(((e.clientX - rect.left) / rect.width) * RES, 0, RES - 1);
-        const y = clamp(((e.clientY - rect.top) / rect.height) * RES, 0, RES - 1);
+        const x = clamp(((e.clientX - rect.left) / rect.width) * getBoardWidth(), 0, getBoardWidth() - 1);
+        const y = clamp(((e.clientY - rect.top) / rect.height) * getBoardHeight(), 0, getBoardHeight() - 1);
         state.originX = (el.viewport.clientWidth / 2) - ((x + 0.5) * state.scale);
         state.originY = (el.viewport.clientHeight / 2) - ((y + 0.5) * state.scale);
         refreshCamera();
@@ -2641,6 +3123,7 @@
     async function loadFirebaseResources() {
       loadBoardCacheAndShow();
 
+      setLoaderPreviewVisibility(state.loaderPreviewVisible, false);
       const tasks = [
         {
           name:'settings',
@@ -2648,7 +3131,7 @@
         },
         {
           name:'presence',
-          promise: db.ref(PRESENCE_PATH).once('value').then(s => { state.onlineCount = s.numChildren() || 0; el.statOnline.textContent = formatNumber(state.onlineCount); addLoadingDone(1); }).catch(() => addLoadingDone(1))
+          promise: refreshActiveUsersSnapshot().then(users => { state.activeUserCount = users.length; el.statOnline.textContent = formatNumber(users.length); addLoadingDone(1); }).catch(() => addLoadingDone(1))
         },
         {
           name:'users',
@@ -2710,6 +3193,7 @@
 
     function startSession() {
       buildPalette();
+      initBoardImageData();
       syncPaletteVisibilityUI();
       updateUsernameBadge();
       updateBrushButtonUI();
@@ -2740,6 +3224,14 @@
       el.toggleTracking.disabled = !state.isAuthorized;
       el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
       if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
+      if (el.toggleTimelapsePixels) el.toggleTimelapsePixels.checked = !!state.settings.timelapseShowPixels;
+      if (el.toggleTimelapseContributors) el.toggleTimelapseContributors.checked = !!state.settings.timelapseShowContributors;
+      if (el.toggleTimelapseActiveUsers) el.toggleTimelapseActiveUsers.checked = !!state.settings.timelapseShowActiveUsers;
+      if (el.boardWidthInput) el.boardWidthInput.value = String(state.boardWidth || state.settings.boardWidth || state.settings.boardSize || DEFAULT_BOARD_SIZE);
+      if (el.boardHeightInput) el.boardHeightInput.value = String(state.boardHeight || state.settings.boardHeight || state.settings.boardSize || DEFAULT_BOARD_SIZE);
+      if (el.boardSizeInfo) el.boardSizeInfo.textContent = formatBoardDims();
+      if (el.boardSizeStats) el.boardSizeStats.textContent = formatBoardDims();
+      if (el.tlFramesInfo) el.tlFramesInfo.textContent = `Video ${getTimelapseWidth()}×${getTimelapseHeight()}`;
       el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
       el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
       el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
@@ -2755,9 +3247,11 @@
       el.tlToggleBtn.classList.add('btn-danger');
       el.tlStatus.textContent = 'Capturando fotogramas...';
       const intervalSec = Math.max(1, parseInt(el.tlFreqInput.value, 10) || 5);
+      const fps = Math.max(1, parseInt(el.tlFpsInput?.value, 10) || DEFAULT_SETTINGS.timelapseFps);
       state.settings.timelapseIntervalSec = intervalSec;
-      state.captureIntervalId = setInterval(() => captureTimelapseFrame().catch(()=>{}), intervalSec * 1000);
+      state.settings.timelapseFps = fps;
       captureTimelapseFrame().catch(()=>{});
+      state.captureIntervalId = setInterval(() => captureTimelapseFrame().catch(()=>{}), intervalSec * 1000);
     }
 
     async function captureTimelapseFrame() {
@@ -2766,38 +3260,32 @@
       try {
         if (!state.captureExportCanvas) {
           state.captureExportCanvas = document.createElement('canvas');
-          state.captureExportCanvas.width = TIMELAPSE_RES;
-          state.captureExportCanvas.height = TIMELAPSE_RES;
+          state.captureExportCanvas.width = getTimelapseWidth();
+          state.captureExportCanvas.height = getTimelapseHeight();
         }
         const exportCanvas = state.captureExportCanvas;
+        const resW = getTimelapseWidth();
+        const resH = getTimelapseHeight();
         const ectx = exportCanvas.getContext('2d', { alpha:false });
         ectx.imageSmoothingEnabled = false;
-        ectx.clearRect(0,0,TIMELAPSE_RES,TIMELAPSE_RES);
+        ectx.clearRect(0,0,resW,resH);
         ectx.fillStyle = '#fff';
-        ectx.fillRect(0,0,TIMELAPSE_RES,TIMELAPSE_RES);
-        ectx.drawImage(el.canvas, 0, 0, TIMELAPSE_RES, TIMELAPSE_RES);
+        ectx.fillRect(0,0,resW,resH);
+        ectx.drawImage(el.canvas, 0, 0, resW, resH);
+        drawTimelapseOverlay(ectx, resW, resH);
 
-        if (state.settings.timestampEnabled) {
-          const text = new Date().toLocaleString('es-ES', {
-            year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'
-          });
-          const pad = 20;
-          const boxH = 58;
-          const y = TIMELAPSE_RES - boxH - pad;
-          const x = pad;
-          const w = TIMELAPSE_RES - pad*2;
-          ectx.fillStyle = 'rgba(0,0,0,0.72)';
-          ectx.fillRect(x, y, w, boxH);
-          ectx.strokeStyle = 'rgba(255,255,255,0.16)';
-          ectx.strokeRect(x, y, w, boxH);
-          ectx.fillStyle = '#fff';
-          ectx.font = '700 28px "Plus Jakarta Sans", sans-serif';
-          ectx.textBaseline = 'middle';
-          ectx.fillText(text, x + 16, y + boxH/2 + 1);
+        const frame = { ts: Date.now() };
+        if (window.createImageBitmap) {
+          try {
+            frame.bitmap = await createImageBitmap(exportCanvas);
+          } catch {
+            frame.dataUrl = exportCanvas.toDataURL('image/webp', 0.92);
+          }
+        } else {
+          frame.dataUrl = exportCanvas.toDataURL('image/webp', 0.92);
         }
-
-        state.captureFrames.push(exportCanvas.toDataURL('image/webp', 0.92));
-        el.tlStatus.textContent = `Capturas: ${state.captureFrames.length} · Resolución exportada: 1250×1250`;
+        state.captureFrames.push(frame);
+        el.tlStatus.textContent = `Capturas: ${state.captureFrames.length} · Resolución exportada: ${getTimelapseWidth()}×${getTimelapseHeight()}`;
       } finally {
         state.timelapseSnapshotBusy = false;
       }
@@ -2814,37 +3302,53 @@
 
       if (!state.captureVideoCanvas) {
         state.captureVideoCanvas = document.createElement('canvas');
-        state.captureVideoCanvas.width = TIMELAPSE_RES;
-        state.captureVideoCanvas.height = TIMELAPSE_RES;
       }
 
       const videoCanvas = state.captureVideoCanvas;
+      const resW = getTimelapseWidth();
+      const resH = getTimelapseHeight();
+      videoCanvas.width = resW;
+      videoCanvas.height = resH;
       const vctx = videoCanvas.getContext('2d', { alpha:false });
       vctx.imageSmoothingEnabled = false;
       vctx.fillStyle = '#fff';
-      vctx.fillRect(0,0,TIMELAPSE_RES,TIMELAPSE_RES);
+      vctx.fillRect(0,0,resW,resH);
+
+      const fps = Math.max(1, parseInt(el.tlFpsInput?.value, 10) || state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
+      const intervalSec = Math.max(1, parseInt(el.tlFreqInput?.value, 10) || state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
 
       let mimeType = 'video/webm';
       if (window.MediaRecorder && MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mimeType = 'video/webm;codecs=vp9';
       else if (window.MediaRecorder && MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mimeType = 'video/webm;codecs=vp8';
 
-      const stream = videoCanvas.captureStream(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
+      const stream = videoCanvas.captureStream(fps);
       const recorderOptions = window.MediaRecorder && MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : undefined;
       const recorder = new MediaRecorder(stream, recorderOptions);
       state.captureBlobParts = [];
 
       recorder.ondataavailable = e => { if (e.data && e.data.size > 0) state.captureBlobParts.push(e.data); };
       const finished = new Promise(resolve => recorder.onstop = resolve);
-      recorder.start(250);
+      recorder.start();
 
       const frames = state.captureFrames.slice();
-      const frameDelay = Math.max(40, Math.min(220, (state.settings.timelapseIntervalSec || 5) * 100));
+      const frameDelay = Math.max(16, Math.round(1000 / fps));
+      const sleepMs = (ms) => new Promise(resolve => setTimeout(resolve, ms));
       for (let i = 0; i < frames.length; i++) {
-        const img = await loadImageSafe(frames[i]);
-        vctx.clearRect(0,0,TIMELAPSE_RES,TIMELAPSE_RES);
-        vctx.drawImage(img, 0, 0, TIMELAPSE_RES, TIMELAPSE_RES);
-        await sleep(frameDelay);
+        const frame = frames[i];
+        if (frame?.bitmap) {
+          vctx.clearRect(0,0,resW,resH);
+          vctx.drawImage(frame.bitmap, 0, 0, resW, resH);
+        } else if (frame?.dataUrl) {
+          const img = await loadImageSafe(frame.dataUrl);
+          vctx.clearRect(0,0,resW,resH);
+          vctx.drawImage(img, 0, 0, resW, resH);
+        }
+        await sleepMs(frameDelay);
       }
+
+      try {
+        frames.forEach(frame => { try { frame?.bitmap?.close?.(); } catch {} });
+      } catch {}
 
       recorder.stop();
       await finished;
@@ -2852,11 +3356,11 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `timelapse_${Date.now()}_1250x1250.webm`;
+      a.download = `timelapse_${Date.now()}_${res}x${res}.webm`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
 
-      el.tlStatus.textContent = `Timelapse exportado · ${frames.length} fotogramas · 1250×1250`;
+      el.tlStatus.textContent = `Timelapse exportado · ${frames.length} fotogramas · ${res}×${res} · ${fps} FPS`;
       el.tlToggleBtn.disabled = false;
       el.tlToggleBtn.textContent = 'Iniciar timelapse';
       el.tlToggleBtn.classList.remove('btn-danger');
@@ -2886,6 +3390,80 @@
       });
     }
 
+    async function loadCaptureFrameImage(frame) {
+      if (!frame) throw new Error('Frame vacío');
+      if (typeof frame === 'string') return await loadImageSafe(frame);
+      if (frame instanceof Blob) {
+        if (window.createImageBitmap) return await createImageBitmap(frame);
+        return await loadImageSafe(URL.createObjectURL(frame));
+      }
+      if (frame.imageBitmap) return frame.imageBitmap;
+      if (frame.url) return await loadImageSafe(frame.url);
+      if (frame.dataUrl) return await loadImageSafe(frame.dataUrl);
+      if (frame.bitmap) return frame.bitmap;
+      throw new Error('Formato de frame no compatible');
+    }
+
+    async function createCaptureFramePayload(canvas) {
+      if (canvas.toBlob && window.createImageBitmap) {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.92));
+        if (blob) {
+          const bitmap = await createImageBitmap(blob);
+          return { bitmap, blob };
+        }
+      }
+      return canvas.toDataURL('image/webp', 0.92);
+    }
+
+    function getTimelapseOverlayLines() {
+      const lines = [];
+      const totalPixels = Number(state.totalPixelsPlaced || state.boardCount || 0);
+      const contributors = Number(state.contributorCount || 0);
+      const activeUsers = Array.isArray(state.activeUsers) ? state.activeUsers : [];
+      if (state.settings.timestampEnabled) {
+        lines.push(new Date().toLocaleString('es-ES', {
+          year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'
+        }));
+      }
+      if (state.settings.timelapseShowPixels) {
+        lines.push(`Píxeles colocados: ${formatNumber(totalPixels)}`);
+      }
+      if (state.settings.timelapseShowContributors) {
+        lines.push(`Contribuidores: ${formatNumber(contributors)}`);
+      }
+      if (state.settings.timelapseShowActiveUsers) {
+        const names = activeUsers.map(item => normalizeUsername(item?.username || item?.name || '')).filter(Boolean);
+        lines.push(names.length ? `Activos: ${names.join(', ')}` : 'Activos: ninguno');
+      }
+      return lines;
+    }
+
+    function drawTimelapseOverlay(ctx2d, width, height) {
+      const lines = getTimelapseOverlayLines();
+      if (!lines.length) return;
+      const safeW = Math.max(1, Math.floor(width || 1));
+      const safeH = Math.max(1, Math.floor(height || width || 1));
+      const pad = Math.max(18, Math.round(Math.min(safeW, safeH) * 0.018));
+      const lineH = Math.max(20, Math.round(Math.min(safeW, safeH) * 0.022));
+      const fontSize = Math.max(20, Math.round(Math.min(safeW, safeH) * 0.021));
+      const boxW = safeW - pad * 2;
+      const boxH = lines.length * lineH + pad;
+      const x = pad;
+      const y = safeH - boxH - pad;
+      ctx2d.save();
+      ctx2d.fillStyle = 'rgba(0,0,0,0.72)';
+      ctx2d.fillRect(x, y, boxW, boxH);
+      ctx2d.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx2d.strokeRect(x, y, boxW, boxH);
+      ctx2d.fillStyle = '#fff';
+      ctx2d.font = `700 ${fontSize}px "Plus Jakarta Sans", sans-serif`;
+      ctx2d.textBaseline = 'middle';
+      lines.forEach((line, index) => {
+        ctx2d.fillText(line, x + 16, y + 16 + index * lineH + lineH / 2 - 2);
+      });
+      ctx2d.restore();
+    }
+
     function applyZoomPointerFix() {
       requestAnimationFrame(() => {
         const rect = el.canvas.getBoundingClientRect();
@@ -2898,20 +3476,55 @@
     }
 
     function wireGlobalUpdates() {
+      const heartbeat = () => {
+        const ref = db.ref(`${USERS_PATH}/${ensureUid()}`);
+        ref.update({
+          username: state.username || 'Anónimo',
+          lastSeen: Date.now(),
+          online: true
+        }).catch(() => {});
+        db.ref(PRESENCE_PATH).once('value').catch(() => {});
+        keepCanvasAliveAfterSleep();
+        refreshActiveUsersSnapshot().catch(() => {});
+        updateTopStats();
+      };
+
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-          db.ref(`${USERS_PATH}/${ensureUid()}`).update({
-            username: state.username || 'Anónimo',
-            lastSeen: Date.now(),
-            online: true
-          });
+          heartbeat();
+          keepCanvasAliveAfterSleep();
+          refreshBoardFromServer();
         }
       });
+      window.addEventListener('pageshow', () => {
+        heartbeat();
+        keepCanvasAliveAfterSleep();
+        refreshBoardFromServer();
+      });
+      window.addEventListener('online', () => {
+        heartbeat();
+        keepCanvasAliveAfterSleep();
+        refreshBoardFromServer();
+      });
+      setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
       window.addEventListener('beforeunload', () => {
         try {
           db.ref(`${USERS_PATH}/${ensureUid()}`).update({ online:false, lastSeen: Date.now() });
         } catch {}
       });
+    }
+
+    async function refreshBoardFromServer() {
+      try {
+        const snap = await db.ref(BOARD_PATH).once('value');
+        const data = snap.val() || {};
+        state.boardData = { ...data };
+        state.knownBoardKeys = new Set(Object.keys(data));
+        state.boardCount = state.knownBoardKeys.size;
+        renderBoardFromData(state.boardData);
+        persistBoardCache(data);
+        updateTopStats();
+      } catch {}
     }
 
 
@@ -2965,6 +3578,8 @@
       syncPaletteVisibilityUI();
       centerCanvas();
       applyZoomPointerFix();
+      if (el.loaderPreviewFrame) el.loaderPreviewFrame.style.aspectRatio = `${getBoardWidth()} / ${getBoardHeight()}`;
+      if (el.minimapFrame) el.minimapFrame.style.aspectRatio = `${getBoardWidth()} / ${getBoardHeight()}`;
     });
 
     // init
@@ -3006,7 +3621,7 @@
         },
         {
           name:'presence',
-          promise: db.ref(PRESENCE_PATH).once('value').then(s => { state.onlineCount = s.numChildren() || 0; el.statOnline.textContent = formatNumber(state.onlineCount); addLoadingDone(1); }).catch(() => addLoadingDone(1))
+          promise: refreshActiveUsersSnapshot().then(users => { state.activeUserCount = users.length; el.statOnline.textContent = formatNumber(users.length); addLoadingDone(1); }).catch(() => addLoadingDone(1))
         },
         {
           name:'users',
@@ -3127,6 +3742,46 @@
       el.statsBtn.addEventListener('click', () => openSidebar('stats'));
       el.centerBtn.addEventListener('click', centerCanvas);
       el.sidebarCloseBtn.addEventListener('click', closeSidebar);
+      el.desktopSidebarToggle?.addEventListener('click', toggleDesktopSidebar);
+
+      const globalStatsNode = document.querySelector('.global-stats');
+      const activeUsersNode = el.activeUsersPopover;
+      const showUsers = () => {
+        if (isMobileLayout()) showActiveUsersPopover();
+        else showActiveUsersPopover();
+      };
+      const scheduleHideUsers = () => {
+        if (!state.activeUsersVisible) return;
+        hideActiveUsersPopover(160);
+      };
+      if (globalStatsNode) {
+        globalStatsNode.addEventListener('pointerenter', showUsers);
+        globalStatsNode.addEventListener('mouseenter', showUsers);
+        globalStatsNode.addEventListener('pointerleave', scheduleHideUsers);
+        globalStatsNode.addEventListener('mouseleave', scheduleHideUsers);
+        globalStatsNode.addEventListener('click', () => {
+          if (isMobileLayout()) {
+            if (state.activeUsersVisible) hideActiveUsersPopover();
+            else showActiveUsersPopover();
+          }
+        });
+        globalStatsNode.addEventListener('touchstart', () => {
+          if (isMobileLayout()) {
+            if (state.activeUsersVisible) hideActiveUsersPopover();
+            else showActiveUsersPopover();
+          }
+        }, { passive:true });
+      }
+      if (activeUsersNode) {
+        activeUsersNode.addEventListener('pointerenter', showUsers);
+        activeUsersNode.addEventListener('mouseenter', showUsers);
+        activeUsersNode.addEventListener('pointerleave', scheduleHideUsers);
+        activeUsersNode.addEventListener('mouseleave', scheduleHideUsers);
+      }
+
+      document.querySelectorAll('[data-close-sidebar]').forEach(btn => {
+        btn.addEventListener('click', closeSidebar);
+      });
 
       el.quickChat.addEventListener('click', () => openSidebar('chat'));
       el.quickStats.addEventListener('click', () => openSidebar('stats'));
@@ -3174,20 +3829,47 @@
         el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
         el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       });
+      if (el.toggleTimelapsePixels) {
+        el.toggleTimelapsePixels.addEventListener('change', () => {
+          state.settings.timelapseShowPixels = el.toggleTimelapsePixels.checked;
+        });
+      }
+      if (el.toggleTimelapseContributors) {
+        el.toggleTimelapseContributors.addEventListener('change', () => {
+          state.settings.timelapseShowContributors = el.toggleTimelapseContributors.checked;
+        });
+      }
+      if (el.toggleTimelapseActiveUsers) {
+        el.toggleTimelapseActiveUsers.addEventListener('change', () => {
+          state.settings.timelapseShowActiveUsers = el.toggleTimelapseActiveUsers.checked;
+        });
+      }
+      if (el.boardWidthInput) {
+        el.boardWidthInput.addEventListener('input', () => {
+          const v = clamp(Math.round(Number(el.boardWidthInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
+          el.boardWidthInput.value = String(v);
+        });
+        el.boardWidthInput.addEventListener('change', () => {
+          const v = clamp(Math.round(Number(el.boardWidthInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
+          state.boardSize = v;
+          resizeBoardCanvas(state.boardWidth || v, state.boardHeight || v, true);
+          state.settings.boardSize = v;
+        });
+      }
       el.tlFreqInput.addEventListener('input', () => {
         const v = Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec);
         el.tlFreqInput.value = String(v);
       });
       el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
-      const statsHoverTarget = el.header.querySelector('.global-stats');
-      if (statsHoverTarget) {
-        statsHoverTarget.addEventListener('pointerenter', () => { if (!isMobileLayout()) showActiveUsersPopover(); });
-        statsHoverTarget.addEventListener('pointerleave', () => { if (!isMobileLayout()) hideActiveUsersPopover(140); });
-        statsHoverTarget.addEventListener('click', () => { if (isMobileLayout()) showActiveUsersPopover(); });
-      }
       [document.getElementById('module-stats'), document.getElementById('module-globalstats')].filter(Boolean).forEach(node => {
         node.addEventListener('click', () => { if (isMobileLayout()) showActiveUsersPopover(); });
       });
+
+      window.addEventListener('resize', () => {
+        refreshCamera();
+        keepCanvasAliveAfterSleep();
+      });
+
       updateBrushButtonUI();
       updateSessionLoginModal();
 
@@ -3427,7 +4109,7 @@
     }
 
     function updateTopStats() {
-      const activeUsers = Number(state.activeUserCount || 0);
+      const activeUsers = Number((state.activeUsers && state.activeUsers.length) || state.activeUserCount || 0);
       const totalPlaced = Number(state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS);
       const contributors = Number(state.contributorCount || GLOBAL_STATS_SEED_CONTRIBUTORS);
       el.statMine.textContent = formatNumber(state.myPixels);
@@ -3486,6 +4168,7 @@
 
     function openSidebar(section = 'chat') {
       el.sidebar.classList.add('show');
+      el.sidebar.classList.remove('hidden-desktop');
       el.mobileMenuBtn.classList.add('active');
       setMobileSection(section);
       if (!isMobileLayout()) {
@@ -3497,6 +4180,10 @@
     function closeSidebar() {
       el.sidebar.classList.remove('show');
       el.mobileMenuBtn.classList.remove('active');
+    }
+
+    function toggleDesktopSidebar() {
+      el.sidebar.classList.toggle('hidden-desktop');
     }
 
     function openBannedModal(record, fallbackReason) {
@@ -3705,7 +4392,7 @@
       if (state.banned) return;
       if (!state.username) { showModal(el.modalUsername); return; }
       const { x, y } = getCanvasCoords(clientX, clientY);
-      if (x < 0 || x >= RES || y < 0 || y >= RES) return;
+      if (x < 0 || x >= getBoardWidth() || y < 0 || y >= getBoardHeight()) return;
 
       const color = normalizeColorHex(state.activeColor);
       const currentColor = getCurrentPixelHex(x, y);
@@ -3717,6 +4404,18 @@
       const uid = ensureUid();
 
       state.popQueue.set(key, { username: user, color, ts });
+      state.boardData = state.boardData || {};
+      state.boardData[key] = {
+        color,
+        username: user,
+        uid,
+        ts,
+        source
+      };
+      state.knownBoardKeys.add(key);
+      setPixel(x, y, color);
+      scheduleCanvasFlush();
+      requestMinimapRefresh();
 
       const updates = {};
       updates[`${BOARD_PATH}/${key}`] = {
@@ -3741,7 +4440,12 @@
         }).catch(() => {});
         db.ref(`${GLOBAL_STATS_PATH}/totalPixelsPlaced`).transaction(v => (Number(v) || 0) + 1).catch(() => {});
         state.myPixels += 1;
+        state.totalPixelsPlaced = Number(state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS) + 1;
+        if (!state.contributorCount || state.contributorCount < GLOBAL_STATS_SEED_CONTRIBUTORS) {
+          state.contributorCount = GLOBAL_STATS_SEED_CONTRIBUTORS;
+        }
         localStorage.setItem('nf_my_pixels', String(state.myPixels));
+        localStorage.setItem('nf_total_pixels', String(state.totalPixelsPlaced));
         el.statMine.textContent = formatNumber(state.myPixels);
         registerRecentEvent(ts);
         logActivity({
@@ -3858,9 +4562,28 @@
     }
 
     function syncPresence() {
-      const ref = db.ref(`${PRESENCE_PATH}/${ensureUid()}`);
-      ref.set({ uid: ensureUid(), username: state.username || 'Anónimo', lastSeen: Date.now(), online: true });
+      const uid = ensureUid();
+      const ref = db.ref(`${PRESENCE_PATH}/${uid}`);
+      ref.set({
+        uid,
+        username: state.username || 'Anónimo',
+        lastSeen: Date.now(),
+        online: true,
+        boardWidth: getBoardWidth(),
+        boardHeight: getBoardHeight(),
+        boardSize: Math.max(getBoardWidth(), getBoardHeight())
+      });
       ref.onDisconnect().remove();
+      db.ref(PRESENCE_PATH).off('value');
+      db.ref(PRESENCE_PATH).on('value', snap => {
+        const presence = snap.val() || {};
+        state.presenceSnapshot = presence;
+        state.activeUsers = getActiveUserNamesFromSnapshot(presence);
+        state.activeUserCount = state.activeUsers.length;
+        state.onlineCount = state.activeUserCount;
+        if (state.activeUsersVisible) renderActiveUsersPopover(state.activeUsers);
+        updateTopStats();
+      });
     }
 
     function recomputeActiveUsers() {
@@ -3985,8 +4708,9 @@
     function loadBoardCacheAndShow() {
       const cached = loadBoardCache();
       if (cached) {
-        setBoardFromObject(cached);
-        const keys = Object.keys(cached);
+        state.boardData = { ...(cached.data || {}) };
+        setBoardFromObject(state.boardData);
+        const keys = Object.keys(state.boardData);
         state.knownBoardKeys = new Set(keys);
         state.boardCount = keys.length;
         state.loadingDone = keys.length;
@@ -3998,11 +4722,12 @@
     function processBoardSnapshot(boardSnap) {
       const data = boardSnap.val() || {};
       const entries = Object.entries(data);
+      state.boardData = { ...(data || {}) };
       state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
       updateLoadingUI();
       ensureWhiteCanvas();
 
-      const chunkSize = 220;
+      const chunkSize = 120;
       let index = 0;
 
       const processChunk = () => {
@@ -4025,7 +4750,7 @@
         updateTopStats();
 
         if (index < entries.length) {
-          requestAnimationFrame(processChunk);
+          setTimeout(processChunk, 24);
         } else {
           persistBoardCache(data);
           state.lastBoardSyncAt = Date.now();
@@ -4179,6 +4904,7 @@
       db.ref(BOARD_PATH).remove().then(() => {
         state.knownBoardKeys.clear();
         state.boardCount = 0;
+        state.boardData = {};
         ensureWhiteCanvas();
         scheduleCanvasFlush();
         persistBoardCache({});
@@ -4194,12 +4920,21 @@
     }
 
     function saveAdminSettings() {
+      const boardSize = clamp(Math.round(Number(el.boardWidthInput?.value) || state.boardSize || DEFAULT_BOARD_SIZE), 25, 1000);
       const patch = {
+        boardSize,
         timestampEnabled: !!el.toggleTimestamp.checked,
         trackingEnabled: !!el.toggleTracking.checked,
-        timelapseIntervalSec: Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec)
+        timelapseIntervalSec: Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec),
+        timelapseFps: Math.max(1, parseInt(el.tlFpsInput?.value, 10) || DEFAULT_SETTINGS.timelapseFps),
+        timelapseShowPixels: !!el.toggleTimelapsePixels?.checked,
+        timelapseShowContributors: !!el.toggleTimelapseContributors?.checked,
+        timelapseShowActiveUsers: !!el.toggleTimelapseActiveUsers?.checked
       };
       state.settings = { ...state.settings, ...patch };
+      state.boardSize = boardSize;
+      if (el.boardWidthInput) el.boardWidthInput.value = String(boardSize);
+      resizeBoardCanvas(state.boardWidth || boardSize, state.boardHeight || boardSize, true);
       saveSettingsToFirebase(patch)
         .then(() => {
           el.tlStatus.textContent = 'Ajustes guardados y sincronizados.';
@@ -4279,6 +5014,44 @@
       el.statsBtn.addEventListener('click', () => openSidebar('session'));
       el.centerBtn.addEventListener('click', centerCanvas);
       el.sidebarCloseBtn.addEventListener('click', closeSidebar);
+      el.desktopSidebarToggle?.addEventListener('click', toggleDesktopSidebar);
+
+      document.querySelectorAll('[data-close-sidebar]').forEach(btn => {
+        btn.addEventListener('click', closeSidebar);
+      });
+
+      const globalStatsNode = document.querySelector('.global-stats');
+      const activeUsersNode = el.activeUsersPopover;
+      const showUsers = () => showActiveUsersPopover();
+      const hideUsers = () => hideActiveUsersPopover(180);
+      if (globalStatsNode) {
+        globalStatsNode.addEventListener('pointerenter', showUsers);
+        globalStatsNode.addEventListener('mouseenter', showUsers);
+        globalStatsNode.addEventListener('pointerleave', hideUsers);
+        globalStatsNode.addEventListener('mouseleave', hideUsers);
+        globalStatsNode.addEventListener('click', () => {
+          if (isMobileLayout()) {
+            if (state.activeUsersVisible) hideActiveUsersPopover();
+            else showActiveUsersPopover();
+          }
+        });
+        globalStatsNode.addEventListener('touchstart', () => {
+          if (isMobileLayout()) {
+            if (state.activeUsersVisible) hideActiveUsersPopover();
+            else showActiveUsersPopover();
+          }
+        }, { passive:true });
+      }
+      if (activeUsersNode) {
+        activeUsersNode.addEventListener('pointerenter', showUsers);
+        activeUsersNode.addEventListener('mouseenter', showUsers);
+        activeUsersNode.addEventListener('pointerleave', hideUsers);
+        activeUsersNode.addEventListener('mouseleave', hideUsers);
+      }
+
+      [document.getElementById('module-stats'), document.getElementById('module-globalstats')].filter(Boolean).forEach(node => {
+        node.addEventListener('click', () => { if (isMobileLayout()) showActiveUsersPopover(); });
+      });
 
       el.quickChat.addEventListener('click', () => openSidebar('chat'));
       el.quickSession.addEventListener('click', () => openSidebar('session'));
@@ -4333,11 +5106,44 @@
         el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
         el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
       });
+      if (el.toggleTimelapsePixels) {
+        el.toggleTimelapsePixels.addEventListener('change', () => {
+          state.settings.timelapseShowPixels = el.toggleTimelapsePixels.checked;
+        });
+      }
+      if (el.toggleTimelapseContributors) {
+        el.toggleTimelapseContributors.addEventListener('change', () => {
+          state.settings.timelapseShowContributors = el.toggleTimelapseContributors.checked;
+        });
+      }
+      if (el.toggleTimelapseActiveUsers) {
+        el.toggleTimelapseActiveUsers.addEventListener('change', () => {
+          state.settings.timelapseShowActiveUsers = el.toggleTimelapseActiveUsers.checked;
+        });
+      }
       el.tlFreqInput.addEventListener('input', () => {
         const v = Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec);
         el.tlFreqInput.value = String(v);
       });
       el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
+
+      if (el.boardWidthInput) {
+        el.boardWidthInput.addEventListener('input', () => {
+          const v = clamp(Math.round(Number(el.boardWidthInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
+          el.boardWidthInput.value = String(v);
+        });
+        el.boardWidthInput.addEventListener('change', () => {
+          const v = clamp(Math.round(Number(el.boardWidthInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
+          state.boardSize = v;
+          state.settings.boardSize = v;
+          resizeBoardCanvas(state.boardWidth || v, state.boardHeight || v, true);
+        });
+      }
+
+      window.addEventListener('resize', () => {
+        refreshCamera();
+        keepCanvasAliveAfterSleep();
+      });
 
       const activePointers = new Map();
 
@@ -4651,6 +5457,7 @@
 
     function startSession() {
       buildPalette();
+      initBoardImageData();
       syncPaletteVisibilityUI();
       updateUsernameBadge();
       updateBrushButtonUI();
@@ -4663,55 +5470,40 @@
       initUsernameBoot();
       loadFirebaseResources();
     }
+
+    function applyInitialBoardState() {
+      state.boardSize = clamp(Math.round(Number(state.settings.boardSize || state.boardSize || DEFAULT_BOARD_SIZE)), 25, 1000);
+      initBoardImageData();
+      if (el.boardWidthInput) el.boardWidthInput.value = String(state.boardSize);
+      if (el.boardSizeInfo) el.boardSizeInfo.textContent = `${state.boardSize}×${state.boardSize} px`;
+      setLoaderPreviewVisibility(state.loaderPreviewVisible, false);
+      updateLoaderPreview();
+      updateLoaderStats();
+    }
+
+    function hideAllModals() {
+      [el.modalUsername, el.modalLogin, el.modalDashboard, el.modalBanned, el.modalSessionLogin].forEach(modal => {
+        if (modal) modal.classList.remove('visible');
+      });
+    }
+
+    function showModal(modal) {
+      if (modal) modal.classList.add('visible');
+    }
+
+    function hideModal(modal) {
+      if (modal) modal.classList.remove('visible');
+    }
+
+    function saveSettingsToFirebase(patch) {
+      return db.ref(SETTINGS_PATH).update(patch);
+    }
+
+    applyInitialBoardState();
+
     initUiHooks();
     startSession();
   </script>
 
-  <div id="modal-session-login" class="modal-overlay">
-    <div class="modal-content wide">
-      <h2>Login por código</h2>
-      <p>Genera un código temporal de 5 minutos para abrir esta cuenta en otro dispositivo y sincronizar la misma sesión.</p>
-
-      <div class="username-badge">
-        <span>Cuenta actual:</span> <strong id="session-account-name">Sin asignar</strong>
-      </div>
-
-      <div class="field-label">
-        <span>Código activo</span>
-        <span id="session-code-expiry">sin generar</span>
-      </div>
-      <div class="session-code-box">
-        <strong id="session-code-value">— — — — — —</strong>
-        <button class="action-btn btn-main" type="button" id="session-code-refresh">Generar</button>
-        <button class="action-btn btn-ghost" type="button" id="session-code-copy">Copiar</button>
-      </div>
-
-      <div class="field-label">
-        <span>Entrar con código</span>
-        <span>otro dispositivo</span>
-      </div>
-      <input type="text" id="session-code-input" placeholder="Escribe el código" maxlength="12" autocomplete="off">
-
-      <div class="btn-grid">
-        <button class="action-btn btn-main" id="session-code-login-btn">Entrar</button>
-        <button class="action-btn btn-ghost" id="session-code-close-btn">Cerrar</button>
-      </div>
-
-      <div class="split-line"></div>
-      <div class="field-label">
-        <span>Cuentas guardadas</span>
-        <span>local</span>
-      </div>
-      <div id="session-account-list" class="account-list"></div>
-    </div>
-  </div>
-
-  <div id="active-users-popover" aria-live="polite">
-    <div class="active-users-title">
-      <span>Usuarios activos</span>
-      <span id="active-users-count">0</span>
-    </div>
-    <div id="active-users-list"></div>
-  </div>
 </body>
 </html>
