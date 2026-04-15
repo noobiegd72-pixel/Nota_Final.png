@@ -738,7 +738,7 @@
     .palette-page-indicator{min-width:82px;text-align:center;color:var(--dim);font-size:.72rem;font-family:"Courier New",monospace;letter-spacing:.3px}
 
     canvas#canvas{
-      position:absolute;left:0;top:0;width:125px;height:125px;display:block;pointer-events:none;
+      position:absolute;left:0;top:0;width:auto;height:auto;display:block;pointer-events:none;
       image-rendering:pixelated;image-rendering:crisp-edges;background:#fff;
       box-shadow:0 0 60px rgba(0,0,0,.78);transform-origin:0 0;will-change:transform;
       transition:transform .16s cubic-bezier(.2,.8,.2,1),opacity .16s ease,filter .16s ease
@@ -1685,7 +1685,7 @@
 
       <div class="btn-grid">
         <button class="action-btn btn-main" id="session-code-login-btn">Entrar</button>
-        <button class="action-btn btn-ghost" id="session-code-close-btn">Cerrar</button>
+        <button class="action-btn btn-ghost" type="button" id="session-code-close-btn">Cerrar</button>
       </div>
 
       <div class="split-line"></div>
@@ -1895,6 +1895,8 @@
       ctx.putImageData(boardImageData, 0, 0);
       el.canvas.width = width;
       el.canvas.height = height;
+      el.canvas.style.width = `${width}px`;
+      el.canvas.style.height = `${height}px`;
       el.minimap.width = width;
       el.minimap.height = height;
       if (el.loaderPreview) {
@@ -2729,11 +2731,17 @@
         el.coordsInfo.style.left = `${Math.min(window.innerWidth - 120, clientX + 15)}px`;
         el.coordsInfo.style.top = `${Math.min(window.innerHeight - 30, clientY + 15)}px`;
         el.coordsInfo.innerText = `X:${x} Y:${y}`;
+        if (state.spaceHeld && !isMobileLayout()) {
+          startSpacePaintLoop();
+        }
       } else {
         state.hoverPoint = null;
         el.viewport.classList.remove('pixel-hover');
         el.pixelSelector.style.display = 'none';
         el.coordsInfo.style.display = 'none';
+        if (state.spaceHeld && !state.touchPainting && !state.brushMode) {
+          stopPaintLoop();
+        }
       }
       return { x, y };
     }
@@ -3623,7 +3631,12 @@
 
       el.mobileMenuBtn.addEventListener('click', toggleSidebar);
       el.chatBtn.addEventListener('click', () => openSidebar('chat'));
-      el.statsBtn.addEventListener('click', () => openSidebar('stats'));
+      el.statsBtn.addEventListener('click', () => openSidebar('session'));
+      el.sessionBtn?.addEventListener('click', openSessionLoginModal);
+      el.sessionCodeCloseBtn?.addEventListener('click', hideAllModals);
+      el.modalSessionLogin?.addEventListener('click', (e) => {
+        if (e.target === el.modalSessionLogin) hideAllModals();
+      });
       el.centerBtn.addEventListener('click', centerCanvas);
       el.chatSendBtn?.addEventListener('click', sendChatMessage);
       el.chatClearBtn?.addEventListener('click', () => {
@@ -3673,7 +3686,12 @@
       });
 
       el.quickChat.addEventListener('click', () => openSidebar('chat'));
-      el.quickStats?.addEventListener('click', () => openSidebar('stats'));
+      el.quickSession?.addEventListener('click', () => openSidebar('session'));
+      el.quickGlobalStats?.addEventListener('click', () => openSidebar('globalstats'));
+      el.quickMap?.addEventListener('click', () => openSidebar('map'));
+      el.quickLeaderboard?.addEventListener('click', () => openSidebar('leaderboard'));
+      el.quickActivity?.addEventListener('click', () => openSidebar('activity'));
+      el.quickStats?.addEventListener('click', () => openSidebar('session'));
       el.quickCenter.addEventListener('click', centerCanvas);
       el.quickBrush?.addEventListener('click', () => toggleBrushMode());
       el.quickPalette.addEventListener('click', () => {
@@ -3940,16 +3958,38 @@
       }, { passive:false });
 
       window.addEventListener('keydown', e => {
+        if (e.code === 'Space' && !isMobileLayout()) {
+          if (e.repeat) {
+            e.preventDefault();
+            return;
+          }
+          e.preventDefault();
+          state.spaceHeld = true;
+          if (state.hoverPoint) startSpacePaintLoop();
+          return;
+        }
+
         if (e.key === 'Escape') {
           closeSidebar();
           if (!state.isCapturing) hideAllModals();
         }
       });
 
+      window.addEventListener('keyup', e => {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          stopSpacePaintLoop();
+        }
+      });
+
       window.addEventListener('blur', () => {
         state.dragging = false;
+        state.spaceHeld = false;
         el.viewport.classList.remove('dragging');
         state.pinchDistance = null;
+        if (!state.touchPainting && !state.brushMode) {
+          stopPaintLoop();
+        }
       });
     }
 
@@ -4002,6 +4042,7 @@
     }
 
     function getSectionModuleId(section) {
+      const normalized = section === 'stats' ? 'session' : section;
       const map = {
         chat: 'module-chat',
         session: 'module-stats',
@@ -4010,11 +4051,11 @@
         leaderboard: 'module-leaderboard',
         activity: 'module-activity'
       };
-      return map[section] || 'module-chat';
+      return map[normalized] || 'module-chat';
     }
 
     function setMobileSection(section) {
-      const next = section || 'chat';
+      const next = section === 'stats' ? 'session' : (section || 'chat');
       state.currentMobileSection = next;
       el.sidebar.dataset.mobileSection = next;
       document.querySelectorAll('#mobile-quickbar .quick-btn').forEach(btn => btn.classList.remove('active'));
@@ -4131,10 +4172,11 @@
     }
 
     function openSidebar(section = 'chat') {
+      const next = section === 'stats' ? 'session' : section;
       el.sidebar.classList.add('show');
       el.sidebar.classList.remove('hidden-desktop');
       el.mobileMenuBtn.classList.add('active');
-      setMobileSection(section);
+      setMobileSection(next);
       if (!isMobileLayout()) {
         const moduleId = getSectionModuleId(section);
         document.getElementById(moduleId)?.scrollIntoView({ behavior:'smooth', block:'start' });
@@ -4327,6 +4369,21 @@
         state.banned = false;
         state.banInfo = null;
         hideModal(el.modalBanned);
+      }
+    }
+
+    function startSpacePaintLoop() {
+      if (isMobileLayout()) return;
+      if (state.banned) return;
+      if (!state.spaceHeld) return;
+      if (!state.hoverPoint) return;
+      startPaintLoop('space');
+    }
+
+    function stopSpacePaintLoop() {
+      state.spaceHeld = false;
+      if (!state.touchPainting && !state.brushMode) {
+        stopPaintLoop();
       }
     }
 
