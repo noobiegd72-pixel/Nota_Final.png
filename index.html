@@ -390,17 +390,10 @@
       try {
         await saveSettingsToFirebase(patch);
         state.settings = { ...state.settings, ...patch };
-        state.boardWidth = nextWidth;
-        state.boardHeight = nextHeight;
-        state.boardSize = Math.max(nextWidth, nextHeight);
-        localStorage.setItem('nf_board_width', String(nextWidth));
-        localStorage.setItem('nf_board_height', String(nextHeight));
-        localStorage.setItem('nf_board_size', String(state.boardSize));
-        resizeBoardCanvas(nextWidth, nextHeight, false);
-        centerCanvas();
+        applyBoardDimensionsFromSettings(nextWidth, nextHeight, { persistLocal: true, recenter: true });
         updateSettingsDisplay();
         updateTopStats();
-        if (el.tlStatus) el.tlStatus.textContent = `Ajustes guardados: ${nextWidth}×${nextHeight} px.`;
+        if (el.tlStatus) el.tlStatus.textContent = `Ajustes guardados: ${nextWidth}×${nextHeight} px`;
       } catch (err) {
         console.error('No se pudieron guardar los ajustes:', err);
         if (el.tlStatus) el.tlStatus.textContent = 'No se pudieron guardar los ajustes.';
@@ -459,6 +452,7 @@
           resizeBoardCanvas(width, height, true);
           updateSettingsDisplay();
           requestMinimapRefresh(true);
+          pushBoardDimensionsToFirebase(width, height).catch(err => console.warn('No se pudieron sincronizar las dimensiones del lienzo:', err));
         });
       }
 
@@ -476,6 +470,7 @@
           resizeBoardCanvas(width, height, true);
           updateSettingsDisplay();
           requestMinimapRefresh(true);
+          pushBoardDimensionsToFirebase(width, height).catch(err => console.warn('No se pudieron sincronizar las dimensiones del lienzo:', err));
         });
       }
 
@@ -2219,9 +2214,7 @@
 
     async function refreshActiveUsersSnapshot() {
       try {
-        const snap = await db.ref(PRESENCE_PATH).once('value');
-        const presence = snap.val() || {};
-        state.presenceSnapshot = presence;
+        const presence = state.presenceSnapshot || {};
         state.activeUsers = getActiveUserNamesFromSnapshot(presence);
         state.activeUserCount = state.activeUsers.length;
         state.onlineCount = state.activeUserCount;
@@ -2355,6 +2348,7 @@
 
     function showModal(node) { node.classList.add('visible'); }
     function hideModal(node) { node.classList.remove('visible'); }
+
     function hideAllModals() { [el.modalUsername, el.modalLogin, el.modalDashboard].forEach(hideModal); }
 
     function hexToRgba(hex){
@@ -2993,6 +2987,22 @@
       registerRecentEvent(ts, { persist: false });
     }
 
+    function applyPresenceSnapshot(presence = {}) {
+      state.presenceSnapshot = presence || {};
+      state.activeUsers = getActiveUserNamesFromSnapshot(state.presenceSnapshot);
+      state.activeUserCount = state.activeUsers.length;
+      state.onlineCount = state.activeUserCount;
+      if (state.activeUsersVisible) renderActiveUsersPopover(state.activeUsers);
+      updateTopStats();
+    }
+
+    function applyUsersSnapshot(users = {}) {
+      state.usersSnapshot = users || {};
+      state.uniqueCount = Object.keys(state.usersSnapshot || {}).length;
+      el.statUnique.textContent = formatNumber(state.uniqueCount);
+      recomputeActiveUsers();
+    }
+
     function syncPresence() {
       const uid = ensureUid();
       const ref = db.ref(`${PRESENCE_PATH}/${uid}`);
@@ -3007,15 +3017,35 @@
       });
       state.presenceRef = ref;
       ref.onDisconnect().remove();
-      db.ref(PRESENCE_PATH).off('value');
-      db.ref(PRESENCE_PATH).on('value', snap => {
-        const presence = snap.val() || {};
-        state.presenceSnapshot = presence;
-        state.activeUsers = getActiveUserNamesFromSnapshot(presence);
-        state.activeUserCount = state.activeUsers.length;
-        state.onlineCount = state.activeUserCount;
-        if (state.activeUsersVisible) renderActiveUsersPopover(state.activeUsers);
-        updateTopStats();
+
+      if (state.presenceListenerAttached) {
+        applyPresenceSnapshot(state.presenceSnapshot || {});
+        return;
+      }
+      state.presenceListenerAttached = true;
+
+      const presenceRoot = db.ref(PRESENCE_PATH);
+      presenceRoot.off();
+      presenceRoot.on('child_added', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.presenceSnapshot || {}) };
+        next[key] = snap.val() || {};
+        applyPresenceSnapshot(next);
+      });
+      presenceRoot.on('child_changed', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.presenceSnapshot || {}) };
+        next[key] = snap.val() || {};
+        applyPresenceSnapshot(next);
+      });
+      presenceRoot.on('child_removed', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.presenceSnapshot || {}) };
+        delete next[key];
+        applyPresenceSnapshot(next);
       });
     }
 
@@ -3029,43 +3059,59 @@
       ref.onDisconnect().update({ online: false, lastSeen: Date.now() });
       if (state.heartbeatIntervalId) clearInterval(state.heartbeatIntervalId);
       state.heartbeatIntervalId = setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
-      db.ref(USERS_PATH).off('value');
-      db.ref(USERS_PATH).on('value', snap => {
-        state.usersSnapshot = snap.val() || {};
-        state.uniqueCount = snap.numChildren() || 0;
-        el.statUnique.textContent = formatNumber(state.uniqueCount);
-        updateTopStats();
+
+      if (state.usersListenerAttached) {
+        applyUsersSnapshot(state.usersSnapshot || {});
+        return;
+      }
+      state.usersListenerAttached = true;
+
+      const usersRoot = db.ref(USERS_PATH);
+      usersRoot.off();
+      usersRoot.on('child_added', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.usersSnapshot || {}) };
+        next[key] = snap.val() || {};
+        applyUsersSnapshot(next);
+      });
+      usersRoot.on('child_changed', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.usersSnapshot || {}) };
+        next[key] = snap.val() || {};
+        applyUsersSnapshot(next);
+      });
+      usersRoot.on('child_removed', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.usersSnapshot || {}) };
+        delete next[key];
+        applyUsersSnapshot(next);
       });
     }
 
     function syncSettings() {
-      db.ref(SETTINGS_PATH).off('value');
-      db.ref(SETTINGS_PATH).on('value', snap => {
+      const settingsRef = db.ref(SETTINGS_PATH);
+      settingsRef.off('value');
+      settingsRef.on('value', snap => {
         const incoming = snap.val() || {};
         const trackingOn = !!incoming.trackingEnabled;
         state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: trackingOn };
 
-        const hasWidth = incoming.boardWidth !== undefined || incoming.boardSize !== undefined;
-        const hasHeight = incoming.boardHeight !== undefined || incoming.boardSize !== undefined;
-        if (hasWidth || hasHeight) {
-          const nextWidth = clamp(Math.round(Number(incoming.boardWidth ?? incoming.boardSize) || state.boardWidth || DEFAULT_BOARD_SIZE), 25, 1000);
-          const nextHeight = clamp(Math.round(Number(incoming.boardHeight ?? incoming.boardSize ?? nextWidth) || state.boardHeight || DEFAULT_BOARD_SIZE), 25, 1000);
-          state.boardWidth = nextWidth;
-          state.boardHeight = nextHeight;
-          state.boardSize = Math.max(nextWidth, nextHeight);
-          localStorage.setItem('nf_board_width', String(state.boardWidth));
-          localStorage.setItem('nf_board_height', String(state.boardHeight));
-          localStorage.setItem('nf_board_size', String(state.boardSize));
-          resizeBoardCanvas(state.boardWidth, state.boardHeight, false);
+        if (incoming.boardWidth !== undefined || incoming.boardHeight !== undefined || incoming.boardSize !== undefined) {
+          const widthSource = incoming.boardWidth ?? incoming.boardSize ?? state.boardWidth ?? DEFAULT_BOARD_SIZE;
+          const heightSource = incoming.boardHeight ?? incoming.boardSize ?? widthSource ?? state.boardHeight ?? DEFAULT_BOARD_SIZE;
+          applyBoardDimensionsFromSettings(widthSource, heightSource, { persistLocal: true, recenter: false });
         }
 
         el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
         el.toggleTracking.checked = !!state.settings.trackingEnabled;
         el.toggleTracking.disabled = !state.isAuthorized;
-      const trackingToggleRow = el.toggleTracking?.closest('.toggle-row');
-      if (trackingToggleRow) trackingToggleRow.style.display = state.isAuthorized ? 'flex' : 'none';
-      const trackingStatsRow = el.statTracking?.closest('.stats-row');
-      if (trackingStatsRow) trackingStatsRow.style.display = (state.isAuthorized && !!state.settings.trackingEnabled) ? 'flex' : 'none';
+        const trackingToggleRow = el.toggleTracking?.closest('.toggle-row');
+        if (trackingToggleRow) trackingToggleRow.style.display = state.isAuthorized ? 'flex' : 'none';
+        const trackingStatsRow = el.statTracking?.closest('.stats-row');
+        if (trackingStatsRow) trackingStatsRow.style.display = (state.isAuthorized && !!state.settings.trackingEnabled) ? 'flex' : 'none';
         el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
         if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
         if (el.toggleTimelapsePixels) el.toggleTimelapsePixels.checked = !!state.settings.timelapseShowPixels;
@@ -3081,6 +3127,10 @@
         el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
         el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
         el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
+        updateTopStats();
+        if (el.tlStatus) {
+          el.tlStatus.textContent = `Ajustes sincronizados · tracking ${state.settings.trackingEnabled ? 'activo' : 'inactivo'} · timestamp ${state.settings.timestampEnabled ? 'visible' : 'oculto'}.`;
+        }
       });
     }
 
@@ -3500,14 +3550,6 @@
           promise: db.ref(SETTINGS_PATH).once('value').then(s => { state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) }; addLoadingDone(1); }).catch(() => addLoadingDone(1))
         },
         {
-          name:'presence',
-          promise: refreshActiveUsersSnapshot().then(users => { state.activeUserCount = users.length; el.statOnline.textContent = formatNumber(users.length); addLoadingDone(1); }).catch(() => addLoadingDone(1))
-        },
-        {
-          name:'users',
-          promise: db.ref(USERS_PATH).once('value').then(s => { state.uniqueCount = s.numChildren() || 0; el.statUnique.textContent = formatNumber(state.uniqueCount); addLoadingDone(1); }).catch(() => addLoadingDone(1))
-        },
-        {
           name:'messages',
           promise: db.ref(MESSAGES_PATH).limitToLast(20).once('value').then(s => {
             el.chatArea.innerHTML = '';
@@ -3558,9 +3600,12 @@
     }
 
     function attachBoardListeners() {
+      if (state.boardListenerAttached) return;
+      state.boardListenerAttached = true;
       const boardRef = db.ref(BOARD_PATH);
       boardRef.on('child_added', snap => {
         const key = snap.key;
+        if (!key) return;
         if (state.knownBoardKeys.has(key)) return;
         state.knownBoardKeys.add(key);
         state.boardCount += 1;
@@ -3568,11 +3613,13 @@
         updateTopStats();
       });
       boardRef.on('child_changed', snap => {
+        if (!snap.key) return;
         applyRealtimeBoardChange(snap.key, snap.val());
         updateTopStats();
       });
       boardRef.on('child_removed', snap => {
         const key = snap.key;
+        if (!key) return;
         if (state.knownBoardKeys.has(key)) {
           state.knownBoardKeys.delete(key);
           state.boardCount = Math.max(0, state.boardCount - 1);
@@ -3772,10 +3819,21 @@
           el.boardWidthInput.value = String(v);
         });
         el.boardWidthInput.addEventListener('change', () => {
-          const v = clamp(Math.round(Number(el.boardWidthInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
-          state.boardSize = v;
-          resizeBoardCanvas(state.boardWidth || v, state.boardHeight || v, true);
-          state.settings.boardSize = v;
+          const nextWidth = clamp(Math.round(Number(el.boardWidthInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
+          const nextHeight = clamp(Math.round(Number(el.boardHeightInput?.value) || getBoardHeight()), 25, 1000);
+          state.boardWidth = nextWidth;
+          state.boardHeight = nextHeight;
+          state.boardSize = Math.max(nextWidth, nextHeight);
+          localStorage.setItem('nf_board_width', String(nextWidth));
+          localStorage.setItem('nf_board_height', String(nextHeight));
+          localStorage.setItem('nf_board_size', String(state.boardSize));
+          resizeBoardCanvas(nextWidth, nextHeight, true);
+          state.settings.boardSize = Math.max(nextWidth, nextHeight);
+          state.settings.boardWidth = nextWidth;
+          state.settings.boardHeight = nextHeight;
+          updateSettingsDisplay();
+          requestMinimapRefresh(true);
+          pushBoardDimensionsToFirebase(nextWidth, nextHeight).catch(err => console.warn('No se pudieron sincronizar las dimensiones del lienzo:', err));
         });
       }
       el.tlFreqInput.addEventListener('input', () => {
@@ -4651,6 +4709,7 @@
       });
     }
 
+
     function syncPresence() {
       const uid = ensureUid();
       const ref = db.ref(`${PRESENCE_PATH}/${uid}`);
@@ -4664,11 +4723,51 @@
         boardSize: Math.max(getBoardWidth(), getBoardHeight())
       });
       ref.onDisconnect().remove();
-      db.ref(PRESENCE_PATH).off('value');
-      db.ref(PRESENCE_PATH).on('value', snap => {
-        const presence = snap.val() || {};
-        state.presenceSnapshot = presence;
-        state.activeUsers = getActiveUserNamesFromSnapshot(presence);
+
+      const presenceRoot = db.ref(PRESENCE_PATH);
+      if (state.presenceListenerAttached) return;
+      state.presenceListenerAttached = true;
+
+      presenceRoot.once('value').then(snap => {
+        state.presenceSnapshot = snap.val() || {};
+        state.activeUsers = getActiveUserNamesFromSnapshot(state.presenceSnapshot);
+        state.activeUserCount = state.activeUsers.length;
+        state.onlineCount = state.activeUserCount;
+        if (state.activeUsersVisible) renderActiveUsersPopover(state.activeUsers);
+        updateTopStats();
+      }).catch(() => {});
+
+      presenceRoot.on('child_added', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.presenceSnapshot || {}) };
+        next[key] = snap.val() || {};
+        state.presenceSnapshot = next;
+        state.activeUsers = getActiveUserNamesFromSnapshot(next);
+        state.activeUserCount = state.activeUsers.length;
+        state.onlineCount = state.activeUserCount;
+        if (state.activeUsersVisible) renderActiveUsersPopover(state.activeUsers);
+        updateTopStats();
+      });
+      presenceRoot.on('child_changed', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.presenceSnapshot || {}) };
+        next[key] = snap.val() || {};
+        state.presenceSnapshot = next;
+        state.activeUsers = getActiveUserNamesFromSnapshot(next);
+        state.activeUserCount = state.activeUsers.length;
+        state.onlineCount = state.activeUserCount;
+        if (state.activeUsersVisible) renderActiveUsersPopover(state.activeUsers);
+        updateTopStats();
+      });
+      presenceRoot.on('child_removed', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.presenceSnapshot || {}) };
+        delete next[key];
+        state.presenceSnapshot = next;
+        state.activeUsers = getActiveUserNamesFromSnapshot(next);
         state.activeUserCount = state.activeUsers.length;
         state.onlineCount = state.activeUserCount;
         if (state.activeUsersVisible) renderActiveUsersPopover(state.activeUsers);
@@ -4699,9 +4798,38 @@
       ref.onDisconnect().update({ online: false, lastSeen: Date.now() });
       if (state.heartbeatIntervalId) clearInterval(state.heartbeatIntervalId);
       state.heartbeatIntervalId = setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
-      db.ref(USERS_PATH).off('value');
-      db.ref(USERS_PATH).on('value', snap => {
+
+      const usersRoot = db.ref(USERS_PATH);
+      if (state.usersListenerAttached) return;
+      state.usersListenerAttached = true;
+
+      usersRoot.once('value').then(snap => {
         state.usersSnapshot = snap.val() || {};
+        recomputeActiveUsers();
+      }).catch(() => {});
+
+      usersRoot.on('child_added', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.usersSnapshot || {}) };
+        next[key] = snap.val() || {};
+        state.usersSnapshot = next;
+        recomputeActiveUsers();
+      });
+      usersRoot.on('child_changed', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.usersSnapshot || {}) };
+        next[key] = snap.val() || {};
+        state.usersSnapshot = next;
+        recomputeActiveUsers();
+      });
+      usersRoot.on('child_removed', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const next = { ...(state.usersSnapshot || {}) };
+        delete next[key];
+        state.usersSnapshot = next;
         recomputeActiveUsers();
       });
     }
@@ -4732,26 +4860,45 @@
     }
 
     function syncSettings() {
-      db.ref(SETTINGS_PATH).off('value');
-      db.ref(SETTINGS_PATH).on('value', snap => {
+      const settingsRef = db.ref(SETTINGS_PATH);
+      settingsRef.off('value');
+      settingsRef.on('value', snap => {
         const incoming = snap.val() || {};
         const trackingOn = !!incoming.trackingEnabled;
         state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: trackingOn };
+
+        if (incoming.boardWidth !== undefined || incoming.boardHeight !== undefined || incoming.boardSize !== undefined) {
+          const widthSource = incoming.boardWidth ?? incoming.boardSize ?? state.boardWidth ?? DEFAULT_BOARD_SIZE;
+          const heightSource = incoming.boardHeight ?? incoming.boardSize ?? widthSource ?? state.boardHeight ?? DEFAULT_BOARD_SIZE;
+          applyBoardDimensionsFromSettings(widthSource, heightSource, { persistLocal: true, recenter: false });
+        }
+
         el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
         el.toggleTracking.checked = !!state.settings.trackingEnabled;
         el.toggleTracking.disabled = !state.isAuthorized;
-      const trackingToggleRow = el.toggleTracking?.closest('.toggle-row');
-      if (trackingToggleRow) trackingToggleRow.style.display = state.isAuthorized ? 'flex' : 'none';
-      const trackingStatsRow = el.statTracking?.closest('.stats-row');
-      if (trackingStatsRow) trackingStatsRow.style.display = (state.isAuthorized && !!state.settings.trackingEnabled) ? 'flex' : 'none';
+        const trackingToggleRow = el.toggleTracking?.closest('.toggle-row');
+        if (trackingToggleRow) trackingToggleRow.style.display = state.isAuthorized ? 'flex' : 'none';
+        const trackingStatsRow = el.statTracking?.closest('.stats-row');
+        if (trackingStatsRow) trackingStatsRow.style.display = (state.isAuthorized && !!state.settings.trackingEnabled) ? 'flex' : 'none';
         el.tlFreqInput.value = String(state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
         if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
         if (el.toggleTimelapsePixels) el.toggleTimelapsePixels.checked = !!state.settings.timelapseShowPixels;
         if (el.toggleTimelapseContributors) el.toggleTimelapseContributors.checked = !!state.settings.timelapseShowContributors;
         if (el.toggleTimelapseActiveUsers) el.toggleTimelapseActiveUsers.checked = !!state.settings.timelapseShowActiveUsers;
         if (el.toggleTimelapsePixelRate) el.toggleTimelapsePixelRate.checked = !!state.settings.timelapseShowPixelRate;
+        if (el.boardWidthInput) el.boardWidthInput.value = String(state.boardWidth || state.settings.boardWidth || state.settings.boardSize || DEFAULT_BOARD_SIZE);
+        if (el.boardHeightInput) el.boardHeightInput.value = String(state.boardHeight || state.settings.boardHeight || state.settings.boardSize || DEFAULT_BOARD_SIZE);
+        if (el.boardSizeInfo) el.boardSizeInfo.textContent = formatBoardDims();
+        if (el.boardSizeStats) el.boardSizeStats.textContent = formatBoardDims();
+        if (el.tlFramesInfo) el.tlFramesInfo.textContent = `Video ${getTimelapseWidth()}×${getTimelapseHeight()}`;
+        el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
+        el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
+        el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
+        el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
         updateTopStats();
-        el.tlStatus.textContent = `Ajustes sincronizados · tracking ${state.settings.trackingEnabled ? 'activo' : 'inactivo'} · timestamp ${state.settings.timestampEnabled ? 'visible' : 'oculto'}.`;
+        if (el.tlStatus) {
+          el.tlStatus.textContent = `Ajustes sincronizados · tracking ${state.settings.trackingEnabled ? 'activo' : 'inactivo'} · timestamp ${state.settings.timestampEnabled ? 'visible' : 'oculto'}.`;
+        }
       });
     }
 
@@ -5064,10 +5211,16 @@ function startSession() {
     }
 
     function applyInitialBoardState() {
-      state.boardSize = clamp(Math.round(Number(state.settings.boardSize || state.boardSize || DEFAULT_BOARD_SIZE)), 25, 1000);
+      const initialWidth = clamp(Math.round(Number(state.settings.boardWidth || state.boardWidth || state.settings.boardSize || state.boardSize || DEFAULT_BOARD_SIZE)), 25, 1000);
+      const initialHeight = clamp(Math.round(Number(state.settings.boardHeight || state.boardHeight || state.settings.boardSize || state.boardSize || DEFAULT_BOARD_SIZE)), 25, 1000);
+      state.boardWidth = initialWidth;
+      state.boardHeight = initialHeight;
+      state.boardSize = Math.max(initialWidth, initialHeight);
       initBoardImageData();
-      if (el.boardWidthInput) el.boardWidthInput.value = String(state.boardSize);
-      if (el.boardSizeInfo) el.boardSizeInfo.textContent = `${state.boardSize}×${state.boardSize} px`;
+      if (el.boardWidthInput) el.boardWidthInput.value = String(initialWidth);
+      if (el.boardHeightInput) el.boardHeightInput.value = String(initialHeight);
+      if (el.boardSizeInfo) el.boardSizeInfo.textContent = `${initialWidth}×${initialHeight} px`;
+      if (el.boardSizeStats) el.boardSizeStats.textContent = `${initialWidth}×${initialHeight} px`;
       updateLoaderPreview();
       updateLoaderStats();
     }
@@ -5084,6 +5237,38 @@ function startSession() {
 
     function hideModal(modal) {
       if (modal) modal.classList.remove('visible');
+    }
+
+
+    function applyBoardDimensionsFromSettings(width, height, { persistLocal = true, recenter = false } = {}) {
+      const prevWidth = getBoardWidth();
+      const prevHeight = getBoardHeight();
+      const nextWidth = clamp(Math.round(Number(width) || prevWidth || DEFAULT_BOARD_SIZE), 25, 1000);
+      const nextHeight = clamp(Math.round(Number(height) || prevHeight || DEFAULT_BOARD_SIZE), 25, 1000);
+      const changed = prevWidth !== nextWidth || prevHeight !== nextHeight;
+
+      state.boardWidth = nextWidth;
+      state.boardHeight = nextHeight;
+      state.boardSize = Math.max(nextWidth, nextHeight);
+      resizeBoardCanvas(nextWidth, nextHeight, persistLocal);
+
+      if (recenter) {
+        centerCanvas();
+      }
+
+      return changed;
+    }
+
+    function pushBoardDimensionsToFirebase(width, height, extraPatch = {}) {
+      const nextWidth = clamp(Math.round(Number(width) || DEFAULT_BOARD_SIZE), 25, 1000);
+      const nextHeight = clamp(Math.round(Number(height) || DEFAULT_BOARD_SIZE), 25, 1000);
+      const patch = {
+        boardWidth: nextWidth,
+        boardHeight: nextHeight,
+        boardSize: Math.max(nextWidth, nextHeight),
+        ...extraPatch
+      };
+      return saveSettingsToFirebase(patch);
     }
 
     function saveSettingsToFirebase(patch) {
