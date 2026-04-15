@@ -11,6 +11,653 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script>
+    function isMobileLayout() {
+      return window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    window.isMobileLayout = isMobileLayout;
+
+    function normalizeColorHex(value) {
+      const raw = String(value || '').trim();
+      if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) {
+        return raw.length === 4
+          ? '#' + raw.slice(1).split('').map(ch => ch + ch).join('').toLowerCase()
+          : raw.toLowerCase();
+      }
+      return '#ffffff';
+    }
+
+    async function ensureFontReady() {
+      try {
+        if (document.fonts?.load) {
+          await Promise.allSettled([
+            document.fonts.load('400 16px "Plus Jakarta Sans"'),
+            document.fonts.load('700 16px "Plus Jakarta Sans"'),
+            document.fonts.load('800 16px "Plus Jakarta Sans"')
+          ]);
+        }
+        if (document.fonts?.ready) await document.fonts.ready;
+      } catch {}
+      return true;
+    }
+
+    function syncUiWithUsername() {
+      if (!el) return;
+      const name = normalizeUsername(state.username || localStorage.getItem('nf_username') || '');
+      if (el.statUser) el.statUser.textContent = name || 'Sin asignar';
+      if (el.sessionAccountName) el.sessionAccountName.textContent = name || 'Sin asignar';
+      if (el.adminBadgeName && state.isAuthorized) el.adminBadgeName.textContent = name || 'Autenticado';
+      if (el.chatInput) el.chatInput.disabled = !name || state.banned;
+    }
+
+    window.syncUiWithUsername = syncUiWithUsername;
+
+    function startSessionClock() {
+      if (state.sessionClockIntervalId) {
+        clearInterval(state.sessionClockIntervalId);
+        state.sessionClockIntervalId = null;
+      }
+
+      const tick = () => {
+        const elapsed = Math.max(0, Date.now() - (state.sessionStartedAt || Date.now()));
+        const totalSeconds = Math.floor(elapsed / 1000);
+        const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+        const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+        const seconds = String(totalSeconds % 60).padStart(2, '0');
+        const value = `${hours}:${minutes}:${seconds}`;
+        if (el.sessionClock) el.sessionClock.textContent = value;
+        if (el.mobileSessionClock) el.mobileSessionClock.textContent = value;
+      };
+
+      tick();
+      state.sessionClockIntervalId = setInterval(tick, 1000);
+    }
+
+    window.startSessionClock = startSessionClock;
+
+    function formatBoardPixelsCount(count = state.boardCount || 0) {
+      return `${formatNumber(Number(count) || 0)} px`;
+    }
+
+    function updateLoaderStats() {
+      if (el.loaderStatus) {
+        el.loaderStatus.textContent = `cargando base de datos... [${state.loadingDone} / ${state.loadingTotal}]`;
+      }
+      if (el.loaderDetail) {
+        el.loaderDetail.textContent = `Lienzo ${formatBoardDims()} · ${formatBoardPixelsCount(state.boardCount)} · ${formatNumber(state.onlineCount || state.activeUserCount || 0)} usuarios activos`;
+      }
+    }
+
+    function updateLoaderPreview() {
+      try {
+        if (!boardImageData || boardImageData.width !== getBoardWidth() || boardImageData.height !== getBoardHeight()) {
+          initBoardImageData();
+        }
+        if (ctx && boardImageData) {
+          ctx.putImageData(boardImageData, 0, 0);
+        }
+      } catch (err) {
+        console.warn('No se pudo refrescar la vista previa del lienzo:', err);
+      }
+      requestMinimapRefresh(true);
+      updateLoaderStats();
+    }
+
+    function requestMinimapRefresh(force = false) {
+      if (!force && state.minimapRaf) return;
+      state.minimapRaf = requestAnimationFrame(() => {
+        state.minimapRaf = 0;
+        if (!el.minimap || !minimapCtx) return;
+
+        const width = getBoardWidth();
+        const height = getBoardHeight();
+        if (el.minimap.width !== width) el.minimap.width = width;
+        if (el.minimap.height !== height) el.minimap.height = height;
+
+        minimapCtx.imageSmoothingEnabled = false;
+        minimapCtx.clearRect(0, 0, width, height);
+        minimapCtx.fillStyle = '#fff';
+        minimapCtx.fillRect(0, 0, width, height);
+
+        try {
+          if (boardImageData && boardImageData.width === width && boardImageData.height === height) {
+            minimapCtx.putImageData(boardImageData, 0, 0);
+          }
+        } catch (err) {
+          console.warn('No se pudo pintar el minimapa:', err);
+        }
+
+        const vx = Math.max(0, -state.originX / state.scale);
+        const vy = Math.max(0, -state.originY / state.scale);
+        const vw = Math.min(width, el.viewport.clientWidth / state.scale);
+        const vh = Math.min(height, el.viewport.clientHeight / state.scale);
+
+        minimapCtx.save();
+        minimapCtx.strokeStyle = 'rgba(41,121,255,.95)';
+        minimapCtx.lineWidth = Math.max(1, Math.round(Math.min(width, height) / 96));
+        minimapCtx.strokeRect(vx, vy, vw, vh);
+        minimapCtx.restore();
+
+        if (el.minimapZoom) el.minimapZoom.textContent = `${state.scale.toFixed(1)}×`;
+      });
+    }
+
+    window.requestMinimapRefresh = requestMinimapRefresh;
+
+    function getAudioContext() {
+      try {
+        if (!state.audioCtx) {
+          const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextCtor) return null;
+          state.audioCtx = new AudioContextCtor();
+        }
+        return state.audioCtx;
+      } catch {
+        return null;
+      }
+    }
+
+    function unlockAudio() {
+      const audioCtx = getAudioContext();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+    }
+
+    function playTone({ frequency = 440, duration = 0.06, type = 'sine', gain = 0.04, slideTo = null } = {}) {
+      const audioCtx = getAudioContext();
+      if (!audioCtx || audioCtx.state === 'closed') return;
+      try {
+        const startTime = audioCtx.currentTime;
+        const oscillator = audioCtx.createOscillator();
+        const amplifier = audioCtx.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+        if (slideTo !== null && Number.isFinite(slideTo)) {
+          oscillator.frequency.exponentialRampToValueAtTime(Math.max(40, slideTo), startTime + Math.max(0.02, duration));
+        }
+        amplifier.gain.setValueAtTime(0.0001, startTime);
+        amplifier.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), startTime + 0.01);
+        amplifier.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+        oscillator.connect(amplifier);
+        amplifier.connect(audioCtx.destination);
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration + 0.02);
+        oscillator.onended = () => {
+          try { oscillator.disconnect(); } catch {}
+          try { amplifier.disconnect(); } catch {}
+        };
+      } catch {}
+    }
+
+    function playClickSound() {
+      const audioCtx = getAudioContext();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+      playTone({ frequency: 760, duration: 0.042, type: 'square', gain: 0.018, slideTo: 560 });
+    }
+
+    function playSendSound() {
+      const audioCtx = getAudioContext();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+      playTone({ frequency: 520, duration: 0.05, type: 'triangle', gain: 0.022, slideTo: 860 });
+      setTimeout(() => playTone({ frequency: 860, duration: 0.05, type: 'triangle', gain: 0.017, slideTo: 1240 }), 40);
+    }
+
+    function restoreCanvasFromState() {
+      try {
+        if (!boardImageData || boardImageData.width !== getBoardWidth() || boardImageData.height !== getBoardHeight()) {
+          initBoardImageData();
+        }
+        ensureWhiteCanvas();
+        renderBoardFromData(state.boardData || {});
+        scheduleCanvasFlush();
+        requestMinimapRefresh(true);
+      } catch (err) {
+        console.error('No se pudo restaurar el lienzo:', err);
+      }
+    }
+
+    function applyPendingBoardWrites(data) {
+      const merged = { ...(data || {}) };
+      try {
+        if (state.popQueue && state.popQueue.size) {
+          state.popQueue.forEach((pending, key) => {
+            if (!pending) return;
+            merged[key] = {
+              color: normalizeColorHex(pending.color || state.activeColor || '#ffffff'),
+              username: normalizeUsername(pending.username || state.username || 'Anónimo'),
+              uid: ensureUid(),
+              ts: Number(pending.ts) || Date.now(),
+              source: 'local-pending'
+            };
+          });
+        }
+      } catch (err) {
+        console.warn('No se pudieron aplicar escrituras pendientes:', err);
+      }
+      return merged;
+    }
+
+    function keepCanvasAliveAfterSleep() {
+      try {
+        restoreCanvasFromState();
+      } catch (err) {
+        console.error('No se pudo refrescar el lienzo tras volver a la pestaña:', err);
+      }
+    }
+
+    function refreshBoardFromServer() {
+      return db.ref(BOARD_PATH).once('value')
+        .then(snap => {
+          const data = applyPendingBoardWrites(snap.val() || {});
+          state.boardData = { ...data };
+          state.knownBoardKeys = new Set(Object.keys(data));
+          state.boardCount = state.knownBoardKeys.size;
+          renderBoardFromData(state.boardData);
+          persistBoardCache(data);
+          updateTopStats();
+          requestMinimapRefresh(true);
+          return data;
+        })
+        .catch(err => {
+          console.warn('No se pudo refrescar el tablero desde Firebase:', err);
+          return null;
+        });
+    }
+
+    function processBoardSnapshot(boardSnap) {
+      const data = applyPendingBoardWrites(boardSnap?.val?.() || {});
+      const entries = Object.entries(data);
+      state.boardData = { ...(data || {}) };
+      state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
+      updateLoadingUI();
+      ensureWhiteCanvas();
+
+      const chunkSize = 120;
+      let index = 0;
+
+      const processChunk = () => {
+        const end = Math.min(index + chunkSize, entries.length);
+        const startIndex = index;
+
+        for (; index < end; index++) {
+          const [key, raw] = entries[index];
+          const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
+          const [x, y] = key.split('_').map(Number);
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            setPixel(x, y, color);
+            state.knownBoardKeys.add(key);
+          }
+        }
+
+        state.boardCount = state.knownBoardKeys.size;
+        addLoadingDone(index - startIndex);
+        scheduleCanvasFlush();
+        updateTopStats();
+        requestMinimapRefresh(true);
+
+        if (index < entries.length) {
+          setTimeout(processChunk, 24);
+        } else {
+          persistBoardCache(data);
+          state.lastBoardSyncAt = Date.now();
+          finishBoardLoading();
+        }
+      };
+
+      requestAnimationFrame(processChunk);
+    }
+
+    function openAdminLogin() {
+      if (el.adminKeyInput) el.adminKeyInput.value = '';
+      hideAllModals();
+      showModal(el.modalLogin);
+      setTimeout(() => el.adminKeyInput?.focus(), 30);
+    }
+
+    function openAdminDashboard() {
+      hideAllModals();
+      updateSettingsDisplay();
+      if (el.adminBadgeName) el.adminBadgeName.textContent = state.username || 'Autenticado';
+      showModal(el.modalDashboard);
+    }
+
+    function resolveAdminSecret() {
+      const fromSettings = normalizeActivityText(state.settings?.adminKey || state.settings?.adminPassword || '', 64);
+      const fromLocal = normalizeActivityText(localStorage.getItem('nf_admin_key') || '', 64);
+      const fromWindow = normalizeActivityText(window.ADMIN_KEY || window.ADMIN_PASSWORD || '', 64);
+      return fromSettings || fromLocal || fromWindow;
+    }
+
+    async function performAdminLogin() {
+      const entered = normalizeActivityText(el.adminKeyInput?.value || '', 64);
+      if (!entered) {
+        el.adminKeyInput?.focus();
+        return;
+      }
+
+      const secret = resolveAdminSecret();
+      if (secret && entered !== secret) {
+        el.adminKeyInput.value = '';
+        el.adminKeyInput?.focus();
+        if (el.tlStatus) el.tlStatus.textContent = 'Clave de administrador incorrecta.';
+        return;
+      }
+
+      if (!secret) {
+        localStorage.setItem('nf_admin_key', entered);
+      }
+
+      state.isAuthorized = true;
+      localStorage.setItem('nf_admin_authorized', '1');
+      hideModal(el.modalLogin);
+      openAdminDashboard();
+      updateTopStats();
+      updateSettingsDisplay();
+    }
+
+    function closeAdminDashboard() {
+      hideModal(el.modalDashboard);
+    }
+
+    async function saveAdminSettings() {
+      if (!state.isAuthorized) {
+        openAdminLogin();
+        return;
+      }
+
+      const nextWidth = clamp(Math.round(Number(el.boardWidthInput?.value) || getBoardWidth()), 25, 1000);
+      const nextHeight = clamp(Math.round(Number(el.boardHeightInput?.value) || getBoardHeight()), 25, 1000);
+      const patch = {
+        timestampEnabled: !!el.toggleTimestamp?.checked,
+        trackingEnabled: !!el.toggleTracking?.checked,
+        timelapseShowPixels: !!el.toggleTimelapsePixels?.checked,
+        timelapseShowContributors: !!el.toggleTimelapseContributors?.checked,
+        timelapseShowActiveUsers: !!el.toggleTimelapseActiveUsers?.checked,
+        timelapseIntervalSec: Math.max(1, parseInt(el.tlFreqInput?.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec),
+        timelapseFps: Math.max(1, parseInt(el.tlFpsInput?.value, 10) || DEFAULT_SETTINGS.timelapseFps),
+        boardWidth: nextWidth,
+        boardHeight: nextHeight,
+        boardSize: Math.max(nextWidth, nextHeight),
+        usernameRequired: true
+      };
+
+      try {
+        await saveSettingsToFirebase(patch);
+        state.settings = { ...state.settings, ...patch };
+        state.boardWidth = nextWidth;
+        state.boardHeight = nextHeight;
+        state.boardSize = Math.max(nextWidth, nextHeight);
+        localStorage.setItem('nf_board_width', String(nextWidth));
+        localStorage.setItem('nf_board_height', String(nextHeight));
+        localStorage.setItem('nf_board_size', String(state.boardSize));
+        resizeBoardCanvas(nextWidth, nextHeight, false);
+        centerCanvas();
+        updateSettingsDisplay();
+        updateTopStats();
+        if (el.tlStatus) el.tlStatus.textContent = `Ajustes guardados: ${nextWidth}×${nextHeight} px.`;
+      } catch (err) {
+        console.error('No se pudieron guardar los ajustes:', err);
+        if (el.tlStatus) el.tlStatus.textContent = 'No se pudieron guardar los ajustes.';
+      }
+    }
+
+    async function executeWipe() {
+      if (!state.isAuthorized) {
+        openAdminLogin();
+        return;
+      }
+      const ok = window.confirm('Esto eliminará todos los píxeles del lienzo. ¿Continuar?');
+      if (!ok) return;
+
+      try {
+        await db.ref(BOARD_PATH).remove();
+        state.boardData = {};
+        state.knownBoardKeys = new Set();
+        state.boardCount = 0;
+        state.popQueue?.clear?.();
+        initBoardImageData();
+        ensureWhiteCanvas();
+        scheduleCanvasFlush();
+        requestMinimapRefresh(true);
+        persistBoardCache({});
+        updateTopStats();
+        if (el.tlStatus) el.tlStatus.textContent = 'Lienzo formateado.';
+      } catch (err) {
+        console.error('No se pudo vaciar el lienzo:', err);
+        if (el.tlStatus) el.tlStatus.textContent = 'No se pudo vaciar el lienzo.';
+      }
+    }
+
+    function applyAdminRuntimeBindings() {
+      if (typeof el === 'undefined' || !el) {
+        document.addEventListener('DOMContentLoaded', () => {
+          try { applyAdminRuntimeBindings(); } catch {}
+        }, { once:true });
+        return;
+      }
+      if (el.boardHeightInput && !el.boardHeightInput.dataset.boundFix) {
+        el.boardHeightInput.dataset.boundFix = '1';
+        el.boardHeightInput.addEventListener('input', () => {
+          const v = clamp(Math.round(Number(el.boardHeightInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
+          el.boardHeightInput.value = String(v);
+        });
+        el.boardHeightInput.addEventListener('change', () => {
+          const width = clamp(Math.round(Number(el.boardWidthInput?.value) || getBoardWidth()), 25, 1000);
+          const height = clamp(Math.round(Number(el.boardHeightInput.value) || getBoardHeight()), 25, 1000);
+          state.boardWidth = width;
+          state.boardHeight = height;
+          state.boardSize = Math.max(width, height);
+          localStorage.setItem('nf_board_width', String(width));
+          localStorage.setItem('nf_board_height', String(height));
+          localStorage.setItem('nf_board_size', String(state.boardSize));
+          resizeBoardCanvas(width, height, true);
+          updateSettingsDisplay();
+          requestMinimapRefresh(true);
+        });
+      }
+
+      if (el.boardWidthInput && !el.boardWidthInput.dataset.boundFix) {
+        el.boardWidthInput.dataset.boundFix = '1';
+        el.boardWidthInput.addEventListener('change', () => {
+          const width = clamp(Math.round(Number(el.boardWidthInput.value) || getBoardWidth()), 25, 1000);
+          const height = clamp(Math.round(Number(el.boardHeightInput?.value) || getBoardHeight()), 25, 1000);
+          state.boardWidth = width;
+          state.boardHeight = height;
+          state.boardSize = Math.max(width, height);
+          localStorage.setItem('nf_board_width', String(width));
+          localStorage.setItem('nf_board_height', String(height));
+          localStorage.setItem('nf_board_size', String(state.boardSize));
+          resizeBoardCanvas(width, height, true);
+          updateSettingsDisplay();
+          requestMinimapRefresh(true);
+        });
+      }
+
+      if (el.minimap && !el.minimap.dataset.boundFix) {
+        el.minimap.dataset.boundFix = '1';
+        el.minimap.addEventListener('click', (e) => {
+          const rect = el.minimap.getBoundingClientRect();
+          if (!rect.width || !rect.height) return;
+          const x = ((e.clientX - rect.left) / rect.width) * getBoardWidth();
+          const y = ((e.clientY - rect.top) / rect.height) * getBoardHeight();
+          state.originX = (el.viewport.clientWidth / 2) - x * state.scale;
+          state.originY = (el.viewport.clientHeight / 2) - y * state.scale;
+          refreshCamera();
+        });
+      }
+
+      if (el.globalStatsPopoverFix) {
+        el.globalStatsPopoverFix();
+      }
+
+      if (localStorage.getItem('nf_admin_authorized') === '1') {
+        state.isAuthorized = true;
+      }
+
+      updateSettingsDisplay();
+      updateTopStats();
+      requestMinimapRefresh(true);
+    }
+
+    async function finalizeTimelapseCapture() {
+      if (!state.isCapturing) return;
+      clearInterval(state.captureIntervalId);
+      state.captureIntervalId = null;
+      state.isCapturing = false;
+      el.tlToggleBtn.textContent = 'Procesando...';
+      el.tlToggleBtn.disabled = true;
+      el.tlStatus.textContent = 'Generando vídeo webm...';
+
+      if (!state.captureVideoCanvas) {
+        state.captureVideoCanvas = document.createElement('canvas');
+      }
+
+      const fps = Math.max(1, parseInt(el.tlFpsInput?.value, 10) || DEFAULT_SETTINGS.timelapseFps);
+      const resW = getTimelapseWidth();
+      const resH = getTimelapseHeight();
+      const videoCanvas = state.captureVideoCanvas;
+      videoCanvas.width = resW;
+      videoCanvas.height = resH;
+      const vctx = videoCanvas.getContext('2d', { alpha: false, desynchronized: true });
+      vctx.imageSmoothingEnabled = false;
+      vctx.clearRect(0, 0, resW, resH);
+      vctx.fillStyle = '#fff';
+      vctx.fillRect(0, 0, resW, resH);
+
+      const stream = videoCanvas.captureStream(fps);
+      const track = stream.getVideoTracks?.()[0];
+      const preferredMimeTypes = [
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm'
+      ];
+      const mimeType = preferredMimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || 'video/webm';
+      const recorderOptions = {
+        mimeType,
+        videoBitsPerSecond: Math.min(24_000_000, Math.max(1_500_000, resW * resH * Math.max(4, fps)))
+      };
+      let recorder;
+      try {
+        recorder = new MediaRecorder(stream, recorderOptions);
+      } catch {
+        recorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : undefined);
+      }
+
+      state.captureBlobParts = [];
+      recorder.ondataavailable = e => { if (e.data && e.data.size > 0) state.captureBlobParts.push(e.data); };
+      const finished = new Promise(resolve => recorder.onstop = resolve);
+      recorder.start();
+
+      const frames = state.captureFrames.slice();
+      const frameDelay = Math.max(1000 / fps, 1000 / Math.max(1, fps));
+      for (let i = 0; i < frames.length; i++) {
+        const frame = frames[i];
+        let frameImage = null;
+        try {
+          frameImage = await loadCaptureFrameImage(frame);
+          vctx.clearRect(0, 0, resW, resH);
+          vctx.fillStyle = '#fff';
+          vctx.fillRect(0, 0, resW, resH);
+          vctx.drawImage(frameImage, 0, 0, resW, resH);
+          if (typeof frameImage.close === 'function') {
+            try { frameImage.close(); } catch {}
+          }
+          drawTimelapseOverlay(vctx, resW, resH, frame);
+          if (track?.requestFrame) track.requestFrame();
+        } catch (err) {
+          console.warn('No se pudo renderizar un fotograma del timelapse:', err);
+        }
+        await sleep(frameDelay);
+      }
+
+      try {
+        frames.forEach(frame => { try { frame?.bitmap?.close?.(); } catch {} });
+      } catch {}
+
+      try {
+        recorder.stop();
+      } catch (err) {
+        console.warn('No se pudo detener el recorder de timelapse:', err);
+      }
+      await finished;
+
+      const blob = new Blob(state.captureBlobParts, { type: recorder.mimeType || 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const outputLabel = `${getBoardWidth()}x${getBoardHeight()}_${fps}fps_${Date.now()}`;
+      a.download = `timelapse_${outputLabel}.webm`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+      el.tlStatus.textContent = `Timelapse exportado · ${frames.length} fotogramas · ${outputLabel} · ${fps} FPS`;
+      el.tlToggleBtn.disabled = false;
+      el.tlToggleBtn.textContent = 'Iniciar timelapse';
+      el.tlToggleBtn.classList.remove('btn-danger');
+      el.tlToggleBtn.classList.add('btn-main');
+    }
+
+    function initRuntimeFixes() {
+      if (typeof el === 'undefined' || !el) {
+        document.addEventListener('DOMContentLoaded', () => {
+          try { initRuntimeFixes(); } catch {}
+        }, { once:true });
+        return;
+      }
+      applyAdminRuntimeBindings();
+
+      if (!el.modalSessionLogin) {
+        console.warn('modal-session-login no encontrado');
+      }
+
+      if (el.adminEntry) {
+        el.adminEntry.title = 'Administrador';
+      }
+
+      if (el.sidebarCloseBtn) {
+        el.sidebarCloseBtn.addEventListener('click', closeSidebar);
+      }
+
+      const globalStatsNode = document.querySelector('.global-stats');
+      if (globalStatsNode) {
+        globalStatsNode.addEventListener('pointerenter', showActiveUsersPopover);
+        globalStatsNode.addEventListener('mouseleave', () => {
+          if (!isMobileLayout()) hideActiveUsersPopover(140);
+        });
+        globalStatsNode.addEventListener('click', () => {
+          if (isMobileLayout()) {
+            if (state.activeUsersVisible) hideActiveUsersPopover();
+            else showActiveUsersPopover();
+          }
+        });
+      }
+
+      [document.getElementById('module-stats'), document.getElementById('module-globalstats')]
+        .filter(Boolean)
+        .forEach(node => {
+          node.addEventListener('click', () => {
+            if (isMobileLayout()) showActiveUsersPopover();
+          });
+        });
+
+      if (el.chatArea) {
+        el.chatArea.style.overflowY = 'auto';
+        el.chatArea.addEventListener('scroll', updateChatScrollState, { passive:true });
+      }
+
+      updateSettingsDisplay();
+      updateTopStats();
+      updateLoaderStats();
+      updateSidebarUnreadIndicator();
+      requestMinimapRefresh(true);
+    }
+
+  </script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
   <style>
@@ -37,6 +684,17 @@
     body{position:fixed;inset:0;overscroll-behavior:none;user-select:none}
     button,input{font:inherit}
     button{-webkit-tap-highlight-color:transparent}
+    *, *::before, *::after{
+      transition:
+        color .2s ease,
+        background-color .2s ease,
+        border-color .2s ease,
+        opacity .2s ease,
+        transform .2s ease,
+        box-shadow .2s ease,
+        filter .2s ease,
+        clip-path .2s ease;
+    }
     ::selection{background:rgba(41,121,255,.35)}
 
     #loader{
@@ -59,16 +717,7 @@
     #loader-progress{width:0%;height:100%;background:linear-gradient(90deg,var(--accent),#6aa4ff);border-radius:999px;transition:width .12s linear}
     #loader-status{margin-top:12px;font-size:.76rem;line-height:1.5;color:#cfcfcf;font-family:"Courier New",monospace;min-height:22px}
     #loader-detail{margin-top:7px;font-size:.68rem;color:var(--dim);font-family:"Courier New",monospace;min-height:18px}
-    #loader-preview-wrap{margin-top:14px;display:grid;gap:10px}
-    #loader-preview-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px}
-    #loader-preview-toolbar small{font-size:.68rem;color:var(--dim);font-family:"Courier New",monospace}
-    #loader-preview-btn{height:34px;padding:0 11px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);cursor:pointer;font-size:.7rem;font-weight:800;letter-spacing:.25px;transition:transform .15s ease,border-color .15s ease,background .15s ease,opacity .15s ease}
-    #loader-preview-btn:hover{transform:translateY(-1px);border-color:rgba(41,121,255,.45);background:rgba(41,121,255,.08)}
-    #loader-preview-shell{width:100%;display:none;grid-template-columns:1fr;gap:8px;justify-items:center}
-    #loader-preview-shell.visible{display:grid}
-    #loader-preview-frame{position:relative;width:min(100%,260px);aspect-ratio:1/1;max-width:260px;max-height:220px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:#fff;box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);transition:aspect-ratio .2s ease,transform .2s ease,opacity .2s ease}
-    #loader-preview{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges;transition:opacity .18s ease,transform .18s ease,filter .18s ease}
-    #loader-preview-meta{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:.68rem;color:var(--dim);font-family:"Courier New",monospace;flex-wrap:wrap;width:min(100%,260px)}
+    #loader-preview-wrap{display:none !important}
 
     #coords-info{
       position:fixed;pointer-events:none;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);
@@ -81,8 +730,15 @@
       background:
         linear-gradient(var(--border) 1px, transparent 1px),
         linear-gradient(90deg, var(--border) 1px, transparent 1px);
-      background-size:42px 42px;background-position:center center;cursor:crosshair
+      background-size:42px 42px;background-position:center center;cursor:grab
     }
+    #viewport.dragging{cursor:grabbing}
+    #viewport.pixel-hover{cursor:crosshair}
+
+    .palette-pager{display:none;align-items:center;justify-content:center;gap:10px;padding:0 14px 12px}
+    .palette-page-btn{width:34px;height:34px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);font-weight:900;cursor:pointer;line-height:1}
+    .palette-page-btn:disabled{opacity:.35;cursor:not-allowed}
+    .palette-page-indicator{min-width:82px;text-align:center;color:var(--dim);font-size:.72rem;font-family:"Courier New",monospace;letter-spacing:.3px}
 
     canvas#canvas{
       position:absolute;left:0;top:0;width:125px;height:125px;display:block;pointer-events:none;
@@ -132,6 +788,26 @@
     }
     .top-btn:hover{transform:translateY(-1px);border-color:rgba(41,121,255,.45);background:rgba(41,121,255,.08)}
     .top-btn.active{background:rgba(41,121,255,.16);border-color:rgba(41,121,255,.55)}
+    .notify-dot{
+      width:8px;height:8px;border-radius:50%;
+      background:var(--bad);
+      box-shadow:0 0 0 0 rgba(255,82,82,.72), 0 0 12px rgba(255,82,82,.45);
+      margin-left:6px;
+      opacity:0;
+      transform:scale(.55);
+      transition:opacity .18s ease,transform .18s ease,box-shadow .18s ease;
+      pointer-events:none;
+      flex:0 0 auto;
+    }
+    .notify-dot.visible{
+      opacity:1;
+      transform:scale(1);
+      animation:notifyPulse 1.1s ease-in-out infinite;
+    }
+    @keyframes notifyPulse{
+      0%,100%{box-shadow:0 0 0 0 rgba(255,82,82,.35), 0 0 12px rgba(255,82,82,.38)}
+      50%{box-shadow:0 0 0 8px rgba(255,82,82,0), 0 0 16px rgba(255,82,82,.55)}
+    }
     #desktop-sidebar-toggle{display:inline-flex}
     #mobile-menu-btn{display:none}
 
@@ -173,6 +849,19 @@
       background:rgba(0,0,0,.15);border:none;border-top:1px solid var(--border);padding:13px 12px;color:#fff;outline:none;font-size:.84rem;width:100%
     }
     #chat-input::placeholder{color:rgba(255,255,255,.38)}
+    .chat-actions{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      padding:10px 12px 12px;
+      border-top:1px solid var(--border);
+      background:rgba(255,255,255,.015);
+    }
+    .chat-actions .action-btn{
+      width:100%;
+      padding:11px 12px;
+      min-height:40px;
+    }
 
     .stats-module{
       padding:14px 14px 15px;font-size:.86rem;line-height:1.75;display:grid;gap:8px;min-height:290px;flex:0 0 auto
@@ -391,6 +1080,9 @@
       .palette-topline small{font-size:.58rem}
       .palette-grid{grid-template-columns:repeat(6,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
       .color-box{border-radius:5px}
+      .palette-pager{display:flex;padding:0 8px 8px;gap:8px}
+      .palette-page-btn{width:32px;height:32px}
+      .palette-page-indicator{min-width:72px;font-size:.66rem}
       .cooldown-wrap{padding:0 8px 8px}
       .cooldown-caption{margin-bottom:5px;font-size:.66rem}
       #admin-entry{right:12px;bottom:76px;width:42px;height:42px}
@@ -461,6 +1153,89 @@
     .account-chip .meta strong{font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .account-chip .meta span{font-size:.68rem;color:var(--dim);font-family:'Courier New',monospace}
     .account-chip .use{flex:0 0 auto;font-size:.68rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.4px}
+  
+    /* --- Runtime polish and stability patches --- */
+    html, body, #viewport, #sidebar-right, #ui-bottom, .glass-module, .modal-overlay, .modal-content,
+    .top-btn, .quick-btn, .color-box, .pixel-pop, .activity-item, .leaderboard-row, .stats-row,
+    .toggle-row, .account-chip, .active-user-item, #active-users-popover, #loader, #loader .loader-card {
+      transition-property: transform, opacity, filter, background-color, border-color, box-shadow, width, height, max-height, min-height, left, top, right, bottom;
+      transition-duration: .18s;
+      transition-timing-function: cubic-bezier(.2,.8,.2,1);
+    }
+
+    #sidebar-right {
+      scrollbar-gutter: stable;
+    }
+
+    .chat-module {
+      flex: 0 0 auto;
+      height: clamp(360px, 52vh, 560px);
+      max-height: clamp(360px, 52vh, 560px);
+    }
+
+    #chat-area {
+      height: auto;
+      max-height: none;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .module-header .mobile-close-btn,
+    .top-btn,
+    .quick-btn,
+    .action-btn,
+    #admin-entry {
+      transition: transform .16s ease, opacity .16s ease, filter .16s ease, border-color .16s ease, background-color .16s ease, box-shadow .16s ease, color .16s ease;
+    }
+
+    #active-users-popover {
+      transition: opacity .18s ease, transform .18s ease, visibility .18s ease, filter .18s ease;
+      filter: blur(0);
+    }
+
+    #viewport, canvas#canvas, #minimap, #pixel-selector {
+      transition: transform .14s cubic-bezier(.2,.8,.2,1), opacity .14s ease, filter .14s ease;
+    }
+
+    .modal-overlay {
+      transition: opacity .2s ease, visibility .2s ease, backdrop-filter .2s ease;
+    }
+
+    .modal-content {
+      transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+
+    .glass-module {
+      overflow: hidden;
+    }
+
+    .glass-module, .activity-item, .leaderboard-row, .stats-row, .toggle-row, .account-chip, .active-user-item {
+      will-change: transform, opacity;
+    }
+
+    #ui-bottom {
+      transition: transform .2s ease, opacity .2s ease, filter .2s ease;
+    }
+
+    body.ui-hidden-right #sidebar-right,
+    body.ui-hidden-right #ui-bottom {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(18px);
+    }
+
+    @media (max-width: 768px) {
+      .chat-module {
+        height: calc(100vh - 188px);
+        max-height: calc(100vh - 188px);
+      }
+
+      #chat-area {
+        min-height: 0;
+        max-height: none;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -478,21 +1253,6 @@
       </div>
       <div id="loader-status">cargando base de datos... [0 / 0]</div>
       <div id="loader-detail">Preparando recursos de Firebase...</div>
-      <div id="loader-preview-wrap">
-        <div id="loader-preview-toolbar">
-          <small>Vista previa progresiva</small>
-          <button type="button" id="loader-preview-btn">Ocultar vista previa</button>
-        </div>
-        <div id="loader-preview-shell" class="visible">
-          <div id="loader-preview-frame">
-            <canvas id="loader-preview" width="125" height="125"></canvas>
-          </div>
-          <div id="loader-preview-meta">
-            <span id="loader-preview-progress">0%</span>
-            <span id="loader-preview-eta">ETA --:--</span>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -536,6 +1296,7 @@
         <button class="top-btn desktop-sidebar-toggle" id="desktop-sidebar-toggle" title="Ocultar o mostrar la interfaz lateral">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>
           <span class="label">Lateral</span>
+          <span class="notify-dot" id="sidebar-notify-dot" aria-hidden="true"></span>
         </button>
         <button class="top-btn" id="session-btn" title="Login por código">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 12a4 4 0 0 0-8 0"></path><circle cx="12" cy="12" r="9"></circle><path d="M9 12h6"></path></svg>
@@ -565,6 +1326,10 @@
       </div>
       <div id="chat-area"></div>
       <input type="text" id="chat-input" placeholder="Enviar mensaje..." maxlength="80" autocomplete="off" disabled>
+      <div class="chat-actions">
+        <button class="action-btn btn-main chat-send-btn" id="chat-send-btn" type="button">Enviar mensaje</button>
+        <button class="action-btn btn-soft chat-clear-btn" id="chat-clear-btn" type="button">Limpiar historial</button>
+      </div>
     </div>
 
     <div class="glass-module" id="module-stats" data-mobile-section="session">
@@ -657,6 +1422,11 @@
         <small id="palette-status">Selecciona un color antes de pintar</small>
       </div>
       <div class="palette-grid" id="palette-render"></div>
+      <div class="palette-pager" id="palette-pager">
+        <button class="palette-page-btn" id="palette-prev" type="button" aria-label="Página anterior">‹</button>
+        <span class="palette-page-indicator" id="palette-page-label">Página 1 / 2</span>
+        <button class="palette-page-btn" id="palette-next" type="button" aria-label="Página siguiente">›</button>
+      </div>
       <div class="cooldown-wrap">
         <div class="cooldown-caption">
           <span id="cooldown-text">Pintura continua</span>
@@ -960,6 +1730,7 @@
     const SESSION_CODES_PATH = 'session_codes';
     const ACCOUNT_HISTORY_KEY = 'nf_account_history';
     const SESSION_CODE_TTL = 5 * 60 * 1000;
+    const LOADING_TIMEOUT_MS = 8000;
 
     const DEFAULT_SETTINGS = {
       timestampEnabled: true,
@@ -979,7 +1750,9 @@
       "#00b4d8","#00a6fb","#3a86ff","#1d4ed8","#172554","#6d28d9","#7c3aed","#a855f7",
       "#ff4d8d","#ff2d55","#ff7ab6","#b08968","#7f5539","#9c6644","#4f772d","#70e000",
       "#a7c957","#386641","#f77f00","#ff6f61","#ffd166","#8338ec","#3a0ca3","#4361ee",
-      "#4cc9f0","#9d4edd","#e63946","#f1fa8c","#06d6a0","#118ab2","#ffd6a5","#6f1d1b"
+      "#4cc9f0","#9d4edd","#e63946","#f1fa8c","#06d6a0","#118ab2","#ffd6a5","#6f1d1b",
+      "#1b4332","#2d6a4f","#40916c","#52b788","#74c69d","#95d5b2","#d8f3dc","#ffb703",
+      "#fb8500","#e76f51","#6a4c93","#8ecae6","#219ebc","#023047","#ffb4a2","#b56576"
     ];
 
     const el = {
@@ -1005,7 +1778,13 @@
       sidebarCloseBtn: document.getElementById('sidebar-close-btn'),
       chatArea: document.getElementById('chat-area'),
       chatInput: document.getElementById('chat-input'),
+      chatSendBtn: document.getElementById('chat-send-btn'),
+      chatClearBtn: document.getElementById('chat-clear-btn'),
       paletteRender: document.getElementById('palette-render'),
+      palettePager: document.getElementById('palette-pager'),
+      palettePrevBtn: document.getElementById('palette-prev'),
+      paletteNextBtn: document.getElementById('palette-next'),
+      palettePageLabel: document.getElementById('palette-page-label'),
       cooldownBar: document.getElementById('cooldown-timer'),
       cooldownText: document.getElementById('cooldown-text'),
       cooldownValue: document.getElementById('cooldown-value'),
@@ -1063,6 +1842,8 @@
       activeUsersPopover: document.getElementById('active-users-popover'),
       activeUsersCount: document.getElementById('active-users-count'),
       activeUsersList: document.getElementById('active-users-list'),
+      chatSendBtn: document.getElementById('chat-send-btn'),
+      chatClearBtn: document.getElementById('chat-clear-btn'),
       quickChat: document.getElementById('quick-chat'),
       quickStats: document.getElementById('quick-stats'),
       quickCenter: document.getElementById('quick-center'),
@@ -1172,6 +1953,7 @@
       timelapseSnapshotBusy: false,
       audioCtx: null,
       paletteVisibleMobile: localStorage.getItem('nf_palette_visible_mobile') !== '0',
+      palettePageMobile: Math.max(0, parseInt(localStorage.getItem('nf_palette_mobile_page') || '0', 10) || 0),
       lastMessageTime: 0,
       lastChatSendAt: 0,
       lastChatSendText: '',
@@ -1185,6 +1967,7 @@
       activeUsers: [],
       activeUsersVisible: false,
       activeUsersHideTimer: null,
+      chatUnreadCount: 0,
       presenceRef: null,
       currentUserRef: null,
       currentUserStatsRef: null
@@ -1299,36 +2082,14 @@
       if (persist) {
         try { localStorage.setItem('nf_loader_preview_visible', state.loaderPreviewVisible ? '1' : '0'); } catch {}
       }
-      if (el.loaderPreviewShell) el.loaderPreviewShell.classList.toggle('visible', state.loaderPreviewVisible);
-      if (el.loaderPreviewBtn) el.loaderPreviewBtn.textContent = state.loaderPreviewVisible ? 'Ocultar vista previa' : 'Mostrar vista previa';
     }
 
     function updateLoaderPreview() {
-      if (!el.loaderPreview || !boardImageData) return;
-      const pctx = el.loaderPreview.getContext('2d', { alpha:false });
-      if (!pctx) return;
-      pctx.imageSmoothingEnabled = false;
-      pctx.clearRect(0, 0, el.loaderPreview.width, el.loaderPreview.height);
-      pctx.putImageData(boardImageData, 0, 0);
+      return;
     }
 
     function updateLoaderStats() {
-      if (!el.loaderPreviewProgress) return;
-      const total = Math.max(1, state.loadingTotal || 1);
-      const done = clamp(state.loadingDone || 0, 0, total);
-      const pct = Math.round((done / total) * 100);
-      el.loaderPreviewProgress.textContent = `${pct}%`;
-      const elapsed = Math.max(1, performance.now() - state.bootStartedAt);
-      const speed = done / elapsed;
-      const remaining = Math.max(0, total - done);
-      const etaMs = speed > 0 ? remaining / speed : 0;
-      if (el.loaderPreviewEta) el.loaderPreviewEta.textContent = formatEtaFromMs(etaMs);
-      if (el.loaderPreviewShell) el.loaderPreviewShell.style.opacity = state.loadingDone >= state.loadingTotal ? '1' : '.98';
-      if (el.loaderPreviewFrame) {
-        const w = Math.max(1, getBoardWidth());
-        const h = Math.max(1, getBoardHeight());
-        el.loaderPreviewFrame.style.aspectRatio = `${w} / ${h}`;
-      }
+      return;
     }
 
     function resizeBoardCanvas(nextWidth, nextHeight, persist = false) {
@@ -1459,6 +2220,7 @@
       } catch {
         state.activeUsers = [];
         state.activeUserCount = 0;
+        state.onlineCount = 0;
         renderActiveUsersPopover([]);
         updateTopStats();
         return [];
@@ -1524,7 +2286,13 @@
 
     function openSessionLoginModal() {
       updateSessionLoginModal();
-      showModal(el.modalSessionLogin);
+      if (el.modalSessionLogin) {
+        el.modalSessionLogin.classList.remove('hidden');
+        showModal(el.modalSessionLogin);
+        el.modalSessionLogin.style.display = 'flex';
+        el.modalSessionLogin.style.visibility = 'visible';
+        el.modalSessionLogin.style.opacity = '1';
+      }
       ensureSessionCode().then(() => updateSessionLoginModal()).catch(() => {});
       renderAccountHistory();
       if (el.sessionCodeInput) el.sessionCodeInput.value = '';
@@ -1591,12 +2359,12 @@
     }
 
     function setLoaderProgress(current, total, message, detail) {
-      const safeTotal = Math.max(total || 1, 1);
-      const safeCurrent = clamp(current || 0, 0, safeTotal);
-      const pct = Math.min(100, Math.max(0, (safeCurrent / safeTotal) * 100));
-      el.loaderProgress.style.width = pct.toFixed(2) + '%';
-      el.loaderStatus.textContent = message || `cargando base de datos... [${formatNumber(safeCurrent)} / ${formatNumber(safeTotal)}]`;
-      el.loaderDetail.textContent = detail || '';
+      el.loaderProgress.style.transition = 'none';
+      el.loaderProgress.style.width = '100%';
+      el.loaderStatus.textContent = message || 'cargando base de datos...';
+      if (detail !== undefined) {
+        el.loaderDetail.textContent = detail || '';
+      }
     }
 
     function updateLoadingUI() {
@@ -1604,9 +2372,9 @@
         state.loadingDone,
         state.loadingTotal,
         `cargando base de datos... [${formatNumber(state.loadingDone)} / ${formatNumber(state.loadingTotal)}]`,
-        state.boardLoaded ? 'Lienzo sincronizado y listo para pintar.' : 'Sincronizando settings, usuarios, chat, presencia y tablero...'
+        state.boardLoaded ? 'Lienzo sincronizado y listo para pintar.' : 'Conectando con Firebase...'
       );
-      updateLoaderStats();
+      if (typeof updateLoaderStats === 'function') updateLoaderStats();
     }
 
     function ensureWhiteCanvas() {
@@ -1639,6 +2407,24 @@
       boardImageData.data[idx+3] = a;
     }
 
+    function getCurrentPixelHex(x, y) {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return '#ffffff';
+      const key = `${x}_${y}`;
+      const raw = state.boardData?.[key];
+      if (typeof raw === 'string') return normalizeColorHex(raw);
+      if (raw && typeof raw.color === 'string') return normalizeColorHex(raw.color);
+      if (boardImageData && x >= 0 && x < getBoardWidth() && y >= 0 && y < getBoardHeight()) {
+        const idx = (y * getBoardWidth() + x) * 4;
+        const r = boardImageData.data[idx];
+        const g = boardImageData.data[idx + 1];
+        const b = boardImageData.data[idx + 2];
+        const a = boardImageData.data[idx + 3];
+        if (a === 0) return '#ffffff';
+        return '#' + [r, g, b].map(v => Number(v).toString(16).padStart(2, '0')).join('');
+      }
+      return '#ffffff';
+    }
+
     function scheduleCanvasFlush() {
       if (state.pendingFlush) return;
       state.pendingFlush = true;
@@ -1666,9 +2452,10 @@
     }
 
     function finishBoardLoading() {
+      if (state.boardLoaded) return;
       state.boardLoaded = true;
       updateLoadingUI();
-      updateLoaderPreview();
+      if (typeof updateLoaderPreview === 'function') updateLoaderPreview();
       const elapsed = performance.now() - state.bootStartedAt;
       setTimeout(() => el.loader.classList.add('hidden'), Math.max(0, 220 - elapsed));
     }
@@ -1682,7 +2469,7 @@
     }
 
     function updateTopStats() {
-      const activeUsers = Number((state.activeUsers && state.activeUsers.length) || state.activeUserCount || 0);
+      const activeUsers = Number(state.onlineCount || (state.activeUsers && state.activeUsers.length) || state.activeUserCount || 0);
       const totalPlaced = Number(state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS);
       const contributors = Number(state.contributorCount || GLOBAL_STATS_SEED_CONTRIBUTORS);
       const rate = Number(state.pixelRate || 0);
@@ -1721,14 +2508,69 @@
       if (window.matchMedia('(max-width: 768px)').matches) closeSidebar();
     }
 
+    const PALETTE_PAGE_SIZE = 32;
+
+    function getPalettePageCount() {
+      return Math.max(1, Math.ceil(colorPalette.length / PALETTE_PAGE_SIZE));
+    }
+
+    function clampPalettePage(page) {
+      return clamp(Math.round(Number(page) || 0), 0, getPalettePageCount() - 1);
+    }
+
+    function getVisiblePaletteColors() {
+      if (!isMobileLayout()) return colorPalette.slice();
+      const page = clampPalettePage(state.palettePageMobile);
+      const start = page * PALETTE_PAGE_SIZE;
+      return colorPalette.slice(start, start + PALETTE_PAGE_SIZE);
+    }
+
+    function syncPalettePagerUI() {
+      const mobile = isMobileLayout();
+      const totalPages = getPalettePageCount();
+      const page = clampPalettePage(state.palettePageMobile);
+      if (el.palettePager) el.palettePager.style.display = mobile ? 'flex' : 'none';
+      if (el.palettePrevBtn) {
+        el.palettePrevBtn.disabled = !mobile || page <= 0;
+        el.palettePrevBtn.title = mobile ? 'Página anterior' : 'Paleta completa';
+      }
+      if (el.paletteNextBtn) {
+        el.paletteNextBtn.disabled = !mobile || page >= totalPages - 1;
+        el.paletteNextBtn.title = mobile ? 'Página siguiente' : 'Paleta completa';
+      }
+      if (el.palettePageLabel) {
+        el.palettePageLabel.textContent = mobile ? `Página ${page + 1} / ${totalPages}` : `${colorPalette.length} colores`;
+      }
+    }
+
+    function setPaletteMobilePage(page, persist = true) {
+      const nextPage = clampPalettePage(page);
+      state.palettePageMobile = nextPage;
+      if (persist) {
+        try { localStorage.setItem('nf_palette_mobile_page', String(nextPage)); } catch {}
+      }
+      buildPalette();
+    }
+
     function buildPalette() {
+      if (!el.paletteRender) return;
+      const mobile = isMobileLayout();
+      const totalPages = getPalettePageCount();
+      state.palettePageMobile = clampPalettePage(state.palettePageMobile);
+      if (state.palettePageMobile >= totalPages) {
+        state.palettePageMobile = totalPages - 1;
+        try { localStorage.setItem('nf_palette_mobile_page', String(state.palettePageMobile)); } catch {}
+      }
+      const colors = getVisiblePaletteColors();
+      const baseIndex = mobile ? state.palettePageMobile * PALETTE_PAGE_SIZE : 0;
       el.paletteRender.innerHTML = '';
-      colorPalette.forEach(color => {
+      colors.forEach((color, index) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'color-box';
         btn.style.backgroundColor = color;
         btn.dataset.color = color;
+        btn.dataset.paletteIndex = String(baseIndex + index);
         btn.title = color;
         btn.setAttribute('aria-pressed', String(color === state.activeColor));
         if (color === state.activeColor) btn.classList.add('active');
@@ -1746,26 +2588,67 @@
         el.paletteRender.appendChild(btn);
       });
       updatePaletteSelectionUI();
+      syncPalettePagerUI();
     }
 
     function selectColor(color) {
       if (!color || color === state.activeColor) {
         state.activeColor = color || state.activeColor;
+        if (isMobileLayout()) {
+          const idx = colorPalette.indexOf(state.activeColor);
+          if (idx >= 0) setPaletteMobilePage(Math.floor(idx / PALETTE_PAGE_SIZE), true);
+        }
         updatePaletteSelectionUI();
+        syncPalettePagerUI();
         return;
       }
       state.activeColor = color;
+      if (isMobileLayout()) {
+        const idx = colorPalette.indexOf(color);
+        if (idx >= 0) setPaletteMobilePage(Math.floor(idx / PALETTE_PAGE_SIZE), true);
+      }
       updatePaletteSelectionUI();
+      syncPalettePagerUI();
       el.paletteStatus.textContent = `Color seleccionado: ${color}`;
       playClickSound();
     }
 
     function updatePaletteSelectionUI() {
-      document.querySelectorAll('.color-box').forEach(btn => {
+      document.querySelectorAll('#palette-render .color-box').forEach(btn => {
         const isActive = btn.dataset.color === state.activeColor;
         btn.classList.toggle('active', isActive);
         btn.setAttribute('aria-pressed', String(isActive));
       });
+    }
+
+    function updateSidebarUnreadIndicator() {
+      const showDot = Number(state.chatUnreadCount || 0) > 0 && !state.activeUsersVisible;
+      if (el.sidebarNotifyDot) {
+        el.sidebarNotifyDot.classList.toggle('visible', showDot);
+      }
+      if (el.desktopSidebarToggle) {
+        el.desktopSidebarToggle.setAttribute(
+          'aria-label',
+          showDot
+            ? `Ocultar o mostrar la interfaz lateral. ${state.chatUnreadCount} mensajes nuevos.`
+            : 'Ocultar o mostrar la interfaz lateral'
+        );
+      }
+    }
+
+    function markChatUnread(count = 1) {
+      state.chatUnreadCount = Math.max(0, Number(state.chatUnreadCount || 0) + Number(count || 0));
+      updateSidebarUnreadIndicator();
+    }
+
+    function clearChatUnread() {
+      state.chatUnreadCount = 0;
+      updateSidebarUnreadIndicator();
+    }
+
+    function isSidebarOpenForChat() {
+      if (isMobileLayout()) return el.sidebar?.classList.contains('show') && el.sidebar?.dataset.mobileSection === 'chat';
+      return !el.sidebar?.classList.contains('hidden-desktop');
     }
 
     function refreshCamera() {
@@ -1829,6 +2712,7 @@
         const sizeW = Math.max(1, Math.ceil(cellW));
         const sizeH = Math.max(1, Math.ceil(cellH));
         state.hoverPoint = { clientX, clientY, x, y };
+        el.viewport.classList.add('pixel-hover');
         el.pixelSelector.style.display = 'block';
         el.pixelSelector.style.left = `${left}px`;
         el.pixelSelector.style.top = `${top}px`;
@@ -1840,6 +2724,7 @@
         el.coordsInfo.innerText = `X:${x} Y:${y}`;
       } else {
         state.hoverPoint = null;
+        el.viewport.classList.remove('pixel-hover');
         el.pixelSelector.style.display = 'none';
         el.coordsInfo.style.display = 'none';
       }
@@ -2063,13 +2948,13 @@
     }
 
     function syncPresence() {
-      if (state.presenceRef) {
-        try { state.presenceRef.remove(); } catch {}
-      }
-      const ref = db.ref(PRESENCE_PATH).push({
-        uid: ensureUid(),
+      const uid = ensureUid();
+      const ref = db.ref(`${PRESENCE_PATH}/${uid}`);
+      ref.set({
+        uid,
         username: state.username || 'Anónimo',
-        ts: Date.now(),
+        lastSeen: Date.now(),
+        online: true,
         boardWidth: getBoardWidth(),
         boardHeight: getBoardHeight(),
         boardSize: Math.max(getBoardWidth(), getBoardHeight())
@@ -2078,59 +2963,56 @@
       ref.onDisconnect().remove();
       db.ref(PRESENCE_PATH).off('value');
       db.ref(PRESENCE_PATH).on('value', snap => {
-        state.onlineCount = snap.numChildren() || 0;
-        el.statOnline.textContent = formatNumber(state.activeUsers.length || state.onlineCount || 0);
+        const presence = snap.val() || {};
+        state.presenceSnapshot = presence;
+        state.activeUsers = getActiveUserNamesFromSnapshot(presence);
+        state.activeUserCount = state.activeUsers.length;
+        state.onlineCount = state.activeUserCount;
+        if (state.activeUsersVisible) renderActiveUsersPopover(state.activeUsers);
+        updateTopStats();
       });
     }
 
     function syncUsers() {
-      const ref = db.ref(`${USERS_PATH}/${ensureUid()}`);
-      state.currentUserRef = ref;
-      ref.update({ uid: ensureUid(), username: state.username || 'Anónimo', lastSeen: Date.now(), online: true });
+      const uid = ensureUid();
+      const ref = db.ref(`${USERS_PATH}/${uid}`);
+      const heartbeat = () => {
+        ref.update({ username: state.username || 'Anónimo', lastSeen: Date.now(), online: true, sessionStartedAt: state.sessionStartedAt });
+      };
+      heartbeat();
       ref.onDisconnect().update({ online: false, lastSeen: Date.now() });
-      if (state.currentUserStatsRef) {
-        try { state.currentUserStatsRef.off('value'); } catch {}
-      }
-      state.currentUserStatsRef = db.ref(`${USER_STATS_PATH}/${ensureUid()}/pixels`);
-      state.currentUserStatsRef.off('value');
-      state.currentUserStatsRef.on('value', snap => {
-        state.myPixels = Number(snap.val()) || 0;
-        localStorage.setItem('nf_my_pixels', String(state.myPixels));
-        el.statMine.textContent = formatNumber(state.myPixels);
-        updateTopStats();
-      });
+      if (state.heartbeatIntervalId) clearInterval(state.heartbeatIntervalId);
+      state.heartbeatIntervalId = setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
       db.ref(USERS_PATH).off('value');
       db.ref(USERS_PATH).on('value', snap => {
-        const users = snap.val() || {};
-        state.usersSnapshot = users;
+        state.usersSnapshot = snap.val() || {};
         state.uniqueCount = snap.numChildren() || 0;
         el.statUnique.textContent = formatNumber(state.uniqueCount);
-        state.activeUsers = getActiveUserNamesFromSnapshot(users);
-        state.activeUserCount = state.activeUsers.length;
-        if (state.activeUsersVisible) renderActiveUsersPopover(state.activeUsers);
+        updateTopStats();
       });
     }
 
     function syncSettings() {
+      db.ref(SETTINGS_PATH).off('value');
       db.ref(SETTINGS_PATH).on('value', snap => {
         const incoming = snap.val() || {};
         const trackingOn = !!incoming.trackingEnabled;
         state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: trackingOn };
-        const incomingWidth = incoming.boardWidth ?? incoming.boardSize;
-        const incomingHeight = incoming.boardHeight ?? incoming.boardSize;
-        if (incomingWidth || incomingHeight) {
-          state.boardWidth = clamp(Math.round(Number(incomingWidth) || DEFAULT_BOARD_SIZE), 25, 1000);
-          state.boardHeight = clamp(Math.round(Number(incomingHeight) || incomingWidth || DEFAULT_BOARD_SIZE), 25, 1000);
-          state.boardSize = Math.max(state.boardWidth, state.boardHeight);
+
+        const hasWidth = incoming.boardWidth !== undefined || incoming.boardSize !== undefined;
+        const hasHeight = incoming.boardHeight !== undefined || incoming.boardSize !== undefined;
+        if (hasWidth || hasHeight) {
+          const nextWidth = clamp(Math.round(Number(incoming.boardWidth ?? incoming.boardSize) || state.boardWidth || DEFAULT_BOARD_SIZE), 25, 1000);
+          const nextHeight = clamp(Math.round(Number(incoming.boardHeight ?? incoming.boardSize ?? nextWidth) || state.boardHeight || DEFAULT_BOARD_SIZE), 25, 1000);
+          state.boardWidth = nextWidth;
+          state.boardHeight = nextHeight;
+          state.boardSize = Math.max(nextWidth, nextHeight);
           localStorage.setItem('nf_board_width', String(state.boardWidth));
           localStorage.setItem('nf_board_height', String(state.boardHeight));
           localStorage.setItem('nf_board_size', String(state.boardSize));
-          if (el.boardWidthInput) el.boardWidthInput.value = String(state.boardWidth);
-          if (el.boardHeightInput) el.boardHeightInput.value = String(state.boardHeight);
+          resizeBoardCanvas(state.boardWidth, state.boardHeight, false);
         }
-        if (incoming.timelapseShowPixels !== undefined) state.settings.timelapseShowPixels = !!incoming.timelapseShowPixels;
-        if (incoming.timelapseShowContributors !== undefined) state.settings.timelapseShowContributors = !!incoming.timelapseShowContributors;
-        if (incoming.timelapseShowActiveUsers !== undefined) state.settings.timelapseShowActiveUsers = !!incoming.timelapseShowActiveUsers;
+
         el.toggleTimestamp.checked = !!state.settings.timestampEnabled;
         el.toggleTracking.checked = !!state.settings.trackingEnabled;
         el.toggleTracking.disabled = !state.isAuthorized;
@@ -2139,1083 +3021,16 @@
         if (el.toggleTimelapsePixels) el.toggleTimelapsePixels.checked = !!state.settings.timelapseShowPixels;
         if (el.toggleTimelapseContributors) el.toggleTimelapseContributors.checked = !!state.settings.timelapseShowContributors;
         if (el.toggleTimelapseActiveUsers) el.toggleTimelapseActiveUsers.checked = !!state.settings.timelapseShowActiveUsers;
-        resizeBoardCanvas(state.boardWidth || state.boardSize, state.boardHeight || state.boardSize, false);
-        updateTopStats();
-        el.tlStatus.textContent = `Ajustes sincronizados · tracking ${state.settings.trackingEnabled ? 'activo' : 'inactivo'} · timestamp ${state.settings.timestampEnabled ? 'visible' : 'oculto'}.`;
-      });
-    }
-
-    function renderMinimapBoard() {
-      minimapCtx.imageSmoothingEnabled = false;
-      minimapCtx.clearRect(0, 0, getBoardWidth(), getBoardHeight());
-      minimapCtx.fillStyle = '#ffffff';
-      minimapCtx.fillRect(0, 0, getBoardWidth(), getBoardHeight());
-      minimapCtx.drawImage(el.canvas, 0, 0, getBoardWidth(), getBoardHeight());
-    }
-
-    function renderMinimapViewport() {
-      const vw = el.viewport.clientWidth;
-      const vh = el.viewport.clientHeight;
-      const visibleW = clamp(vw / state.scale, 1, getBoardWidth());
-      const visibleH = clamp(vh / state.scale, 1, getBoardHeight());
-      const left = clamp((-state.originX) / state.scale, 0, Math.max(0, getBoardWidth() - visibleW));
-      const top = clamp((-state.originY) / state.scale, 0, Math.max(0, getBoardHeight() - visibleH));
-      minimapCtx.save();
-      minimapCtx.strokeStyle = 'rgba(0,0,0,0.9)';
-      minimapCtx.lineWidth = 2;
-      minimapCtx.strokeRect(left, top, visibleW, visibleH);
-      minimapCtx.strokeStyle = 'rgba(41,121,255,0.9)';
-      minimapCtx.lineWidth = 1;
-      minimapCtx.strokeRect(left + 0.5, top + 0.5, visibleW - 1, visibleH - 1);
-      minimapCtx.restore();
-      el.minimapInfo.textContent = `Vista: ${Math.round(left)},${Math.round(top)} · ${Math.round(visibleW)}×${Math.round(visibleH)}`;
-      el.minimapZoom.textContent = `${state.scale.toFixed(1)}×`;
-    }
-
-    function requestMinimapRefresh() {
-      if (state.minimapRaf) return;
-      state.minimapRaf = requestAnimationFrame(() => {
-        state.minimapRaf = 0;
-        renderMinimapBoard();
-        renderMinimapViewport();
-      });
-    }
-
-    function applyRealtimeBoardChange(key, rawValue) {
-      const [x, y] = String(key).split('_').map(Number);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
-      const rawObject = rawValue && typeof rawValue === 'object' ? rawValue : null;
-      const color = typeof rawValue === 'string' ? rawValue : (rawObject && typeof rawObject.color === 'string' ? rawObject.color : '#ffffff');
-      state.boardData = state.boardData || {};
-      state.boardData[String(key)] = rawValue;
-      setPixel(x, y, color);
-      scheduleCanvasFlush();
-
-      const pending = state.popQueue.get(key);
-      const isLocalEcho = !!pending && pending.color === color && (Date.now() - pending.ts) < 5000;
-      const resolvedName = normalizeUsername(
-        (rawObject && (rawObject.username || rawObject.user || rawObject.by)) ||
-        (rawObject && rawObject.uid && state.usersSnapshot && state.usersSnapshot[rawObject.uid] && state.usersSnapshot[rawObject.uid].username) ||
-        (isLocalEcho ? pending.username : '') ||
-        'Anónimo'
-      );
-
-      announcePixel(x, y, color, resolvedName, isLocalEcho);
-
-      if (isLocalEcho) {
-        state.popQueue.delete(key);
-      }
-      return true;
-    }
-
-    function attachBoardListeners() {
-      const boardRef = db.ref(BOARD_PATH);
-
-      boardRef.on('child_added', snap => {
-        const key = snap.key;
-        if (state.knownBoardKeys.has(key)) return;
-        state.knownBoardKeys.add(key);
-        state.boardCount += 1;
-        applyRealtimeBoardChange(key, snap.val());
-        updateTopStats();
-      });
-
-      boardRef.on('child_changed', snap => {
-        applyRealtimeBoardChange(snap.key, snap.val());
-        updateTopStats();
-      });
-
-      boardRef.on('child_removed', snap => {
-        const key = snap.key;
-        if (state.knownBoardKeys.has(key)) {
-          state.knownBoardKeys.delete(key);
-          state.boardCount = Math.max(0, state.boardCount - 1);
-        }
-        const [x, y] = String(key).split('_').map(Number);
-        if (Number.isFinite(x) && Number.isFinite(y)) {
-          delete (state.boardData || {})[key];
-          setPixel(x, y, '#ffffff');
-          scheduleCanvasFlush();
-        }
-        updateTopStats();
-      });
-    }
-
-    function processBoardDataProgressively(data, options = {}) {
-      const entries = Object.entries(data || {});
-      state.boardData = { ...(data || {}) };
-      state.knownBoardKeys = new Set();
-      state.boardCount = 0;
-      const extraLoading = Number(options.extraLoading || 4);
-      state.loadingTotal = Math.max(state.loadingTotal || 1, entries.length + extraLoading);
-      state.loadingDone = 0;
-      updateLoadingUI();
-      ensureWhiteCanvas();
-
-      const chunkSize = clamp(Math.ceil(Math.max(1, entries.length) / 48), 24, 180);
-      let index = 0;
-
-      const processChunk = () => {
-        const end = Math.min(index + chunkSize, entries.length);
-        const startIndex = index;
-
-        for (; index < end; index++) {
-          const [key, raw] = entries[index];
-          const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
-          const [x, y] = String(key).split('_').map(Number);
-          if (Number.isFinite(x) && Number.isFinite(y)) {
-            setPixel(x, y, color);
-            state.knownBoardKeys.add(key);
-          }
-        }
-
-        state.boardCount = state.knownBoardKeys.size;
-        addLoadingDone(index - startIndex);
-        scheduleCanvasFlush();
-        updateLoaderPreview();
-        updateTopStats();
-
-        if (index < entries.length) {
-          const delay = clamp(Math.round(20 + (entries.length / 200)), 18, 48);
-          setTimeout(processChunk, delay);
-        } else {
-          persistBoardCache(data);
-          state.lastBoardSyncAt = Date.now();
-          finishBoardLoading();
-        }
-      };
-
-      requestAnimationFrame(processChunk);
-    }
-
-    function loadBoardCacheAndShow() {
-      const cached = loadBoardCache();
-      if (cached) {
-        processBoardDataProgressively(cached.data || {}, { source: 'cache' });
-      }
-    }
-
-    function processBoardSnapshot(boardSnap) {
-      const data = boardSnap.val() || {};
-      processBoardDataProgressively(data, { source: 'firebase' });
-    }
-
-    function updateActivityFromMeta(meta) {
-      if (!meta) return;
-      const eventId = meta.eventId || meta.id || meta.key || null;
-      if (eventId && state.renderedActivityKeys.has(eventId)) return;
-      if (eventId) state.renderedActivityKeys.add(eventId);
-      renderActivityEntry(meta);
-    }
-
-    function attachActivityListeners() {
-      return;
-    }
-
-    function attachChatListeners() {
-      db.ref(MESSAGES_PATH).limitToLast(20).on('child_added', snap => {
-        const m = snap.val() || {};
-        const div = document.createElement('div');
-        div.className = 'msg';
-        const meta = document.createElement('div');
-        meta.className = 'meta';
-        const user = document.createElement('span');
-        user.className = 'user';
-        user.textContent = m.username || `USR_${String(snap.key || '').slice(-4)}`;
-        const time = document.createElement('span');
-        time.className = 'time';
-        time.textContent = m.time ? formatShortTime(m.time) : '';
-        const text = document.createElement('div');
-        text.className = 'text';
-        text.textContent = m.content || '';
-        meta.appendChild(user);
-        meta.appendChild(time);
-        div.appendChild(meta);
-        div.appendChild(text);
-        el.chatArea.appendChild(div);
-        el.chatArea.scrollTop = el.chatArea.scrollHeight;
-
-        const messageTs = Number(m.time) || Date.now();
-        const isOwnMessage = m.uid && m.uid === ensureUid();
-        const isNewMessage = messageTs > state.lastMessageTime;
-        state.lastMessageTime = Math.max(state.lastMessageTime, messageTs);
-
-        if (!isOwnMessage && isNewMessage) playMessageSound();
-      });
-    }
-
-    function openSidebar(section = 'chat') {
-      el.sidebar.classList.add('show');
-      el.sidebar.classList.remove('hidden-desktop');
-      el.mobileMenuBtn.classList.add('active');
-      if (section === 'chat') document.getElementById('module-chat').scrollIntoView({ behavior:'smooth', block:'start' });
-      if (section === 'stats') document.getElementById('module-stats').scrollIntoView({ behavior:'smooth', block:'start' });
-      if (section === 'map') document.getElementById('module-map').scrollIntoView({ behavior:'smooth', block:'start' });
-      if (section === 'activity') document.getElementById('module-activity').scrollIntoView({ behavior:'smooth', block:'start' });
-      if (section === 'leaderboard') document.getElementById('module-leaderboard').scrollIntoView({ behavior:'smooth', block:'start' });
-    }
-
-    function closeSidebar() {
-      el.sidebar.classList.remove('show');
-      el.mobileMenuBtn.classList.remove('active');
-    }
-
-    function toggleDesktopSidebar() {
-      el.sidebar.classList.toggle('hidden-desktop');
-    }
-
-    function isMobileLayout() {
-      return window.matchMedia('(max-width: 768px)').matches;
-    }
-
-    function syncPaletteVisibilityUI() {
-      const mobile = isMobileLayout();
-      const visible = !mobile || state.paletteVisibleMobile;
-      if (el.uiBottom) el.uiBottom.classList.toggle('mobile-hidden', mobile && !state.paletteVisibleMobile);
-      if (el.quickPalette) {
-        el.quickPalette.classList.toggle('active', mobile ? state.paletteVisibleMobile : true);
-        el.quickPalette.setAttribute('aria-pressed', String(visible));
-        el.quickPalette.title = mobile
-          ? (state.paletteVisibleMobile ? 'Ocultar paleta' : 'Mostrar paleta')
-          : 'Paleta';
-      }
-    }
-
-    function setMobilePaletteVisible(visible, persist = true) {
-      state.paletteVisibleMobile = !!visible;
-      if (persist) {
-        try { localStorage.setItem('nf_palette_visible_mobile', state.paletteVisibleMobile ? '1' : '0'); } catch {}
-      }
-      syncPaletteVisibilityUI();
-    }
-
-    function toggleMobilePalette() {
-      setMobilePaletteVisible(!state.paletteVisibleMobile);
-    }
-
-    function toggleSidebar() {
-      el.sidebar.classList.toggle('show');
-      el.mobileMenuBtn.classList.toggle('active');
-    }
-
-    function unlockAudio() {
-      try {
-        if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
-      } catch {}
-    }
-
-    function playPopSound() {
-      try {
-        unlockAudio();
-        if (!state.audioCtx) return;
-        const t = state.audioCtx.currentTime;
-        const osc = state.audioCtx.createOscillator();
-        const gain = state.audioCtx.createGain();
-        const filter = state.audioCtx.createBiquadFilter();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(180 + Math.random() * 170, t);
-        osc.frequency.exponentialRampToValueAtTime(80 + Math.random() * 50, t + 0.085);
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.14, t + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-        filter.type = 'lowpass';
-        filter.frequency.value = 1000;
-        osc.connect(filter); filter.connect(gain); gain.connect(state.audioCtx.destination);
-        osc.start(t); osc.stop(t + 0.13);
-      } catch {}
-    }
-
-    function playClickSound() {
-      try {
-        unlockAudio();
-        if (!state.audioCtx) return;
-        const t = state.audioCtx.currentTime;
-        const osc = state.audioCtx.createOscillator();
-        const gain = state.audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(780, t);
-        osc.frequency.exponentialRampToValueAtTime(420, t + 0.05);
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.03, t + 0.008);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
-        osc.connect(gain);
-        gain.connect(state.audioCtx.destination);
-        osc.start(t);
-        osc.stop(t + 0.065);
-      } catch {}
-    }
-
-    function playLocalPixelSound() {
-      try {
-        unlockAudio();
-        if (!state.audioCtx) return;
-        const t = state.audioCtx.currentTime;
-        const osc = state.audioCtx.createOscillator();
-        const gain = state.audioCtx.createGain();
-        const filter = state.audioCtx.createBiquadFilter();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(240, t);
-        osc.frequency.exponentialRampToValueAtTime(150, t + 0.06);
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.06, t + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
-        filter.type = 'lowpass';
-        filter.frequency.value = 900;
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(state.audioCtx.destination);
-        osc.start(t);
-        osc.stop(t + 0.12);
-      } catch {}
-    }
-
-    function playMessageSound() {
-      try {
-        unlockAudio();
-        if (!state.audioCtx) return;
-        const t = state.audioCtx.currentTime;
-        const osc = state.audioCtx.createOscillator();
-        const gain = state.audioCtx.createGain();
-        const filter = state.audioCtx.createBiquadFilter();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(620, t);
-        osc.frequency.exponentialRampToValueAtTime(980, t + 0.08);
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.05, t + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
-        filter.type = 'highpass';
-        filter.frequency.value = 220;
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(state.audioCtx.destination);
-        osc.start(t);
-        osc.stop(t + 0.16);
-      } catch {}
-    }
-
-    function playSendSound() {
-      try {
-        unlockAudio();
-        if (!state.audioCtx) return;
-        const t = state.audioCtx.currentTime;
-        const osc = state.audioCtx.createOscillator();
-        const gain = state.audioCtx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(520, t);
-        osc.frequency.exponentialRampToValueAtTime(760, t + 0.06);
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.04, t + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-        osc.connect(gain);
-        gain.connect(state.audioCtx.destination);
-        osc.start(t);
-        osc.stop(t + 0.13);
-      } catch {}
-    }
-
-    function canShowTrackingEffects() {
-      return !!state.isAuthorized && !!state.settings.trackingEnabled;
-    }
-
-    function showPixelPop(x, y, username, color) {
-      if (!canShowTrackingEffects()) return;
-      const name = normalizeUsername(username || '');
-      if (!name) return;
-      const rect = el.canvas.getBoundingClientRect();
-      const cell = rect.width / getBoardWidth();
-      const popup = document.createElement('div');
-      popup.className = 'pixel-pop';
-      popup.textContent = name;
-      const px = rect.left + (x + 0.5) * cell;
-      const py = rect.top + (y + 0.15) * cell;
-      popup.style.left = `${clamp(px, 8, window.innerWidth - 8)}px`;
-      popup.style.top = `${clamp(py, 8, window.innerHeight - 8)}px`;
-      popup.style.borderColor = color || 'rgba(255,255,255,0.18)';
-      popup.style.boxShadow = `0 8px 24px rgba(0,0,0,0.35), 0 0 12px ${color || 'rgba(255,255,255,0.15)'}`;
-      document.body.appendChild(popup);
-      setTimeout(() => popup.remove(), 1200);
-    }
-
-    function announcePixel(x, y, color, username, localEcho) {
-      if (!canShowTrackingEffects()) return;
-      const label = normalizeUsername(username || 'Anónimo');
-      showPixelPop(x, y, label, color);
-      playLocalPixelSound();
-    }
-
-    function normalizeColorHex(value) {
-      const raw = String(value || '').trim().toLowerCase();
-      if (!raw) return '#ffffff';
-      if (/^#[0-9a-f]{3}$/.test(raw)) {
-        return '#' + raw.slice(1).split('').map(ch => ch + ch).join('');
-      }
-      if (/^#[0-9a-f]{6}$/.test(raw)) return raw;
-      if (/^[0-9a-f]{6}$/.test(raw)) return `#${raw}`;
-      return '#ffffff';
-    }
-
-    function rgbaToHex(r, g, b) {
-      return `#${[r, g, b].map(v => Number(v).toString(16).padStart(2, '0')).join('')}`;
-    }
-
-    function getCurrentPixelHex(x, y) {
-      if (x < 0 || x >= getBoardWidth() || y < 0 || y >= getBoardHeight()) return '#ffffff';
-      const idx = (y * getBoardWidth() + x) * 4;
-      return rgbaToHex(
-        boardImageData.data[idx],
-        boardImageData.data[idx + 1],
-        boardImageData.data[idx + 2]
-      );
-    }
-
-    function handlePixelCommit(input) {
-      if (!state.paintReady) return;
-      if (!state.username) { showModal(el.modalUsername); return; }
-      const { x, y } = getCanvasCoords(input.clientX, input.clientY);
-      if (x < 0 || x >= getBoardWidth() || y < 0 || y >= getBoardHeight()) return;
-
-      const key = `${x}_${y}`;
-      const ts = Date.now();
-      const user = state.username;
-      const color = state.activeColor;
-
-      state.popQueue.set(key, { username: user, color, ts });
-      state.boardData[key] = color;
-      applyRealtimeBoardChange(key, color);
-
-      const updates = {};
-      updates[`${BOARD_PATH}/${key}`] = color;
-      updates[`${USER_STATS_PATH}/${ensureUid()}/pixels`] = ServerValue.increment(1);
-      updates[`${USER_STATS_PATH}/${ensureUid()}/lastPixelAt`] = ts;
-      updates[`${USERS_PATH}/${ensureUid()}/username`] = user;
-      updates[`${USERS_PATH}/${ensureUid()}/lastSeen`] = ts;
-
-      db.ref().update(updates).then(() => {
-        state.myPixels += 1;
-        localStorage.setItem('nf_my_pixels', String(state.myPixels));
-        el.statMine.textContent = formatNumber(state.myPixels);
-        triggerCooldown();
-      }).catch(err => {
-        state.popQueue.delete(key);
-        console.error('No se pudo colocar pixel:', err);
-        el.cooldownText.textContent = 'Error al pintar';
-        el.cooldownValue.textContent = '100%';
-        state.paintReady = true;
-      });
-    }
-
-    function triggerCooldown() {
-      state.paintReady = false;
-      const duration = 1000;
-      const start = Date.now();
-      const frame = () => {
-        const elapsed = Date.now() - start;
-        const percent = clamp((elapsed / duration) * 100, 0, 100);
-        el.cooldownBar.style.width = `${100 - percent}%`;
-        el.cooldownValue.textContent = `${Math.max(0, Math.round(100 - percent))}%`;
-        if (elapsed < duration) {
-          el.cooldownText.textContent = 'Cooldown activo';
-          requestAnimationFrame(frame);
-        } else {
-          state.paintReady = true;
-          el.cooldownBar.style.width = '100%';
-          el.cooldownText.textContent = 'Listo para pintar';
-          el.cooldownValue.textContent = '100%';
-        }
-      };
-      requestAnimationFrame(frame);
-    }
-
-    function sendChatMessage() {
-      if (!state.username) { showModal(el.modalUsername); return; }
-      const content = el.chatInput.value.trim();
-      if (!content) return;
-      const now = Date.now();
-      if (now - state.lastChatSendAt < 650 && state.lastChatSendText === content) return;
-      state.lastChatSendAt = now;
-      state.lastChatSendText = content;
-      const msg = {
-        content: content.slice(0, 80),
-        username: state.username,
-        uid: ensureUid(),
-        time: now
-      };
-      db.ref(MESSAGES_PATH).push(msg).then(() => {
-        el.chatInput.value = '';
-        playSendSound();
-        db.ref(`${USER_STATS_PATH}/${ensureUid()}/messages`).transaction(v => (v || 0) + 1);
-        db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: state.username, lastSeen: Date.now() });
-        logActivity({
-          type: 'chat',
-          username: state.username,
-          message: content.slice(0, 80),
-          ts: now,
-          scope: 'chat'
-        });
-      }).catch(err => console.error('Error enviando mensaje:', err));
-    }
-
-    function saveSettingsToFirebase(settingsPatch) {
-      const payload = { ...settingsPatch, updatedAt: Date.now(), updatedBy: state.username || 'admin', boardWidth: state.boardWidth, boardHeight: state.boardHeight, boardSize: Math.max(state.boardWidth, state.boardHeight) };
-      return db.ref(SETTINGS_PATH).update(payload);
-    }
-
-    function confirmUsername() {
-      const name = normalizeUsername(el.usernameInput.value);
-      if (!name) {
-        el.usernameInput.focus();
-        el.usernameInput.style.borderColor = 'var(--bad)';
-        return;
-      }
-      state.username = name;
-      localStorage.setItem('nf_username', name);
-      ensureUid();
-      updateUsernameBadge();
-      hideModal(el.modalUsername);
-      db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: name, createdAt: Date.now(), lastSeen: Date.now(), online: true });
-      attachBanWatchers();
-      el.chatInput.disabled = false;
-      el.chatInput.focus();
-      if (state.settings.usernameRequired) el.tlStatus.textContent = `Usuario configurado como ${name}.`;
-    }
-
-    function syncUiWithUsername() {
-      el.usernameCharCount.textContent = `${normalizeUsername(el.usernameInput.value).length} / 20`;
-      el.usernameSaveBtn.disabled = !normalizeUsername(el.usernameInput.value);
-    }
-
-    function openAdminDashboard() {
-      updateSettingsDisplay();
-      el.toggleTracking.disabled = false;
-      showModal(el.modalDashboard);
-    }
-
-    function openAdminLogin() {
-      showModal(el.modalLogin);
-    }
-
-    function performAdminLogin() {
-      if (el.adminKeyInput.value === "Isaias2013Cerrado") {
-        state.isAuthorized = true;
-        el.adminEntry.classList.add('active');
-        db.ref(SETTINGS_PATH).once('value').then(s => {
-          const incoming = s.val() || {};
-          state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: !!incoming.trackingEnabled };
-          if (incoming.boardSize) state.boardSize = clamp(Math.round(Number(incoming.boardSize) || DEFAULT_BOARD_SIZE), 25, 1000);
-          updateSettingsDisplay();
-          resizeBoardCanvas(state.boardWidth || state.boardSize, state.boardHeight || state.boardSize, false);
-          updateTopStats();
-          hideAllModals();
-          openAdminDashboard();
-        });
-        el.adminKeyInput.value = '';
-      } else {
-        alert("Acceso Denegado.");
-      }
-    }
-
-    function executeWipe() {
-      if (!confirm("¿ELIMINAR TODO EL LIENZO? Esta acción no se puede deshacer.")) return;
-      db.ref(BOARD_PATH).remove().then(() => {
-        state.knownBoardKeys.clear();
-        state.boardCount = 0;
-        state.boardData = {};
-        ensureWhiteCanvas();
-        scheduleCanvasFlush();
-        persistBoardCache({});
-        clearRecentActivity();
-        updateTopStats();
-        el.tlStatus.textContent = 'Lienzo formateado correctamente.';
-        hideAllModals();
-        refreshLeaderboard();
-      }).catch(err => {
-        console.error(err);
-        alert('No se pudo formatear el lienzo.');
-      });
-    }
-
-    function saveAdminSettings() {
-      const rawInterval = parseInt(el.tlFreqInput.value, 10);
-      const rawFps = parseInt(el.tlFpsInput?.value, 10);
-      const rawBoardWidth = parseInt(el.boardWidthInput?.value, 10);
-      const rawBoardHeight = parseInt(el.boardHeightInput?.value, 10);
-      const width = clamp(Number.isFinite(rawBoardWidth) ? rawBoardWidth : DEFAULT_SETTINGS.boardSize, 25, 1000);
-      const height = clamp(Number.isFinite(rawBoardHeight) ? rawBoardHeight : DEFAULT_SETTINGS.boardSize, 25, 1000);
-      const patch = {
-        timestampEnabled: !!el.toggleTimestamp.checked,
-        trackingEnabled: !!el.toggleTracking.checked,
-        timelapseIntervalSec: Math.max(1, Number.isFinite(rawInterval) ? rawInterval : DEFAULT_SETTINGS.timelapseIntervalSec),
-        timelapseFps: Math.max(1, Number.isFinite(rawFps) ? rawFps : DEFAULT_SETTINGS.timelapseFps),
-        boardWidth: width,
-        boardHeight: height,
-        boardSize: Math.max(width, height),
-        timelapseShowPixels: !!el.toggleTimelapsePixels?.checked,
-        timelapseShowContributors: !!el.toggleTimelapseContributors?.checked,
-        timelapseShowActiveUsers: !!el.toggleTimelapseActiveUsers?.checked
-      };
-      state.settings = { ...state.settings, ...patch };
-      state.boardWidth = width;
-      state.boardHeight = height;
-      state.boardSize = Math.max(width, height);
-      localStorage.setItem('nf_board_width', String(width));
-      localStorage.setItem('nf_board_height', String(height));
-      localStorage.setItem('nf_board_size', String(state.boardSize));
-      resizeBoardCanvas(width, height, false);
-      saveSettingsToFirebase(patch)
-        .then(() => {
-          el.tlStatus.textContent = 'Ajustes guardados y sincronizados.';
-          updateTopStats();
-        })
-        .catch(err => {
-          console.error(err);
-          el.tlStatus.textContent = 'No se pudieron guardar los ajustes.';
-        });
-    }
-
-    async function ensureFontReady() {
-      try { await document.fonts.load('700 28px "Plus Jakarta Sans"'); await document.fonts.ready; } catch {}
-    }
-
-    function startSessionClock() {
-      const start = Date.now();
-      setInterval(() => {
-        const total = Math.floor((Date.now() - start) / 1000);
-        const h = String(Math.floor(total / 3600)).padStart(2,'0');
-        const m = String(Math.floor((total % 3600) / 60)).padStart(2,'0');
-        const s = String(total % 60).padStart(2,'0');
-        const clockValue = `${h}:${m}:${s}`;
-        el.sessionClock.textContent = clockValue;
-        if (el.mobileSessionClock) el.mobileSessionClock.textContent = clockValue;
-      }, 1000);
-    }
-
-    function boot() {
-      buildPalette();
-      syncPaletteVisibilityUI();
-      updateUsernameBadge();
-      updateCooldownUI(0, true);
-      updateSettingsDisplay();
-      clearRecentActivity();
-      updateTopStats();
-      renderLeaderboard();
-      normalizeSidebarForMobile();
-      setLoaderPreviewVisibility(state.loaderPreviewVisible, false);
-      if (el.loaderPreviewBtn) el.loaderPreviewBtn.addEventListener('click', () => setLoaderPreviewVisibility(!state.loaderPreviewVisible));
-      if (el.loaderPreviewFrame) el.loaderPreviewFrame.style.aspectRatio = `${getBoardWidth()} / ${getBoardHeight()}`;
-      setInterval(() => {
-        if (document.hidden) return;
-        updateTopStats();
-        updateSessionClockMobile();
-        if (!state.activeUsersVisible) {
-          refreshActiveUsersSnapshot().catch(() => {});
-        }
-      }, 5000);
-
-      el.mobileMenuBtn.addEventListener('click', toggleSidebar);
-      if (el.desktopSidebarToggle) el.desktopSidebarToggle.addEventListener('click', toggleDesktopSidebar);
-      el.chatBtn.addEventListener('click', () => openSidebar('chat'));
-      el.statsBtn.addEventListener('click', () => openSidebar('stats'));
-      el.centerBtn.addEventListener('click', centerCanvas);
-      el.sessionBtn.addEventListener('click', openSessionLoginModal);
-      el.sidebarCloseBtn.addEventListener('click', closeSidebar);
-
-      el.quickChat.addEventListener('click', () => openSidebar('chat'));
-      el.quickStats.addEventListener('click', () => openSidebar('stats'));
-      el.quickCenter.addEventListener('click', centerCanvas);
-
-      el.usernameInput.addEventListener('input', syncUiWithUsername);
-      el.usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmUsername(); });
-      el.usernameSaveBtn.addEventListener('click', confirmUsername);
-
-      el.adminEntry.addEventListener('click', () => state.isAuthorized ? openAdminDashboard() : openAdminLogin());
-      el.adminLoginBtn.addEventListener('click', performAdminLogin);
-      el.adminCancelBtn.addEventListener('click', hideAllModals);
-      el.closeDashboardBtn.addEventListener('click', hideAllModals);
-      el.wipeBtn.addEventListener('click', executeWipe);
-      el.sessionCodeRefreshBtn.addEventListener('click', () => ensureSessionCode(true).then(() => updateSessionLoginModal()));
-      el.sessionCodeCopyBtn.addEventListener('click', async () => {
-        try {
-          await ensureSessionCode();
-          await navigator.clipboard.writeText(state.sessionCode || '');
-          el.sessionCodeCopyBtn.textContent = 'Copiado';
-          setTimeout(() => { if (el.sessionCodeCopyBtn) el.sessionCodeCopyBtn.textContent = 'Copiar'; }, 1000);
-        } catch {
-          el.sessionCodeCopyBtn.textContent = 'Error';
-          setTimeout(() => { if (el.sessionCodeCopyBtn) el.sessionCodeCopyBtn.textContent = 'Copiar'; }, 1000);
-        }
-      });
-      el.sessionCodeLoginBtn.addEventListener('click', async () => {
-        const result = await redeemSessionCode(el.sessionCodeInput.value);
-        if (result.ok) {
-          hideModal(el.modalSessionLogin);
-          el.sessionCodeInput.value = '';
-        } else if (result.reason === 'expired') {
-          alert('Ese código ya expiró. Genera uno nuevo.');
-        } else {
-          alert('Código inválido.');
-        }
-      });
-      el.sessionCodeCloseBtn.addEventListener('click', () => hideModal(el.modalSessionLogin));
-      el.sessionCodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') el.sessionCodeLoginBtn.click(); });
-      el.refreshSettingsBtn.addEventListener('click', () => {
-        db.ref(SETTINGS_PATH).once('value').then(s => {
-          state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) };
-          if (state.settings.boardSize) state.boardSize = clamp(Math.round(Number(state.settings.boardSize) || DEFAULT_BOARD_SIZE), 25, 1000);
-          el.tlStatus.textContent = 'Ajustes recargados.';
-          updateSettingsDisplay();
-          resizeBoardCanvas(state.boardWidth || state.boardSize, state.boardHeight || state.boardSize, false);
-          updateTopStats();
-        });
-      });
-      el.saveSettingsBtn.addEventListener('click', saveAdminSettings);
-      el.exportStatsBtn.addEventListener('click', () => { updateTopStats(); refreshLeaderboard(); });
-      el.tlToggleBtn.addEventListener('click', toggleTimelapseCapture);
-
-      el.toggleTimestamp.addEventListener('change', () => {
-        state.settings.timestampEnabled = el.toggleTimestamp.checked;
+        if (el.boardWidthInput) el.boardWidthInput.value = String(state.boardWidth || state.settings.boardWidth || state.settings.boardSize || DEFAULT_BOARD_SIZE);
+        if (el.boardHeightInput) el.boardHeightInput.value = String(state.boardHeight || state.settings.boardHeight || state.settings.boardSize || DEFAULT_BOARD_SIZE);
+        if (el.boardSizeInfo) el.boardSizeInfo.textContent = formatBoardDims();
+        if (el.boardSizeStats) el.boardSizeStats.textContent = formatBoardDims();
+        if (el.tlFramesInfo) el.tlFramesInfo.textContent = `Video ${getTimelapseWidth()}×${getTimelapseHeight()}`;
+        el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
         el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
+        el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
         el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
       });
-      if (el.boardWidthInput) {
-        el.boardWidthInput.addEventListener('input', () => {
-          const parsed = parseInt(el.boardWidthInput.value, 10);
-          const width = clamp(Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_BOARD_SIZE, 25, 1000);
-          el.boardWidthInput.value = String(width);
-          el.boardSizeInfo.textContent = `${width}×${el.boardHeightInput ? clamp(parseInt(el.boardHeightInput.value, 10) || DEFAULT_BOARD_SIZE, 25, 1000) : getBoardHeight()} px`;
-        });
-        el.boardWidthInput.addEventListener('change', () => {
-          const width = clamp(Math.round(Number(el.boardWidthInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
-          const height = clamp(Math.round(Number(el.boardHeightInput?.value) || state.boardHeight || DEFAULT_BOARD_SIZE), 25, 1000);
-          state.boardWidth = width;
-          state.boardHeight = height;
-          state.boardSize = Math.max(width, height);
-          localStorage.setItem('nf_board_width', String(width));
-          localStorage.setItem('nf_board_height', String(height));
-          localStorage.setItem('nf_board_size', String(state.boardSize));
-          resizeBoardCanvas(width, height, true);
-          state.settings.boardWidth = width;
-          state.settings.boardHeight = height;
-          state.settings.boardSize = state.boardSize;
-        });
-      }
-      if (el.boardHeightInput) {
-        el.boardHeightInput.addEventListener('input', () => {
-          const parsed = parseInt(el.boardHeightInput.value, 10);
-          const height = clamp(Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_BOARD_SIZE, 25, 1000);
-          el.boardHeightInput.value = String(height);
-          el.boardSizeInfo.textContent = `${el.boardWidthInput ? clamp(parseInt(el.boardWidthInput.value, 10) || DEFAULT_BOARD_SIZE, 25, 1000) : getBoardWidth()}×${height} px`;
-        });
-        el.boardHeightInput.addEventListener('change', () => {
-          const width = clamp(Math.round(Number(el.boardWidthInput?.value) || state.boardWidth || DEFAULT_BOARD_SIZE), 25, 1000);
-          const height = clamp(Math.round(Number(el.boardHeightInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
-          state.boardWidth = width;
-          state.boardHeight = height;
-          state.boardSize = Math.max(width, height);
-          localStorage.setItem('nf_board_width', String(width));
-          localStorage.setItem('nf_board_height', String(height));
-          localStorage.setItem('nf_board_size', String(state.boardSize));
-          resizeBoardCanvas(width, height, true);
-          state.settings.boardWidth = width;
-          state.settings.boardHeight = height;
-          state.settings.boardSize = state.boardSize;
-        });
-      }
-      el.toggleTracking.addEventListener('change', () => {
-        if (!state.isAuthorized) {
-          el.toggleTracking.checked = !!state.settings.trackingEnabled;
-          return;
-        }
-        state.settings.trackingEnabled = el.toggleTracking.checked;
-        el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
-        el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
-      });
-      if (el.toggleTimelapsePixels) {
-        el.toggleTimelapsePixels.addEventListener('change', () => {
-          state.settings.timelapseShowPixels = el.toggleTimelapsePixels.checked;
-        });
-      }
-      if (el.toggleTimelapseContributors) {
-        el.toggleTimelapseContributors.addEventListener('change', () => {
-          state.settings.timelapseShowContributors = el.toggleTimelapseContributors.checked;
-        });
-      }
-      if (el.toggleTimelapseActiveUsers) {
-        el.toggleTimelapseActiveUsers.addEventListener('change', () => {
-          state.settings.timelapseShowActiveUsers = el.toggleTimelapseActiveUsers.checked;
-        });
-      }
-      el.tlFreqInput.addEventListener('input', () => {
-        const parsed = parseInt(el.tlFreqInput.value, 10);
-        const v = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SETTINGS.timelapseIntervalSec;
-        el.tlFreqInput.value = String(v);
-      });
-      if (el.tlFpsInput) {
-        el.tlFpsInput.addEventListener('input', () => {
-          const parsed = parseInt(el.tlFpsInput.value, 10);
-          const v = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SETTINGS.timelapseFps;
-          el.tlFpsInput.value = String(v);
-        });
-      }
-      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
-      el.minimap.addEventListener('click', e => {
-        const rect = el.minimap.getBoundingClientRect();
-        const x = clamp(((e.clientX - rect.left) / rect.width) * getBoardWidth(), 0, getBoardWidth() - 1);
-        const y = clamp(((e.clientY - rect.top) / rect.height) * getBoardHeight(), 0, getBoardHeight() - 1);
-        state.originX = (el.viewport.clientWidth / 2) - ((x + 0.5) * state.scale);
-        state.originY = (el.viewport.clientHeight / 2) - ((y + 0.5) * state.scale);
-        refreshCamera();
-      });
-
-      window.addEventListener('wheel', e => {
-        if (isInteractiveUiTarget(e.target)) return;
-        e.preventDefault();
-        const factor = e.deltaY > 0 ? 0.88 : 1.12;
-        applyZoom(factor, e.clientX, e.clientY);
-      }, { passive:false });
-
-      window.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-          closeSidebar();
-          if (!state.isCapturing) hideAllModals();
-        }
-      });
-
-      window.addEventListener('pointerdown', unlockAudio, { passive:true });
-      window.addEventListener('blur', () => { state.dragging = false; state.pinchDistance = null; });
-
-      window.addEventListener('wheel', e => {
-        if (el.sidebar.contains(e.target) || document.querySelector('.modal-overlay.visible')?.contains(e.target)) return;
-        e.preventDefault();
-        const factor = e.deltaY > 0 ? 0.88 : 1.12;
-        applyZoom(factor, e.clientX, e.clientY);
-      }, { passive:false });
-
-      const activePointers = new Map();
-
-      function setPointerPosition(e) {
-        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      }
-
-      function clearPointerPosition(e) {
-        activePointers.delete(e.pointerId);
-      }
-
-      function getPointerPoints() {
-        return Array.from(activePointers.values());
-      }
-
-      function endViewportInteraction(e) {
-        if (!activePointers.has(e.pointerId)) return;
-        const hadDrag = state.dragging;
-        const hadMove = state.dragMoved;
-        const point = { x: e.clientX, y: e.clientY };
-
-        clearPointerPosition(e);
-
-        if (activePointers.size < 2) {
-          state.pinchDistance = null;
-        }
-
-        if (activePointers.size === 0) {
-          if (hadDrag && !hadMove) handlePixelCommit(e);
-          state.dragging = false;
-          state.dragMoved = false;
-          state.pinchDistance = null;
-        }
-
-        updateCoordsOverlay(point.x, point.y);
-      }
-
-      el.viewport.addEventListener('pointerdown', e => {
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-        if (el.sidebar.contains(e.target) || document.querySelector('.modal-overlay.visible')?.contains(e.target)) return;
-        unlockAudio();
-
-        setPointerPosition(e);
-        try { el.viewport.setPointerCapture(e.pointerId); } catch {}
-
-        if (activePointers.size === 2) {
-          const [p1, p2] = getPointerPoints();
-          state.pinchDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-          state.dragging = false;
-          state.dragMoved = true;
-          return;
-        }
-
-        state.dragging = true;
-        state.dragMoved = false;
-        state.lastX = e.clientX;
-        state.lastY = e.clientY;
-        updateCoordsOverlay(e.clientX, e.clientY);
-      });
-
-      el.viewport.addEventListener('pointermove', e => {
-        if (!activePointers.has(e.pointerId)) return;
-        setPointerPosition(e);
-
-        if (activePointers.size >= 2) {
-          const [p1, p2] = getPointerPoints();
-          const currentDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-          if (state.pinchDistance) {
-            const factor = currentDist / state.pinchDistance;
-            const midX = (p1.x + p2.x) / 2;
-            const midY = (p1.y + p2.y) / 2;
-            applyZoom(factor, midX, midY);
-          }
-          state.pinchDistance = currentDist;
-          state.dragging = false;
-          state.dragMoved = true;
-          updateCoordsOverlay(p1.x, p1.y);
-          return;
-        }
-
-        if (!state.dragging) return;
-
-        const dist = Math.hypot(e.clientX - state.lastX, e.clientY - state.lastY);
-        if (dist > 3) state.dragMoved = true;
-
-        if (state.dragMoved) {
-          state.originX += e.clientX - state.lastX;
-          state.originY += e.clientY - state.lastY;
-          state.lastX = e.clientX;
-          state.lastY = e.clientY;
-          refreshCamera();
-        } else {
-          updateCoordsOverlay(e.clientX, e.clientY);
-        }
-      });
-
-      el.viewport.addEventListener('pointerup', endViewportInteraction);
-      el.viewport.addEventListener('pointercancel', endViewportInteraction);
-      el.viewport.addEventListener('lostpointercapture', () => {
-        activePointers.clear();
-        state.dragging = false;
-        state.dragMoved = false;
-        state.pinchDistance = null;
-      });
-
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: state.username || 'Anónimo', lastSeen: Date.now(), online: true });
-        }
-      });
-
-      window.addEventListener('beforeunload', () => {
-        try {
-          db.ref(`${USERS_PATH}/${ensureUid()}`).update({ online:false, lastSeen: Date.now() });
-        } catch {}
-      });
-    }
-
-    function initUsernameBoot() {
-      syncUiWithUsername();
-      if (state.username) {
-        el.usernameInput.value = state.username;
-        confirmUsername();
-        hideModal(el.modalUsername);
-      } else {
-        showModal(el.modalUsername);
-        el.usernameInput.focus();
-      }
-    }
-
-    async function loadFirebaseResources() {
-      loadBoardCacheAndShow();
-
-      setLoaderPreviewVisibility(state.loaderPreviewVisible, false);
-      const tasks = [
-        {
-          name:'settings',
-          promise: db.ref(SETTINGS_PATH).once('value').then(s => { state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) }; addLoadingDone(1); }).catch(() => addLoadingDone(1))
-        },
-        {
-          name:'presence',
-          promise: refreshActiveUsersSnapshot().then(users => { state.activeUserCount = users.length; el.statOnline.textContent = formatNumber(users.length); addLoadingDone(1); }).catch(() => addLoadingDone(1))
-        },
-        {
-          name:'users',
-          promise: db.ref(USERS_PATH).once('value').then(s => { state.uniqueCount = s.numChildren() || 0; el.statUnique.textContent = formatNumber(state.uniqueCount); addLoadingDone(1); }).catch(() => addLoadingDone(1))
-        },
-        {
-          name:'messages',
-          promise: db.ref(MESSAGES_PATH).limitToLast(20).once('value').then(s => {
-            el.chatArea.innerHTML = '';
-            const data = s.val() || {};
-            Object.values(data).slice(-20).forEach(m => {
-              const div = document.createElement('div');
-              div.className = 'msg';
-              div.innerHTML = `
-                <div class="meta">
-                  <span class="user">${escapeHtmlText(m.username || 'Anónimo')}</span>
-                  <span class="time">${escapeHtmlText(m.time ? formatShortTime(m.time) : '')}</span>
-                </div>
-                <div class="text">${escapeHtmlText(m.content || '')}</div>
-              `;
-              el.chatArea.appendChild(div);
-            });
-            el.chatArea.scrollTop = el.chatArea.scrollHeight;
-            const maxTs = Object.values(data).reduce((acc, m) => Math.max(acc, Number(m && m.time) || 0), 0);
-            state.lastMessageTime = Math.max(state.lastMessageTime, maxTs);
-            addLoadingDone(1);
-          }).catch(() => addLoadingDone(1))
-        }
-      ];
-
-      setLoadingTotal(tasks.length);
-
-      const boardPromise = db.ref(BOARD_PATH).once('value').then(snap => {
-        processBoardSnapshot(snap);
-      }).catch(() => {
-        ensureWhiteCanvas();
-        scheduleCanvasFlush();
-        finishBoardLoading();
-      });
-
-      await Promise.allSettled(tasks.map(t => t.promise));
-      await boardPromise;
-
-      if (state.loadingDone < state.loadingTotal) {
-        state.loadingDone = state.loadingTotal;
-        updateLoadingUI();
-      }
-
-      attachBoardListeners();
-      attachChatListeners();
-      attachActivityListeners();
-      syncSettings();
-      syncPresence();
-      syncUsers();
-      refreshActiveUsersSnapshot();
-      refreshLeaderboard();
-      updateTopStats();
-    }
-
-    function startSession() {
-      buildPalette();
-      initBoardImageData();
-      syncPaletteVisibilityUI();
-      updateUsernameBadge();
-      updateBrushButtonUI();
-      updateSessionLoginModal();
-      updateCooldownUI(0, true);
-      clearRecentActivity();
-      renderLeaderboard();
-      centerCanvas();
-      startSessionClock();
-      initUsernameBoot();
-      loadFirebaseResources();
-    }
-
-    function startSessionClock() {
-      const start = Date.now();
-      setInterval(() => {
-        const total = Math.floor((Date.now() - start) / 1000);
-        const h = String(Math.floor(total / 3600)).padStart(2, '0');
-        const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
-        const s = String(total % 60).padStart(2, '0');
-        el.sessionClock.textContent = `${h}:${m}:${s}`;
-      }, 1000);
     }
 
     function updateSettingsDisplay() {
@@ -3307,22 +3122,27 @@
       const videoCanvas = state.captureVideoCanvas;
       const resW = getTimelapseWidth();
       const resH = getTimelapseHeight();
+      const outputLabel = `${resW}x${resH}`;
       videoCanvas.width = resW;
       videoCanvas.height = resH;
       const vctx = videoCanvas.getContext('2d', { alpha:false });
+      if (!vctx) throw new Error('No se pudo crear el contexto de vídeo');
       vctx.imageSmoothingEnabled = false;
       vctx.fillStyle = '#fff';
       vctx.fillRect(0,0,resW,resH);
 
       const fps = Math.max(1, parseInt(el.tlFpsInput?.value, 10) || state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
-      const intervalSec = Math.max(1, parseInt(el.tlFreqInput?.value, 10) || state.settings.timelapseIntervalSec || DEFAULT_SETTINGS.timelapseIntervalSec);
+
+      if (!window.MediaRecorder) {
+        throw new Error('MediaRecorder no disponible en este navegador');
+      }
 
       let mimeType = 'video/webm';
-      if (window.MediaRecorder && MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mimeType = 'video/webm;codecs=vp9';
-      else if (window.MediaRecorder && MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mimeType = 'video/webm;codecs=vp8';
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mimeType = 'video/webm;codecs=vp9';
+      else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mimeType = 'video/webm;codecs=vp8';
 
       const stream = videoCanvas.captureStream(fps);
-      const recorderOptions = window.MediaRecorder && MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : undefined;
+      const recorderOptions = MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : undefined;
       const recorder = new MediaRecorder(stream, recorderOptions);
       state.captureBlobParts = [];
 
@@ -3332,7 +3152,6 @@
 
       const frames = state.captureFrames.slice();
       const frameDelay = Math.max(16, Math.round(1000 / fps));
-      const sleepMs = (ms) => new Promise(resolve => setTimeout(resolve, ms));
       for (let i = 0; i < frames.length; i++) {
         const frame = frames[i];
         if (frame?.bitmap) {
@@ -3343,7 +3162,7 @@
           vctx.clearRect(0,0,resW,resH);
           vctx.drawImage(img, 0, 0, resW, resH);
         }
-        await sleepMs(frameDelay);
+        await sleep(frameDelay);
       }
 
       try {
@@ -3356,11 +3175,11 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `timelapse_${Date.now()}_${res}x${res}.webm`;
+      a.download = `timelapse_${Date.now()}_${outputLabel}.webm`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
 
-      el.tlStatus.textContent = `Timelapse exportado · ${frames.length} fotogramas · ${res}×${res} · ${fps} FPS`;
+      el.tlStatus.textContent = `Timelapse exportado · ${frames.length} fotogramas · ${outputLabel} · ${fps} FPS`;
       el.tlToggleBtn.disabled = false;
       el.tlToggleBtn.textContent = 'Iniciar timelapse';
       el.tlToggleBtn.classList.remove('btn-danger');
@@ -3543,6 +3362,7 @@
       totalPixelsPlaced: Number(localStorage.getItem('nf_total_pixels') || GLOBAL_STATS_SEED_TOTAL_PIXELS),
       contributorCount: Number(localStorage.getItem('nf_contributor_count') || GLOBAL_STATS_SEED_CONTRIBUTORS),
       renderedMessageKeys: new Set(),
+      renderedMessageNodes: new Map(),
       usersSnapshot: {},
       activeUserCount: 0,
       paintLoopId: null,
@@ -3576,9 +3396,9 @@
     window.addEventListener('resize', () => {
       normalizeSidebarForMobile();
       syncPaletteVisibilityUI();
+      buildPalette();
       centerCanvas();
       applyZoomPointerFix();
-      if (el.loaderPreviewFrame) el.loaderPreviewFrame.style.aspectRatio = `${getBoardWidth()} / ${getBoardHeight()}`;
       if (el.minimapFrame) el.minimapFrame.style.aspectRatio = `${getBoardWidth()} / ${getBoardHeight()}`;
     });
 
@@ -3741,6 +3561,11 @@
       el.chatBtn.addEventListener('click', () => openSidebar('chat'));
       el.statsBtn.addEventListener('click', () => openSidebar('stats'));
       el.centerBtn.addEventListener('click', centerCanvas);
+      el.chatSendBtn?.addEventListener('click', sendChatMessage);
+      el.chatClearBtn?.addEventListener('click', () => {
+        clearRecentChatHistoryView();
+        el.chatInput?.focus();
+      });
       el.sidebarCloseBtn.addEventListener('click', closeSidebar);
       el.desktopSidebarToggle?.addEventListener('click', toggleDesktopSidebar);
 
@@ -3784,14 +3609,42 @@
       });
 
       el.quickChat.addEventListener('click', () => openSidebar('chat'));
-      el.quickStats.addEventListener('click', () => openSidebar('stats'));
+      el.quickStats?.addEventListener('click', () => openSidebar('stats'));
       el.quickCenter.addEventListener('click', centerCanvas);
+      el.quickBrush?.addEventListener('click', () => toggleBrushMode());
       el.quickPalette.addEventListener('click', () => {
         if (isMobileLayout()) {
           toggleMobilePalette();
         } else {
           el.uiBottom.scrollIntoView({ behavior:'smooth', block:'start' });
         }
+      });
+
+      const openSessionLoginUI = () => {
+        try {
+          openSessionLoginModal();
+        } catch (err) {
+          console.error('No se pudo abrir el login por código:', err);
+        }
+      };
+
+      el.sessionBtn?.addEventListener('click', openSessionLoginUI);
+      el.sessionBtn?.addEventListener('pointerdown', e => {
+        if (e.pointerType === 'touch') return;
+      });
+      el.quickId?.addEventListener('click', openSessionLoginUI);
+      el.quickId?.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        openSessionLoginUI();
+      });
+
+      el.palettePrevBtn?.addEventListener('click', () => {
+        if (!isMobileLayout()) return;
+        setPaletteMobilePage(state.palettePageMobile - 1);
+      });
+      el.paletteNextBtn?.addEventListener('click', () => {
+        if (!isMobileLayout()) return;
+        setPaletteMobilePage(state.palettePageMobile + 1);
       });
 
       el.usernameInput.addEventListener('input', syncUiWithUsername);
@@ -3904,10 +3757,15 @@
         }
 
         if (activePointers.size === 0) {
-          if (hadDrag && !hadMove) handlePixelCommit(e);
+          if (hadDrag && !hadMove && !(isMobileLayout() && state.brushMode && e.pointerType === 'touch')) handlePixelCommit(e);
           state.dragging = false;
           state.dragMoved = false;
+          el.viewport.classList.remove('dragging');
           state.pinchDistance = null;
+          if (state.touchPainting) {
+            stopPaintLoop();
+            state.touchPainting = false;
+          }
         }
 
         updateCoordsOverlay(point.x, point.y);
@@ -3918,8 +3776,22 @@
         if (isInteractiveUiTarget(e.target)) return;
         unlockAudio();
 
+        const mobileBrushTouch = isMobileLayout() && e.pointerType === 'touch' && state.brushMode;
         setPointerPosition(e);
         try { el.viewport.setPointerCapture(e.pointerId); } catch {}
+
+        if (mobileBrushTouch) {
+          state.dragging = false;
+          state.dragMoved = true;
+          state.pinchDistance = null;
+          state.touchPainting = true;
+          state.lastX = e.clientX;
+          state.lastY = e.clientY;
+          updateCoordsOverlay(e.clientX, e.clientY);
+          commitPixelAt(e.clientX, e.clientY, 'touch');
+          startPaintLoop('touch');
+          return;
+        }
 
         if (activePointers.size === 2) {
           const [p1, p2] = getPointerPoints();
@@ -3931,6 +3803,7 @@
 
         state.dragging = true;
         state.dragMoved = false;
+        el.viewport.classList.add('dragging');
         state.lastX = e.clientX;
         state.lastY = e.clientY;
         updateCoordsOverlay(e.clientX, e.clientY);
@@ -3938,6 +3811,15 @@
 
       el.viewport.addEventListener('pointermove', e => {
         if (isInteractiveUiTarget(e.target)) return;
+
+        const mobileBrushTouch = isMobileLayout() && e.pointerType === 'touch' && state.brushMode;
+        if (mobileBrushTouch) {
+          updateCoordsOverlay(e.clientX, e.clientY);
+          if (state.touchPainting) {
+            commitPixelAt(e.clientX, e.clientY, 'touch');
+          }
+          return;
+        }
 
         if (!activePointers.has(e.pointerId)) {
           if (e.pointerType === 'mouse' && !state.dragging) {
@@ -3985,6 +3867,7 @@
       el.viewport.addEventListener('lostpointercapture', () => {
         activePointers.clear();
         state.dragging = false;
+        el.viewport.classList.remove('dragging');
         state.dragMoved = false;
         state.pinchDistance = null;
       });
@@ -3992,6 +3875,7 @@
       el.viewport.addEventListener('pointerleave', () => {
         if (!state.dragging && activePointers.size === 0) {
           state.hoverPoint = null;
+          el.viewport.classList.remove('pixel-hover');
           el.pixelSelector.style.display = 'none';
           el.coordsInfo.style.display = 'none';
         }
@@ -4013,6 +3897,7 @@
 
       window.addEventListener('blur', () => {
         state.dragging = false;
+        el.viewport.classList.remove('dragging');
         state.pinchDistance = null;
       });
     }
@@ -4030,6 +3915,7 @@
       quickMap: document.getElementById('quick-map'),
       quickLeaderboard: document.getElementById('quick-leaderboard'),
       quickGlobalStats: document.getElementById('quick-globalstats'),
+      sidebarNotifyDot: document.getElementById('sidebar-notify-dot'),
       modalSessionLogin: document.getElementById('modal-session-login'),
       sessionAccountName: document.getElementById('session-account-name'),
       sessionCodeValue: document.getElementById('session-code-value'),
@@ -4053,6 +3939,8 @@
       unbanBtn: document.getElementById('unban-btn'),
       banStatus: document.getElementById('ban-status')
     });
+
+    initRuntimeFixes();
 
     function isTypingTarget(target) {
       return !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
@@ -4108,8 +3996,28 @@
       el.cooldownValue.textContent = '∞';
     }
 
+    function updateBrushButtonUI() {
+      if (!el.quickBrush) return;
+      const active = !!state.brushMode;
+      el.quickBrush.classList.toggle('brush-on', active);
+      el.quickBrush.classList.toggle('active', active);
+      el.quickBrush.setAttribute('aria-pressed', String(active));
+      el.quickBrush.title = active ? 'Pincel continuo activado' : 'Toggle pincel continuo';
+    }
+
+    function toggleBrushMode(force) {
+      state.brushMode = typeof force === 'boolean' ? !!force : !state.brushMode;
+      if (isMobileLayout()) {
+        if (!state.brushMode) {
+          state.touchPainting = false;
+          stopPaintLoop();
+        }
+      }
+      updateBrushButtonUI();
+    }
+
     function updateTopStats() {
-      const activeUsers = Number((state.activeUsers && state.activeUsers.length) || state.activeUserCount || 0);
+      const activeUsers = Number(state.onlineCount || (state.activeUsers && state.activeUsers.length) || state.activeUserCount || 0);
       const totalPlaced = Number(state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS);
       const contributors = Number(state.contributorCount || GLOBAL_STATS_SEED_CONTRIBUTORS);
       el.statMine.textContent = formatNumber(state.myPixels);
@@ -4144,6 +4052,7 @@
         el.quickPalette.setAttribute('aria-pressed', String(visible));
         el.quickPalette.title = mobile ? (state.paletteVisibleMobile ? 'Ocultar paleta' : 'Mostrar paleta') : 'Paleta';
       }
+      syncPalettePagerUI();
     }
 
     function setMobilePaletteVisible(visible, persist = true) {
@@ -4175,6 +4084,7 @@
         const moduleId = getSectionModuleId(section);
         document.getElementById(moduleId)?.scrollIntoView({ behavior:'smooth', block:'start' });
       }
+      if (String(section) === 'chat') clearChatUnread();
     }
 
     function closeSidebar() {
@@ -4402,66 +4312,56 @@
       const ts = Date.now();
       const user = state.username;
       const uid = ensureUid();
+      const payload = { color, username: user, uid, ts, source };
 
       state.popQueue.set(key, { username: user, color, ts });
       state.boardData = state.boardData || {};
-      state.boardData[key] = {
-        color,
-        username: user,
-        uid,
-        ts,
-        source
-      };
+      state.boardData[key] = payload;
       state.knownBoardKeys.add(key);
       setPixel(x, y, color);
       scheduleCanvasFlush();
       requestMinimapRefresh();
 
-      const updates = {};
-      updates[`${BOARD_PATH}/${key}`] = {
-        color,
-        username: user,
-        uid,
-        ts,
-        source
-      };
-      updates[`${USER_STATS_PATH}/${uid}/lastPixelAt`] = ts;
-      updates[`${USER_STATS_PATH}/${uid}/username`] = user;
-      updates[`${USERS_PATH}/${uid}/username`] = user;
-      updates[`${USERS_PATH}/${uid}/lastSeen`] = ts;
-      updates[`${USERS_PATH}/${uid}/online`] = true;
-
-      db.ref().update(updates).then(() => {
-        const userPixelsRef = db.ref(`${USER_STATS_PATH}/${uid}/pixels`);
-        userPixelsRef.transaction(v => (Number(v) || 0) + 1).then(result => {
+      Promise.resolve()
+        .then(() => db.ref(`${BOARD_PATH}/${key}`).set(payload))
+        .then(() => Promise.all([
+          db.ref(`${USER_STATS_PATH}/${uid}/lastPixelAt`).set(ts),
+          db.ref(`${USER_STATS_PATH}/${uid}/username`).set(user),
+          db.ref(`${USERS_PATH}/${uid}/username`).set(user),
+          db.ref(`${USERS_PATH}/${uid}/lastSeen`).set(ts),
+          db.ref(`${USERS_PATH}/${uid}/online`).set(true)
+        ]))
+        .then(() => db.ref(`${USER_STATS_PATH}/${uid}/pixels`).transaction(v => (Number(v) || 0) + 1))
+        .then(result => {
           if (result && result.committed && Number(result.snapshot.val()) === 1) {
             db.ref(`${GLOBAL_STATS_PATH}/contributorsCount`).transaction(v => (Number(v) || 0) + 1);
           }
-        }).catch(() => {});
-        db.ref(`${GLOBAL_STATS_PATH}/totalPixelsPlaced`).transaction(v => (Number(v) || 0) + 1).catch(() => {});
-        state.myPixels += 1;
-        state.totalPixelsPlaced = Number(state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS) + 1;
-        if (!state.contributorCount || state.contributorCount < GLOBAL_STATS_SEED_CONTRIBUTORS) {
-          state.contributorCount = GLOBAL_STATS_SEED_CONTRIBUTORS;
-        }
-        localStorage.setItem('nf_my_pixels', String(state.myPixels));
-        localStorage.setItem('nf_total_pixels', String(state.totalPixelsPlaced));
-        el.statMine.textContent = formatNumber(state.myPixels);
-        registerRecentEvent(ts);
-        logActivity({
-          type: 'pixel',
-          username: user,
-          color,
-          x,
-          y,
-          ts,
-          scope: source
+          db.ref(`${GLOBAL_STATS_PATH}/totalPixelsPlaced`).transaction(v => (Number(v) || 0) + 1).catch(() => {});
+          state.myPixels += 1;
+          state.totalPixelsPlaced = Number(state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS) + 1;
+          if (!state.contributorCount || state.contributorCount < GLOBAL_STATS_SEED_CONTRIBUTORS) {
+            state.contributorCount = GLOBAL_STATS_SEED_CONTRIBUTORS;
+          }
+          localStorage.setItem('nf_my_pixels', String(state.myPixels));
+          localStorage.setItem('nf_total_pixels', String(state.totalPixelsPlaced));
+          el.statMine.textContent = formatNumber(state.myPixels);
+          registerRecentEvent(ts);
+          logActivity({
+            type: 'pixel',
+            username: user,
+            color,
+            x,
+            y,
+            ts,
+            scope: source
+          });
+          updateTopStats();
+          triggerCooldown();
+        })
+        .catch(err => {
+          state.popQueue.delete(key);
+          console.error('No se pudo colocar pixel:', err);
         });
-        updateTopStats();
-      }).catch(err => {
-        state.popQueue.delete(key);
-        console.error('No se pudo colocar pixel:', err);
-      });
     }
 
     function handlePixelCommit(input) {
@@ -4479,55 +4379,77 @@
         el.usernameInput.style.borderColor = 'var(--bad)';
         return;
       }
+
       const uid = ensureUid();
-      const banned = await verifyBanStatusForIdentity(uid, name);
-      if (banned) return;
       state.username = name;
       localStorage.setItem('nf_username', name);
       rememberAccount(uid, name);
       updateUsernameBadge();
       hideModal(el.modalUsername);
-      db.ref(`${USERS_PATH}/${uid}`).update({ username: name, createdAt: Date.now(), lastSeen: Date.now(), online: true });
-      syncUsers();
-      syncPresence();
-      updateSessionLoginModal();
-      logActivity({
-        type: 'join',
-        username: name,
-        ts: Date.now(),
-        scope: 'sesión'
-      });
       el.chatInput.disabled = false;
+      if (el.chatSendBtn) el.chatSendBtn.disabled = false;
       el.chatInput.focus();
       if (state.settings.usernameRequired) el.tlStatus.textContent = `Usuario configurado como ${name}.`;
+
+      try {
+        const banned = await verifyBanStatusForIdentity(uid, name);
+        if (banned) return;
+      } catch (err) {
+        console.warn('No se pudo verificar la sanción del usuario:', err);
+      }
+
+      try {
+        await db.ref(`${USERS_PATH}/${uid}`).update({ username: name, createdAt: Date.now(), lastSeen: Date.now(), online: true });
+      } catch (err) {
+        console.warn('No se pudo registrar el usuario en Firebase:', err);
+      }
+
+      try { syncUsers(); } catch {}
+      try { syncPresence(); } catch {}
+      try { updateSessionLoginModal(); } catch {}
+      try {
+        logActivity({
+          type: 'join',
+          username: name,
+          ts: Date.now(),
+          scope: 'sesión'
+        });
+      } catch {}
     }
 
-    function sendChatMessage() {
+    async function sendChatMessage() {
       if (state.banned) return;
       if (!state.username) { showModal(el.modalUsername); return; }
+      if (el.chatInput.disabled) return;
       const content = el.chatInput.value.trim();
       if (!content) return;
       const now = Date.now();
-      const msg = {
+      const payload = {
         content: content.slice(0, 80),
         username: state.username,
         uid: ensureUid(),
         time: now,
         clientId: ensureUid()
       };
-      db.ref(MESSAGES_PATH).push(msg).then(() => {
+      try {
+        const msgRef = db.ref(MESSAGES_PATH).push();
+        await msgRef.set(payload);
         el.chatInput.value = '';
         playSendSound();
         db.ref(`${USER_STATS_PATH}/${ensureUid()}/messages`).transaction(v => (v || 0) + 1);
         db.ref(`${USERS_PATH}/${ensureUid()}`).update({ username: state.username, lastSeen: Date.now(), online: true });
-      }).catch(err => console.error('Error enviando mensaje:', err));
+      } catch (err) {
+        console.error('Error enviando mensaje:', err);
+      }
     }
 
     function renderChatMessage(key, m) {
       if (!key || state.renderedMessageKeys.has(key)) return;
+      if (state.renderedMessageNodes.get(key)?.parentNode) return;
       state.renderedMessageKeys.add(key);
       const div = document.createElement('div');
       div.className = 'msg';
+      div.dataset.key = key;
       const meta = document.createElement('div');
       meta.className = 'meta';
       const user = document.createElement('span');
@@ -4543,21 +4465,75 @@
       meta.appendChild(time);
       div.appendChild(meta);
       div.appendChild(text);
+      state.renderedMessageNodes.set(key, div);
       el.chatArea.appendChild(div);
-      el.chatArea.scrollTop = el.chatArea.scrollHeight;
+      const atBottom = (el.chatArea.scrollTop + el.chatArea.clientHeight) >= (el.chatArea.scrollHeight - 24);
+      if (atBottom || isSidebarOpenForChat()) {
+        el.chatArea.scrollTop = el.chatArea.scrollHeight;
+        clearChatUnread();
+      } else {
+        markChatUnread(1);
+      }
+    }
+
+    function updateChatScrollState() {
+      if (!el.chatArea) return;
+      const atBottom = (el.chatArea.scrollTop + el.chatArea.clientHeight) >= (el.chatArea.scrollHeight - 24);
+      if (atBottom) clearChatUnread();
+    }
+
+    function removeChatMessageNode(key) {
+      if (!key) return;
+      const node = state.renderedMessageNodes.get(key);
+      if (node && node.parentNode) node.parentNode.removeChild(node);
+      state.renderedMessageNodes.delete(key);
+      state.renderedMessageKeys.delete(key);
+    }
+
+    function clearRecentChatHistoryView() {
+      state.renderedMessageKeys.clear();
+      state.renderedMessageNodes.clear();
+      el.chatArea.innerHTML = '';
+      clearChatUnread();
     }
 
     function attachChatListeners() {
       if (state.chatListenerAttached) return;
       state.chatListenerAttached = true;
-      db.ref(MESSAGES_PATH).limitToLast(50).on('child_added', snap => {
+      const messagesRef = db.ref(MESSAGES_PATH).limitToLast(200);
+      messagesRef.off();
+      messagesRef.on('child_added', snap => {
+        const key = snap.key;
+        if (!key) return;
+        const alreadyRendered = state.renderedMessageKeys.has(key);
+        renderChatMessage(key, snap.val() || {});
         const m = snap.val() || {};
-        renderChatMessage(snap.key, m);
-        const messageTs = Number(m.time) || Date.now();
-        const isOwnMessage = m.uid && m.uid === ensureUid();
-        const isNewMessage = messageTs > state.lastMessageTime;
-        state.lastMessageTime = Math.max(state.lastMessageTime, messageTs);
-        if (!isOwnMessage && isNewMessage) playMessageSound();
+        state.lastMessageTime = Math.max(state.lastMessageTime, Number(m.time) || 0);
+        if (!alreadyRendered && !isSidebarOpenForChat()) markChatUnread(1);
+      });
+      messagesRef.on('child_changed', snap => {
+        const key = snap.key;
+        if (!key) return;
+        removeChatMessageNode(key);
+        renderChatMessage(key, snap.val() || {});
+      });
+      messagesRef.on('child_removed', snap => {
+        removeChatMessageNode(snap.key);
+      });
+    }
+
+    function attachActivityListeners() {
+      if (state.activityListenerAttached) return;
+      state.activityListenerAttached = true;
+      const activityRef = db.ref(ACTIVITY_PATH).limitToLast(40);
+      activityRef.off();
+      activityRef.on('child_added', snap => {
+        const key = snap.key || '';
+        const value = snap.val() || {};
+        const eventId = String(value.eventId || key || '');
+        if (eventId && state.renderedActivityKeys.has(eventId)) return;
+        if (eventId) state.renderedActivityKeys.add(eventId);
+        renderActivityEntry({ ...value, eventId: eventId || randomUid() });
       });
     }
 
@@ -4827,636 +4803,114 @@
       state.lastMessageTime = Math.max(state.lastMessageTime, maxTs);
     }
 
-    async function loadFirebaseResources() {
-      loadBoardCacheAndShow();
-      setLoadingTotal(4);
+    
+async function loadFirebaseResources() {
+  loadBoardCacheAndShow();
 
-      const settingsPromise = db.ref(SETTINGS_PATH).once('value').then(s => {
+  setLoaderPreviewVisibility(state.loaderPreviewVisible, false);
+
+  const withTimeout = (promise, label, timeoutMs = LOADING_TIMEOUT_MS) => {
+    let timeoutId;
+    const timeoutPromise = new Promise(resolve => {
+      timeoutId = setTimeout(() => resolve({ __timeout: true, label }), timeoutMs);
+    });
+    return Promise.race([
+      Promise.resolve(promise)
+        .then(value => ({ __ok: true, value }))
+        .catch(error => ({ __error: true, error, label })),
+      timeoutPromise
+    ]).finally(() => clearTimeout(timeoutId));
+  };
+
+  const tasks = [
+    withTimeout(
+      db.ref(SETTINGS_PATH).once('value').then(s => {
         state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) };
         addLoadingDone(1);
-      }).catch(() => addLoadingDone(1));
-
-      const usersPromise = db.ref(USERS_PATH).once('value').then(s => {
-        state.usersSnapshot = s.val() || {};
-        recomputeActiveUsers();
+      }),
+      'settings'
+    ).catch(() => addLoadingDone(1)),
+    withTimeout(
+      refreshActiveUsersSnapshot().then(users => {
+        state.activeUserCount = users.length;
+        el.statOnline.textContent = formatNumber(users.length);
         addLoadingDone(1);
-      }).catch(() => addLoadingDone(1));
-
-      const messagesPromise = db.ref(MESSAGES_PATH).limitToLast(30).once('value').then(s => {
+      }),
+      'presence'
+    ).catch(() => addLoadingDone(1)),
+    withTimeout(
+      db.ref(USERS_PATH).once('value').then(s => {
+        state.uniqueCount = s.numChildren() || 0;
+        el.statUnique.textContent = formatNumber(state.uniqueCount);
+        addLoadingDone(1);
+      }),
+      'users'
+    ).catch(() => addLoadingDone(1)),
+    withTimeout(
+      db.ref(MESSAGES_PATH).limitToLast(20).once('value').then(s => {
         el.chatArea.innerHTML = '';
-        state.renderedMessageKeys = new Set();
-        appendLoadedMessagesOnce(s.val() || {});
+        const data = s.val() || {};
+        Object.values(data).slice(-20).forEach(m => {
+          const div = document.createElement('div');
+          div.className = 'msg';
+          div.innerHTML = `
+            <div class="meta">
+              <span class="user">${escapeHtmlText(m.username || 'Anónimo')}</span>
+              <span class="time">${escapeHtmlText(m.time ? formatShortTime(m.time) : '')}</span>
+            </div>
+            <div class="text">${escapeHtmlText(m.content || '')}</div>
+          `;
+          el.chatArea.appendChild(div);
+        });
         el.chatArea.scrollTop = el.chatArea.scrollHeight;
+        const maxTs = Object.values(data).reduce((acc, m) => Math.max(acc, Number(m && m.time) || 0), 0);
+        state.lastMessageTime = Math.max(state.lastMessageTime, maxTs);
         addLoadingDone(1);
-      }).catch(() => addLoadingDone(1));
+      }),
+      'messages'
+    ).catch(() => addLoadingDone(1))
+  ];
+
+  setLoadingTotal(tasks.length);
+
+  const boardPromise = withTimeout(
+    db.ref(BOARD_PATH).once('value').then(snap => {
+      processBoardSnapshot(snap);
+    }),
+    'board',
+    Math.max(LOADING_TIMEOUT_MS, 12000)
+  ).catch(() => {
+    ensureWhiteCanvas();
+    scheduleCanvasFlush();
+    finishBoardLoading();
+  });
+
+  await Promise.allSettled(tasks);
+  await boardPromise;
+
+  if (state.loadingDone < state.loadingTotal) {
+    state.loadingDone = state.loadingTotal;
+    updateLoadingUI();
+  }
+
+  attachBoardListeners();
+  attachChatListeners();
+  attachActivityListeners();
+  syncSettings();
+  syncPresence();
+  syncUsers();
+  refreshLeaderboard();
+  updateTopStats();
+
+  if (!state.boardLoaded) {
+    finishBoardLoading();
+  }
+}
+
+function startSession() {
 
-      const globalStatsPromise = Promise.all([
-        db.ref(`${GLOBAL_STATS_PATH}/totalPixelsPlaced`).once('value'),
-        db.ref(`${GLOBAL_STATS_PATH}/contributorsCount`).once('value')
-      ]).then(([totalSnap, contributorsSnap]) => {
-        state.totalPixelsPlaced = Number(totalSnap.val()) || state.totalPixelsPlaced || GLOBAL_STATS_SEED_TOTAL_PIXELS;
-        state.contributorCount = Number(contributorsSnap.val()) || state.contributorCount || GLOBAL_STATS_SEED_CONTRIBUTORS;
-        localStorage.setItem('nf_total_pixels', String(state.totalPixelsPlaced));
-        localStorage.setItem('nf_contributor_count', String(state.contributorCount));
-        addLoadingDone(1);
-      }).catch(() => addLoadingDone(1));
-
-      const boardPromise = db.ref(BOARD_PATH).once('value').then(snap => {
-        processBoardSnapshot(snap);
-      }).catch(() => {
-        ensureWhiteCanvas();
-        scheduleCanvasFlush();
-        finishBoardLoading();
-      });
-
-      await Promise.allSettled([settingsPromise, usersPromise, messagesPromise, globalStatsPromise]);
-      await boardPromise;
-
-      attachBoardListeners();
-      attachChatListeners();
-      syncSettings();
-      syncPresence();
-      syncUsers();
-      syncGlobalStats();
-      refreshLeaderboard();
-      updateTopStats();
-    }
-
-    function performAdminLogin() {
-      if (el.adminKeyInput.value === "Isaias2013Cerrado") {
-        state.isAuthorized = true;
-        el.adminEntry.classList.add('active');
-        db.ref(SETTINGS_PATH).once('value').then(s => {
-          const incoming = s.val() || {};
-          state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...incoming, trackingEnabled: !!incoming.trackingEnabled };
-          updateSettingsDisplay();
-          hideAllModals();
-          openAdminDashboard();
-        });
-        el.adminKeyInput.value = '';
-      } else {
-        alert("Acceso Denegado.");
-      }
-    }
-
-    function executeWipe() {
-      if (!confirm("¿ELIMINAR TODO EL LIENZO? Esta acción no se puede deshacer.")) return;
-      db.ref(BOARD_PATH).remove().then(() => {
-        state.knownBoardKeys.clear();
-        state.boardCount = 0;
-        state.boardData = {};
-        ensureWhiteCanvas();
-        scheduleCanvasFlush();
-        persistBoardCache({});
-        clearRecentActivity();
-        updateTopStats();
-        el.tlStatus.textContent = 'Lienzo formateado correctamente.';
-        hideAllModals();
-        refreshLeaderboard();
-      }).catch(err => {
-        console.error(err);
-        alert('No se pudo formatear el lienzo.');
-      });
-    }
-
-    function saveAdminSettings() {
-      const boardSize = clamp(Math.round(Number(el.boardWidthInput?.value) || state.boardSize || DEFAULT_BOARD_SIZE), 25, 1000);
-      const patch = {
-        boardSize,
-        timestampEnabled: !!el.toggleTimestamp.checked,
-        trackingEnabled: !!el.toggleTracking.checked,
-        timelapseIntervalSec: Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec),
-        timelapseFps: Math.max(1, parseInt(el.tlFpsInput?.value, 10) || DEFAULT_SETTINGS.timelapseFps),
-        timelapseShowPixels: !!el.toggleTimelapsePixels?.checked,
-        timelapseShowContributors: !!el.toggleTimelapseContributors?.checked,
-        timelapseShowActiveUsers: !!el.toggleTimelapseActiveUsers?.checked
-      };
-      state.settings = { ...state.settings, ...patch };
-      state.boardSize = boardSize;
-      if (el.boardWidthInput) el.boardWidthInput.value = String(boardSize);
-      resizeBoardCanvas(state.boardWidth || boardSize, state.boardHeight || boardSize, true);
-      saveSettingsToFirebase(patch)
-        .then(() => {
-          el.tlStatus.textContent = 'Ajustes guardados y sincronizados.';
-          updateTopStats();
-        })
-        .catch(err => {
-          console.error(err);
-          el.tlStatus.textContent = 'No se pudieron guardar los ajustes.';
-        });
-    }
-
-    function openAdminDashboard() {
-      updateSettingsDisplay();
-      if (el.tlFpsInput) el.tlFpsInput.value = String(state.settings.timelapseFps || DEFAULT_SETTINGS.timelapseFps);
-      showModal(el.modalDashboard);
-      setBanStatus('Introduce el objetivo y una razón para aplicar una sanción.', '');
-    }
-
-    function openAdminLogin() {
-      showModal(el.modalLogin);
-    }
-
-    function updateSessionClockMobile() {
-      if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent || '00:00:00';
-    }
-
-    function updateBrushButtonUI() {
-      if (!el.quickBrush) return;
-      el.quickBrush.classList.toggle('brush-on', !!state.brushMode);
-      el.quickBrush.setAttribute('aria-pressed', String(!!state.brushMode));
-      el.quickBrush.title = state.brushMode ? 'Pincel continuo activo' : 'Activar pincel continuo';
-    }
-
-    function setBrushMode(enabled) {
-      state.brushMode = !!enabled;
-      if (!state.brushMode) {
-        stopTouchPaintLoop();
-        stopPaintLoop();
-      }
-      updateBrushButtonUI();
-    }
-
-    function toggleBrushMode() {
-      setBrushMode(!state.brushMode);
-    }
-
-    function startSessionClock() {
-      const start = Date.now();
-      setInterval(() => {
-        const total = Math.floor((Date.now() - start) / 1000);
-        const h = String(Math.floor(total / 3600)).padStart(2, '0');
-        const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
-        const s = String(total % 60).padStart(2, '0');
-        el.sessionClock.textContent = `${h}:${m}:${s}`;
-        updateSessionClockMobile();
-        if (state.sessionCode && state.sessionCodeExpiresAt > Date.now()) {
-          updateSessionLoginModal();
-        } else if (state.sessionCode && state.sessionCodeExpiresAt <= Date.now()) {
-          state.sessionCode = '';
-          state.sessionCodeExpiresAt = 0;
-          localStorage.removeItem('nf_session_code');
-          localStorage.removeItem('nf_session_code_expires');
-          updateSessionLoginModal();
-        }
-      }, 1000);
-    }
-
-    function initUiHooks() {
-      document.addEventListener('pointerdown', e => {
-        const target = e.target.closest('button, input[type="checkbox"]');
-        if (!target || target.disabled || target.classList.contains('color-box')) return;
-        playClickSound();
-      }, true);
-
-      el.mobileMenuBtn.addEventListener('click', () => toggleSidebar());
-      el.chatBtn.addEventListener('click', () => openSidebar('chat'));
-      el.statsBtn.addEventListener('click', () => openSidebar('session'));
-      el.centerBtn.addEventListener('click', centerCanvas);
-      el.sidebarCloseBtn.addEventListener('click', closeSidebar);
-      el.desktopSidebarToggle?.addEventListener('click', toggleDesktopSidebar);
-
-      document.querySelectorAll('[data-close-sidebar]').forEach(btn => {
-        btn.addEventListener('click', closeSidebar);
-      });
-
-      const globalStatsNode = document.querySelector('.global-stats');
-      const activeUsersNode = el.activeUsersPopover;
-      const showUsers = () => showActiveUsersPopover();
-      const hideUsers = () => hideActiveUsersPopover(180);
-      if (globalStatsNode) {
-        globalStatsNode.addEventListener('pointerenter', showUsers);
-        globalStatsNode.addEventListener('mouseenter', showUsers);
-        globalStatsNode.addEventListener('pointerleave', hideUsers);
-        globalStatsNode.addEventListener('mouseleave', hideUsers);
-        globalStatsNode.addEventListener('click', () => {
-          if (isMobileLayout()) {
-            if (state.activeUsersVisible) hideActiveUsersPopover();
-            else showActiveUsersPopover();
-          }
-        });
-        globalStatsNode.addEventListener('touchstart', () => {
-          if (isMobileLayout()) {
-            if (state.activeUsersVisible) hideActiveUsersPopover();
-            else showActiveUsersPopover();
-          }
-        }, { passive:true });
-      }
-      if (activeUsersNode) {
-        activeUsersNode.addEventListener('pointerenter', showUsers);
-        activeUsersNode.addEventListener('mouseenter', showUsers);
-        activeUsersNode.addEventListener('pointerleave', hideUsers);
-        activeUsersNode.addEventListener('mouseleave', hideUsers);
-      }
-
-      [document.getElementById('module-stats'), document.getElementById('module-globalstats')].filter(Boolean).forEach(node => {
-        node.addEventListener('click', () => { if (isMobileLayout()) showActiveUsersPopover(); });
-      });
-
-      el.quickChat.addEventListener('click', () => openSidebar('chat'));
-      el.quickSession.addEventListener('click', () => openSidebar('session'));
-      el.quickGlobalStats.addEventListener('click', () => openSidebar('globalstats'));
-      el.quickMap.addEventListener('click', () => openSidebar('map'));
-      el.quickLeaderboard.addEventListener('click', () => openSidebar('leaderboard'));
-      el.quickCenter.addEventListener('click', () => { centerCanvas(); openSidebar(state.currentMobileSection || 'chat'); });
-      el.quickBrush.addEventListener('click', () => { toggleBrushMode(); });
-      el.quickId.addEventListener('click', openSessionLoginModal);
-      el.quickPalette.addEventListener('click', () => {
-        if (isMobileLayout()) {
-          toggleMobilePalette();
-        } else {
-          el.uiBottom.scrollIntoView({ behavior:'smooth', block:'start' });
-        }
-      });
-
-      el.usernameInput.addEventListener('input', syncUiWithUsername);
-      el.usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmUsername(); });
-      el.usernameSaveBtn.addEventListener('click', confirmUsername);
-
-      el.adminEntry.addEventListener('click', () => state.isAuthorized ? openAdminDashboard() : openAdminLogin());
-      el.adminLoginBtn.addEventListener('click', performAdminLogin);
-      el.adminCancelBtn.addEventListener('click', hideAllModals);
-      el.closeDashboardBtn.addEventListener('click', hideAllModals);
-      el.wipeBtn.addEventListener('click', executeWipe);
-      el.refreshSettingsBtn.addEventListener('click', () => {
-        db.ref(SETTINGS_PATH).once('value').then(s => {
-          state.settings = { ...DEFAULT_SETTINGS, ...state.settings, ...(s.val() || {}) };
-          updateSettingsDisplay();
-          el.tlStatus.textContent = 'Ajustes recargados.';
-        });
-      });
-      el.saveSettingsBtn.addEventListener('click', saveAdminSettings);
-      el.exportStatsBtn.addEventListener('click', () => { updateTopStats(); refreshLeaderboard(); });
-      el.tlToggleBtn.addEventListener('click', toggleTimelapseCapture);
-      el.banBtn.addEventListener('click', banUserByTarget);
-      el.unbanBtn.addEventListener('click', unbanUserByTarget);
-      el.banCloseBtn.addEventListener('click', () => hideModal(el.modalBanned));
-
-      el.toggleTimestamp.addEventListener('change', () => {
-        state.settings.timestampEnabled = el.toggleTimestamp.checked;
-        el.statTs.textContent = state.settings.timestampEnabled ? 'Activo' : 'Desactivado';
-        el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
-      });
-      el.toggleTracking.addEventListener('change', () => {
-        if (!state.isAuthorized) {
-          el.toggleTracking.checked = !!state.settings.trackingEnabled;
-          return;
-        }
-        state.settings.trackingEnabled = el.toggleTracking.checked;
-        el.statTracking.textContent = state.settings.trackingEnabled ? 'Activo' : 'Desactivado';
-        el.statTracking.className = state.settings.trackingEnabled ? 'good' : 'warn';
-      });
-      if (el.toggleTimelapsePixels) {
-        el.toggleTimelapsePixels.addEventListener('change', () => {
-          state.settings.timelapseShowPixels = el.toggleTimelapsePixels.checked;
-        });
-      }
-      if (el.toggleTimelapseContributors) {
-        el.toggleTimelapseContributors.addEventListener('change', () => {
-          state.settings.timelapseShowContributors = el.toggleTimelapseContributors.checked;
-        });
-      }
-      if (el.toggleTimelapseActiveUsers) {
-        el.toggleTimelapseActiveUsers.addEventListener('change', () => {
-          state.settings.timelapseShowActiveUsers = el.toggleTimelapseActiveUsers.checked;
-        });
-      }
-      el.tlFreqInput.addEventListener('input', () => {
-        const v = Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec);
-        el.tlFreqInput.value = String(v);
-      });
-      el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
-
-      if (el.boardWidthInput) {
-        el.boardWidthInput.addEventListener('input', () => {
-          const v = clamp(Math.round(Number(el.boardWidthInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
-          el.boardWidthInput.value = String(v);
-        });
-        el.boardWidthInput.addEventListener('change', () => {
-          const v = clamp(Math.round(Number(el.boardWidthInput.value) || DEFAULT_BOARD_SIZE), 25, 1000);
-          state.boardSize = v;
-          state.settings.boardSize = v;
-          resizeBoardCanvas(state.boardWidth || v, state.boardHeight || v, true);
-        });
-      }
-
-      window.addEventListener('resize', () => {
-        refreshCamera();
-        keepCanvasAliveAfterSleep();
-      });
-
-      const activePointers = new Map();
-
-      function setPointerPosition(e) {
-        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      }
-
-      function clearPointerPosition(e) {
-        activePointers.delete(e.pointerId);
-      }
-
-      function getPointerPoints() {
-        return Array.from(activePointers.values());
-      }
-
-      function isInteractiveUiTarget(target) {
-        return el.sidebar.contains(target) || document.querySelector('.modal-overlay.visible')?.contains(target);
-      }
-
-      function clearTouchHoldTimer() {
-        if (state.touchHoldTimer) {
-          clearTimeout(state.touchHoldTimer);
-          state.touchHoldTimer = null;
-        }
-      }
-
-      function stopTouchPaintLoop() {
-        state.touchPainting = false;
-        state.touchHoldActive = false;
-        state.touchHoldPointerId = null;
-        state.touchHoldMoved = false;
-        clearTouchHoldTimer();
-        stopPaintLoop();
-      }
-
-      function armTouchHold(e) {
-        clearTouchHoldTimer();
-        state.touchHoldPointerId = e.pointerId;
-        state.touchHoldStart = { x: e.clientX, y: e.clientY, ts: Date.now() };
-        state.touchHoldMoved = false;
-        state.touchHoldActive = false;
-        state.touchPainting = false;
-        state.touchHoldTimer = setTimeout(() => {
-          if (!activePointers.has(e.pointerId)) return;
-          if (activePointers.size !== 1) return;
-          if (state.pinchDistance != null || state.dragMoved) return;
-          state.touchHoldActive = true;
-          state.touchPainting = true;
-          startPaintLoop('touch');
-        }, 1500);
-      }
-
-      function cancelTouchHold() {
-        clearTouchHoldTimer();
-        state.touchHoldActive = false;
-        state.touchHoldPointerId = null;
-        state.touchHoldMoved = false;
-      }
-
-      function endViewportInteraction(e) {
-        if (!activePointers.has(e.pointerId)) return;
-        const hadDrag = state.dragging;
-        const hadMove = state.dragMoved;
-        const wasTouchHoldActive = state.touchHoldActive;
-        const point = { x: e.clientX, y: e.clientY };
-
-        clearPointerPosition(e);
-
-        if (activePointers.size < 2) {
-          state.pinchDistance = null;
-        }
-
-        if (e.pointerType === 'touch' && !wasTouchHoldActive && !hadMove && activePointers.size === 0) {
-          commitPixelAt(e.clientX, e.clientY, 'touch');
-        }
-
-        if (activePointers.size === 0) {
-          if (state.spaceHeld) {
-            stopPaintLoop();
-          } else if (state.touchPainting) {
-            stopTouchPaintLoop();
-          } else if (hadDrag && !hadMove && e.pointerType === 'mouse') {
-            handlePixelCommit(e);
-          }
-          state.dragging = false;
-          state.dragMoved = false;
-          state.pinchDistance = null;
-          state.mouseIsDown = false;
-          cancelTouchHold();
-        }
-
-        updateCoordsOverlay(point.x, point.y);
-      }
-
-      el.viewport.addEventListener('pointerdown', e => {
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-        if (isInteractiveUiTarget(e.target)) return;
-        unlockAudio();
-
-        setPointerPosition(e);
-        try { el.viewport.setPointerCapture(e.pointerId); } catch {}
-
-        if (state.brushMode && e.pointerType !== 'mouse') {
-          state.mouseIsDown = true;
-          state.dragging = false;
-          state.dragMoved = true;
-          state.touchPainting = true;
-          cancelTouchHold();
-          updateCoordsOverlay(e.clientX, e.clientY);
-          startPaintLoop('brush');
-          return;
-        }
-
-        if (activePointers.size === 2) {
-          const [p1, p2] = getPointerPoints();
-          state.pinchDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-          state.dragging = false;
-          state.dragMoved = true;
-          cancelTouchHold();
-          return;
-        }
-
-        state.mouseIsDown = true;
-        state.dragMoved = false;
-        state.lastX = e.clientX;
-        state.lastY = e.clientY;
-        updateCoordsOverlay(e.clientX, e.clientY);
-
-        if (e.pointerType === 'touch') {
-          if (state.brushMode) {
-            state.dragging = false;
-            state.touchPainting = true;
-            cancelTouchHold();
-            startPaintLoop('brush');
-            return;
-          }
-          state.dragging = false;
-          armTouchHold(e);
-          return;
-        }
-
-        if (state.spaceHeld) {
-          state.dragging = false;
-          startPaintLoop('space');
-          return;
-        }
-
-        state.dragging = true;
-      });
-
-      el.viewport.addEventListener('pointermove', e => {
-        if (isInteractiveUiTarget(e.target)) return;
-
-        if (!activePointers.has(e.pointerId)) {
-          if (e.pointerType === 'mouse' && !state.dragging) {
-            updateCoordsOverlay(e.clientX, e.clientY);
-          }
-          return;
-        }
-
-        setPointerPosition(e);
-
-        if (state.brushMode && e.pointerType !== 'mouse') {
-          state.dragging = false;
-          state.dragMoved = true;
-          state.touchPainting = true;
-          cancelTouchHold();
-          updateCoordsOverlay(e.clientX, e.clientY);
-          startPaintLoop('brush');
-          return;
-        }
-
-        if (activePointers.size >= 2) {
-          cancelTouchHold();
-          const [p1, p2] = getPointerPoints();
-          const currentDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-          if (state.pinchDistance) {
-            const factor = currentDist / state.pinchDistance;
-            const midX = (p1.x + p2.x) / 2;
-            const midY = (p1.y + p2.y) / 2;
-            applyZoom(factor, midX, midY);
-          }
-          state.pinchDistance = currentDist;
-          state.dragging = false;
-          state.dragMoved = true;
-          updateCoordsOverlay(p1.x, p1.y);
-          return;
-        }
-
-        updateCoordsOverlay(e.clientX, e.clientY);
-
-        if (state.touchHoldActive || state.touchPainting) {
-          startPaintLoop('touch');
-          return;
-        }
-
-        if (e.pointerType === 'touch' && state.touchHoldTimer) {
-          const distToStart = Math.hypot(e.clientX - state.touchHoldStart.x, e.clientY - state.touchHoldStart.y);
-          if (distToStart > 8) {
-            state.dragging = true;
-            state.dragMoved = true;
-            cancelTouchHold();
-          }
-        }
-
-        if (state.spaceHeld) {
-          startPaintLoop('space');
-          return;
-        }
-
-        if (!state.dragging) return;
-
-        const dist = Math.hypot(e.clientX - state.lastX, e.clientY - state.lastY);
-        if (dist > 3) state.dragMoved = true;
-
-        if (state.dragMoved) {
-          state.originX += e.clientX - state.lastX;
-          state.originY += e.clientY - state.lastY;
-          state.lastX = e.clientX;
-          state.lastY = e.clientY;
-          refreshCamera();
-        } else {
-          updateCoordsOverlay(e.clientX, e.clientY);
-        }
-      });
-
-      el.viewport.addEventListener('pointerup', endViewportInteraction);
-      el.viewport.addEventListener('pointercancel', endViewportInteraction);
-      el.viewport.addEventListener('lostpointercapture', () => {
-        activePointers.clear();
-        state.dragging = false;
-        state.dragMoved = false;
-        state.pinchDistance = null;
-        state.mouseIsDown = false;
-        cancelTouchHold();
-      });
-
-      el.viewport.addEventListener('pointerenter', e => {
-        if (e.pointerType === 'mouse') {
-          state.pointerOverCanvas = true;
-        }
-      });
-
-      el.viewport.addEventListener('pointerleave', () => {
-        state.pointerOverCanvas = false;
-        if (!state.dragging && activePointers.size === 0 && !state.spaceHeld && !state.touchPainting) {
-          state.hoverPoint = null;
-          el.pixelSelector.style.display = 'none';
-          el.coordsInfo.style.display = 'none';
-          stopPaintLoop();
-        }
-      });
-
-      window.addEventListener('keydown', e => {
-        if (isTypingTarget(e.target)) return;
-        if (e.code === 'Space' || e.key === ' ') {
-          e.preventDefault();
-          state.spaceHeld = true;
-          if (state.hoverPoint) startPaintLoop('space');
-        }
-        if (e.key === 'Escape') {
-          closeSidebar();
-          if (!state.isCapturing) hideAllModals();
-        }
-      });
-
-      window.addEventListener('keyup', e => {
-        if (e.code === 'Space' || e.key === ' ') {
-          state.spaceHeld = false;
-          if (!state.touchPainting) stopPaintLoop();
-        }
-      });
-
-      window.addEventListener('wheel', e => {
-        if (isInteractiveUiTarget(e.target)) return;
-        e.preventDefault();
-        const factor = e.deltaY > 0 ? 0.88 : 1.12;
-        applyZoom(factor, e.clientX, e.clientY);
-      }, { passive:false });
-
-      window.addEventListener('blur', () => {
-        state.dragging = false;
-        state.pinchDistance = null;
-        state.spaceHeld = false;
-        hideActiveUsersPopover();
-        stopTouchPaintLoop();
-      });
-
-      document.addEventListener('pointerdown', e => {
-        if (!state.activeUsersVisible) return;
-        if (el.activeUsersPopover && el.activeUsersPopover.contains(e.target)) return;
-        if (el.header.querySelector('.global-stats')?.contains(e.target)) return;
-        if (document.getElementById('module-stats')?.contains(e.target)) return;
-        if (document.getElementById('module-globalstats')?.contains(e.target)) return;
-        if (el.sessionBtn?.contains(e.target)) return;
-        hideActiveUsersPopover();
-      });
-    }
-
-    function initUsernameBoot() {
-      syncUiWithUsername();
-      if (state.username) {
-        el.usernameInput.value = state.username;
-        confirmUsername();
-        hideModal(el.modalUsername);
-      } else {
-        showModal(el.modalUsername);
-        el.usernameInput.focus();
-      }
-    }
-
-    function startSession() {
       buildPalette();
+      syncPalettePagerUI();
       initBoardImageData();
       syncPaletteVisibilityUI();
       updateUsernameBadge();
@@ -5468,7 +4922,13 @@
       centerCanvas();
       startSessionClock();
       initUsernameBoot();
-      loadFirebaseResources();
+      loadFirebaseResources().catch(() => {}).finally(() => {
+        if (!state.boardLoaded) {
+          setTimeout(() => {
+            if (!state.boardLoaded) finishBoardLoading();
+          }, 250);
+        }
+      });
     }
 
     function applyInitialBoardState() {
@@ -5476,7 +4936,6 @@
       initBoardImageData();
       if (el.boardWidthInput) el.boardWidthInput.value = String(state.boardSize);
       if (el.boardSizeInfo) el.boardSizeInfo.textContent = `${state.boardSize}×${state.boardSize} px`;
-      setLoaderPreviewVisibility(state.loaderPreviewVisible, false);
       updateLoaderPreview();
       updateLoaderStats();
     }
