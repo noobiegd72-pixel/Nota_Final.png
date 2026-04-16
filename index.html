@@ -618,6 +618,7 @@
       const globalStatsNode = document.querySelector('.global-stats');
       if (globalStatsNode) {
         globalStatsNode.addEventListener('pointerenter', showActiveUsersPopover);
+      el.statOnline?.addEventListener('pointerenter', showActiveUsersPopover);
         globalStatsNode.addEventListener('mouseleave', () => {
           if (!isMobileLayout()) hideActiveUsersPopover(140);
         });
@@ -719,15 +720,12 @@
 
     #viewport{
       position:fixed;inset:var(--header-h) 0 0 0;overflow:hidden;touch-action:none;overscroll-behavior:none;
-      background:
-        linear-gradient(var(--border) 1px, transparent 1px),
-        linear-gradient(90deg, var(--border) 1px, transparent 1px);
-      background-size:42px 42px;background-position:center center;cursor:grab
+      background:transparent;cursor:grab
     }
     #viewport.dragging{cursor:grabbing}
     #viewport.pixel-hover{cursor:crosshair}
 
-    .palette-pager{display:none;align-items:center;justify-content:center;gap:10px;padding:0 14px 12px}
+    .palette-pager{display:flex;align-items:center;justify-content:center;gap:10px;padding:0 14px 12px}
     .palette-page-btn{width:34px;height:34px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);font-weight:900;cursor:pointer;line-height:1}
     .palette-page-btn:disabled{opacity:.35;cursor:not-allowed}
     .palette-page-indicator{min-width:82px;text-align:center;color:var(--dim);font-size:.72rem;font-family:"Courier New",monospace;letter-spacing:.3px}
@@ -741,7 +739,9 @@
 
     #pixel-selector{
       position:absolute;z-index:20;pointer-events:none;display:none;box-sizing:border-box;
-      border:1px solid #000;background:transparent;transform:none
+      background:transparent;transform:none;transform-origin:0 0;
+      outline:1px solid rgba(0,0,0,.9);outline-offset:-1px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)
     }
 
     .pixel-pop{
@@ -901,25 +901,40 @@
     .leaderboard-row .score{color:var(--accent);font-weight:900;flex:0 0 auto;font-family:"Courier New",monospace}
 
     #ui-bottom{
-      position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2200;width:min(100vw,680px);padding:0 14px
+      position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2200;width:min(100vw,640px);padding:0 10px
+    }
+    #ui-bottom.hidden-desktop{
+      opacity:0;visibility:hidden;pointer-events:none;transform:translateX(-50%) translateY(18px)
     }
     .palette-container{
-      background:var(--panel2);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);overflow:hidden
+      display:flex;align-items:flex-end;gap:8px;background:transparent;border:none;box-shadow:none;overflow:visible
     }
+    .palette-main{
+      flex:1 1 auto;min-width:0;background:var(--panel2);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden
+    }
+    .palette-side-tools{
+      display:flex;flex-direction:column;gap:6px;align-items:stretch;justify-content:flex-end;flex:0 0 auto
+    }
+    .palette-tool-btn{
+      width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:rgba(18,18,18,.92);color:var(--text);
+      display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow)
+    }
+    .palette-tool-btn.active{border-color:rgba(41,121,255,.7);color:var(--accent);background:rgba(41,121,255,.14)}
+    .palette-tool-btn:hover{transform:translateY(-1px);border-color:rgba(41,121,255,.45)}
     .palette-topline{
-      display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px 0
+      display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px 0
     }
-    .palette-topline small{color:var(--dim);font-size:.67rem;font-family:"Courier New",monospace;letter-spacing:.25px}
+    .palette-topline small{color:var(--dim);font-size:.62rem;font-family:"Courier New",monospace;letter-spacing:.25px}
     .palette-grid{
-      display:grid;grid-template-columns:repeat(16,1fr);gap:5px;padding:12px 14px 12px
+      display:grid;grid-template-columns:repeat(12,1fr);gap:4px;padding:10px 10px 10px
     }
     .color-box{
-      aspect-ratio:1;border-radius:6px;cursor:pointer;border:1px solid rgba(255,255,255,.08);
+      aspect-ratio:1;border-radius:5px;cursor:pointer;border:1px solid rgba(255,255,255,.08);
       transition:transform .11s ease,box-shadow .11s ease,border-color .11s ease;position:relative
     }
     .color-box:hover{transform:translateY(-1px) scale(1.02)}
     .color-box.active{
-      border:2px solid #fff;transform:scale(1.12);z-index:2;box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 14px rgba(255,255,255,.18)
+      border:2px solid #fff;transform:scale(1.08);z-index:2;box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 10px rgba(255,255,255,.16)
     }
     .cooldown-wrap{padding:0 14px 14px}
     .cooldown-caption{
@@ -1033,6 +1048,11 @@
       #sidebar-right #module-map{min-height:440px}
       #sidebar-right #module-leaderboard{min-height:300px}
       #sidebar-right #module-activity{min-height:320px}
+      #ui-bottom{width:min(100vw,580px)}
+      .palette-main{border-radius:14px}
+      .palette-tool-btn{width:38px;height:38px;border-radius:11px}
+      .palette-grid{gap:3px;padding:9px 9px 9px}
+      .palette-topline{padding:7px 9px 0}
     }
 
     @media (max-width: 960px){
@@ -1066,11 +1086,15 @@
       .stats-module{min-height:220px}
       .activity-list{min-height:180px}
       .leaderboard-list{min-height:180px}
-      #ui-bottom{bottom:8px;width:min(82vw,240px);padding:0 4px}
-      .palette-container{border-radius:14px;transform:scale(.88);transform-origin:bottom center}
+      #ui-bottom{bottom:8px;width:min(94vw,360px);padding:0 4px}
+      #ui-bottom.hidden-desktop{transform:translateX(-50%) translateY(18px)}
+      .palette-container{border-radius:14px;transform:scale(.88);transform-origin:bottom center;gap:8px}
+      .palette-main{border-radius:14px}
+      .palette-side-tools{gap:6px}
+      .palette-tool-btn{width:42px;height:42px;border-radius:12px}
       .palette-topline{padding:7px 8px 0;gap:8px}
       .palette-topline small{font-size:.58rem}
-      .palette-grid{grid-template-columns:repeat(6,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
+      .palette-grid{grid-template-columns:repeat(8,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
       .color-box{border-radius:5px}
       .palette-pager{display:flex;padding:0 8px 8px;gap:8px}
       .palette-page-btn{width:32px;height:32px}
@@ -1109,7 +1133,9 @@
       .quick-btn{width:42px;height:42px;border-radius:13px}
       .palette-topline{padding:7px 8px 0}
       .palette-topline small{font-size:.58rem}
-      .palette-grid{grid-template-columns:repeat(5,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
+      .palette-grid{grid-template-columns:repeat(8,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
+      .palette-side-tools{gap:6px}
+      .palette-tool-btn{width:40px;height:40px;border-radius:12px}
       .cooldown-wrap{padding:0 8px 8px}
     }
 
@@ -1290,6 +1316,10 @@
           <span class="label">Lateral</span>
           <span class="notify-dot" id="sidebar-notify-dot" aria-hidden="true"></span>
         </button>
+        <button class="top-btn" id="palette-toggle-btn" title="Mostrar u ocultar la paleta">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 3 3 0 0 0-3-3h-1a2 2 0 0 1-2-2V6a3 3 0 0 0-3-3Z"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="15.5" cy="10.5" r="1"/></svg>
+          <span class="label">Paleta</span>
+        </button>
         <button class="top-btn" id="session-btn" title="Login por código">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 12a4 4 0 0 0-8 0"></path><circle cx="12" cy="12" r="9"></circle><path d="M9 12h6"></path></svg>
           <span class="label">ID</span>
@@ -1336,7 +1366,7 @@
         <div class="stats-row"><span>Tu usuario</span><strong id="stat-user">Sin asignar</strong></div>
         <div class="stats-row"><span>Tus aportes</span><strong id="stat-mine">0</strong></div>
         <div class="stats-row"><span>Resolución</span><strong id="board-size-stats">125×125 px</strong></div>
-        <div class="stats-row"><span>Pintura</span><strong>Continua</strong></div>
+        
         <div class="stats-row"><span>Tracking global</span><strong id="stat-tracking" class="warn">Desactivado</strong></div>
         <div class="stats-row"><span>Timestamp timelapse</span><strong id="stat-ts" class="good">Activo</strong></div>
         <div class="stats-row"><span>Estado</span><strong class="good">Conectado</strong></div>
@@ -1409,24 +1439,31 @@
   </div>
   <div id="ui-bottom">
     <div class="palette-container">
-      <div class="palette-topline">
-        <small>PALETA DE COLOR</small>
-        <small id="palette-status">Selecciona un color antes de pintar</small>
-      </div>
-      <div class="palette-grid" id="palette-render"></div>
-      <div class="palette-pager" id="palette-pager">
-        <button class="palette-page-btn" id="palette-prev" type="button" aria-label="Página anterior">‹</button>
-        <span class="palette-page-indicator" id="palette-page-label">Página 1 / 2</span>
-        <button class="palette-page-btn" id="palette-next" type="button" aria-label="Página siguiente">›</button>
-      </div>
-      <div class="cooldown-wrap">
-        <div class="cooldown-caption">
-          <span id="cooldown-text">Pintura continua</span>
-          <span id="cooldown-value">∞</span>
+      <div class="palette-main">
+        <div class="palette-topline">
+          <small>PALETA DE COLOR</small>
+          <small id="palette-status">Selecciona un color antes de pintar</small>
         </div>
-        <div class="cooldown-wrapper">
-          <div id="cooldown-timer"></div>
+        <div class="palette-grid" id="palette-render"></div>
+        <div class="palette-pager" id="palette-pager">
+          <button class="palette-page-btn" id="palette-prev" type="button" aria-label="Página anterior">‹</button>
+          <span class="palette-page-indicator" id="palette-page-label">Página 1 / 2</span>
+          <button class="palette-page-btn" id="palette-next" type="button" aria-label="Página siguiente">›</button>
         </div>
+        <div class="cooldown-wrap">
+          <div class="cooldown-caption">
+            <span id="cooldown-text">Listo para pintar</span>
+            <span id="cooldown-value">—</span>
+          </div>
+          <div class="cooldown-wrapper">
+            <div id="cooldown-timer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="palette-side-tools" aria-label="Herramientas de paleta">
+        <button class="palette-tool-btn" id="eyedropper-btn" type="button" title="Cuentagotas" aria-pressed="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c1.5 0 2.5-.5 3.2-1.3.7-.8 1-1.7 1.8-2.2.8-.5 1.8-.5 3 .5l8-8-4-4-8 8c-.9 1.2-.9 2.1-.5 3l-1.5 1.5Z"/><path d="M13 7l4 4"/></svg>
+        </button>
       </div>
     </div>
   </div>
@@ -1449,9 +1486,6 @@
     </button>
     <button class="quick-btn" id="quick-activity" title="Actividad">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
-    </button>
-    <button class="quick-btn" id="quick-brush" title="Toggle pincel continuo">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 4l2 2-8.5 8.5-3 1 1-3L18 4Z"/><path d="M4 20c1.5 0 2.5-.5 3.2-1.3.7-.8 1-1.7 1.8-2.2.8-.5 1.8-.5 3 .5"/></svg>
     </button>
     <button class="quick-btn" id="quick-id" title="Login por código">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 12a4 4 0 0 0-8 0"/><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>
@@ -1753,8 +1787,12 @@
       "#ff4d8d","#ff2d55","#ff7ab6","#b08968","#7f5539","#9c6644","#4f772d","#70e000",
       "#a7c957","#386641","#f77f00","#ff6f61","#ffd166","#8338ec","#3a0ca3","#4361ee",
       "#4cc9f0","#9d4edd","#e63946","#f1fa8c","#06d6a0","#118ab2","#ffd6a5","#6f1d1b",
-      "#1b4332","#2d6a4f","#40916c","#52b788","#74c69d","#95d5b2","#d8f3dc","#ffb703",
-      "#fb8500","#e76f51","#6a4c93","#8ecae6","#219ebc","#023047","#ffb4a2","#b56576"
+      "#ff1744","#d500f9","#651fff","#2979ff","#00b0ff","#00b8d4","#76ff03","#c6ff00",
+      "#ffd600","#ffab00","#ff6d00","#bf360c","#3e2723","#880e4f","#4a148c","#311b92",
+      "#1a237e","#004d40","#006064","#263238","#455a64","#5d4037","#827717","#f57f17",
+      "#e65100","#b71c1c","#8e24aa","#00897b","#2e7d32","#1565c0","#283593","#7b1fa2",
+      "#c2185b","#ad1457","#00838f","#6d4c41","#37474f","#8d6e63","#9e9d24","#c0ca33",
+      "#aed581","#81c784","#4db6ac","#4fc3f7","#7986cb","#ba68c8","#ff8a65","#f22c2c"
     ];
 
     const el = {
@@ -1777,6 +1815,7 @@
       chatBtn: document.getElementById('chat-btn'),
       statsBtn: document.getElementById('stats-btn'),
       centerBtn: document.getElementById('center-btn'),
+      paletteToggleBtn: document.getElementById('palette-toggle-btn'),
       sidebarCloseBtn: document.getElementById('sidebar-close-btn'),
       chatArea: document.getElementById('chat-area'),
       chatInput: document.getElementById('chat-input'),
@@ -1784,6 +1823,7 @@
       chatClearBtn: document.getElementById('chat-clear-btn'),
       paletteRender: document.getElementById('palette-render'),
       palettePager: document.getElementById('palette-pager'),
+      eyedropperBtn: document.getElementById('eyedropper-btn'),
       palettePrevBtn: document.getElementById('palette-prev'),
       paletteNextBtn: document.getElementById('palette-next'),
       palettePageLabel: document.getElementById('palette-page-label'),
@@ -1883,6 +1923,7 @@
     }
 
     function initBoardImageData() {
+
       const width = getBoardWidth();
       const height = getBoardHeight();
       boardImageData = ctx.createImageData(width, height);
@@ -1958,12 +1999,16 @@
       timelapseSnapshotBusy: false,
       audioCtx: null,
       paletteVisibleMobile: localStorage.getItem('nf_palette_visible_mobile') !== '0',
+      paletteVisibleDesktop: localStorage.getItem('nf_palette_visible_desktop') !== '0',
       palettePageMobile: Math.max(0, parseInt(localStorage.getItem('nf_palette_mobile_page') || '0', 10) || 0),
+      palettePageDesktop: Math.max(0, parseInt(localStorage.getItem('nf_palette_desktop_page') || '0', 10) || 0),
+      eyedropperMode: localStorage.getItem('nf_eyedropper_mode') === '1',
       lastMessageTime: 0,
       lastChatSendAt: 0,
       lastChatSendText: '',
       popQueue: new Map(),
       pendingPixelEventKeys: new Set(),
+      pixelEventsListenerStartedAt: 0,
       hoverPoint: null,
       brushMode: false,
       sessionCode: localStorage.getItem('nf_session_code') || '',
@@ -2156,7 +2201,9 @@
 
     function renderActiveUsersPopover(list = state.activeUsers) {
       const users = Array.isArray(list) ? list : [];
+      const count = getActiveUsersCountForUI();
       if (el.activeUsersCount) el.activeUsersCount.textContent = String(users.length);
+      if (el.statOnline) el.statOnline.textContent = formatNumber(count);
       if (!el.activeUsersList) return;
       el.activeUsersList.innerHTML = '';
       if (!users.length) {
@@ -2468,7 +2515,7 @@
     }
 
     function updateTopStats() {
-      const activeUsers = Number(state.onlineCount || (state.activeUsers && state.activeUsers.length) || state.activeUserCount || 0);
+      const activeUsers = getActiveUsersCountForUI();
       const totalPlaced = Number.isFinite(Number(state.totalPixelsPlaced)) ? Number(state.totalPixelsPlaced) : 0;
       const contributors = Number.isFinite(Number(state.contributorCount)) ? Number(state.contributorCount) : 0;
       const rate = Number(state.pixelRate || 0);
@@ -2494,7 +2541,7 @@
 
       if (el.mobileStatOnline) el.mobileStatOnline.textContent = formatNumber(activeUsers);
       if (el.mobileStatTotal) el.mobileStatTotal.textContent = formatNumber(totalPlaced);
-      if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(rate)}/min`;
+      if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(Number(rate || 0))}/min`;
       if (el.mobileStatUnique) el.mobileStatUnique.textContent = formatNumber(contributors);
       if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent;
       if (el.boardSizeStats) el.boardSizeStats.textContent = formatBoardDims();
@@ -2511,10 +2558,27 @@
       if (window.matchMedia('(max-width: 768px)').matches) closeSidebar();
     }
 
-    const PALETTE_PAGE_SIZE = 32;
+    const PALETTE_PAGE_SIZE_MOBILE = 32;
+    const PALETTE_PAGE_SIZE_DESKTOP = 48;
+
+    function getPalettePageSize() {
+      return isMobileLayout() ? PALETTE_PAGE_SIZE_MOBILE : PALETTE_PAGE_SIZE_DESKTOP;
+    }
+
+    function getPalettePageState() {
+      return isMobileLayout() ? state.palettePageMobile : state.palettePageDesktop;
+    }
+
+    function setPalettePageState(page) {
+      if (isMobileLayout()) {
+        state.palettePageMobile = page;
+      } else {
+        state.palettePageDesktop = page;
+      }
+    }
 
     function getPalettePageCount() {
-      return Math.max(1, Math.ceil(colorPalette.length / PALETTE_PAGE_SIZE));
+      return Math.max(1, Math.ceil(colorPalette.length / getPalettePageSize()));
     }
 
     function clampPalettePage(page) {
@@ -2522,50 +2586,57 @@
     }
 
     function getVisiblePaletteColors() {
-      if (!isMobileLayout()) return colorPalette.slice();
-      const page = clampPalettePage(state.palettePageMobile);
-      const start = page * PALETTE_PAGE_SIZE;
-      return colorPalette.slice(start, start + PALETTE_PAGE_SIZE);
+      const pageSize = getPalettePageSize();
+      const page = clampPalettePage(getPalettePageState());
+      const start = page * pageSize;
+      return colorPalette.slice(start, start + pageSize);
     }
 
     function syncPalettePagerUI() {
-      const mobile = isMobileLayout();
       const totalPages = getPalettePageCount();
-      const page = clampPalettePage(state.palettePageMobile);
-      if (el.palettePager) el.palettePager.style.display = mobile ? 'flex' : 'none';
+      const page = clampPalettePage(getPalettePageState());
+      if (el.palettePager) el.palettePager.style.display = 'flex';
       if (el.palettePrevBtn) {
-        el.palettePrevBtn.disabled = !mobile || page <= 0;
-        el.palettePrevBtn.title = mobile ? 'Página anterior' : 'Paleta completa';
+        el.palettePrevBtn.disabled = page <= 0;
+        el.palettePrevBtn.title = 'Página anterior';
       }
       if (el.paletteNextBtn) {
-        el.paletteNextBtn.disabled = !mobile || page >= totalPages - 1;
-        el.paletteNextBtn.title = mobile ? 'Página siguiente' : 'Paleta completa';
+        el.paletteNextBtn.disabled = page >= totalPages - 1;
+        el.paletteNextBtn.title = 'Página siguiente';
       }
       if (el.palettePageLabel) {
-        el.palettePageLabel.textContent = mobile ? `Página ${page + 1} / ${totalPages}` : `${colorPalette.length} colores`;
+        el.palettePageLabel.textContent = `Página ${page + 1} / ${totalPages}`;
       }
     }
 
-    function setPaletteMobilePage(page, persist = true) {
+    function setPalettePage(page, persist = true) {
       const nextPage = clampPalettePage(page);
-      state.palettePageMobile = nextPage;
+      setPalettePageState(nextPage);
       if (persist) {
-        try { localStorage.setItem('nf_palette_mobile_page', String(nextPage)); } catch {}
+        try {
+          if (isMobileLayout()) localStorage.setItem('nf_palette_mobile_page', String(nextPage));
+          else localStorage.setItem('nf_palette_desktop_page', String(nextPage));
+        } catch {}
       }
       buildPalette();
     }
 
+    function setPaletteMobilePage(page, persist = true) {
+      setPalettePage(page, persist);
+    }
+
     function buildPalette() {
       if (!el.paletteRender) return;
-      const mobile = isMobileLayout();
-      const totalPages = getPalettePageCount();
-      state.palettePageMobile = clampPalettePage(state.palettePageMobile);
-      if (state.palettePageMobile >= totalPages) {
-        state.palettePageMobile = totalPages - 1;
-        try { localStorage.setItem('nf_palette_mobile_page', String(state.palettePageMobile)); } catch {}
+      const pageSize = getPalettePageSize();
+      const currentPage = clampPalettePage(getPalettePageState());
+      setPalettePageState(currentPage);
+      if (isMobileLayout()) {
+        try { localStorage.setItem('nf_palette_mobile_page', String(currentPage)); } catch {}
+      } else {
+        try { localStorage.setItem('nf_palette_desktop_page', String(currentPage)); } catch {}
       }
       const colors = getVisiblePaletteColors();
-      const baseIndex = mobile ? state.palettePageMobile * PALETTE_PAGE_SIZE : 0;
+      const baseIndex = currentPage * pageSize;
       el.paletteRender.innerHTML = '';
       colors.forEach((color, index) => {
         const btn = document.createElement('button');
@@ -2595,24 +2666,22 @@
     }
 
     function selectColor(color) {
-      if (!color || color === state.activeColor) {
-        state.activeColor = color || state.activeColor;
+      const selected = normalizeColorHex(color || state.activeColor);
+      state.activeColor = selected;
+      if (colorPalette.includes(selected)) {
+        const idx = colorPalette.indexOf(selected);
+        const pageSize = getPalettePageSize();
+        const page = Math.floor(idx / pageSize);
+        setPalettePageState(page);
         if (isMobileLayout()) {
-          const idx = colorPalette.indexOf(state.activeColor);
-          if (idx >= 0) setPaletteMobilePage(Math.floor(idx / PALETTE_PAGE_SIZE), true);
+          try { localStorage.setItem('nf_palette_mobile_page', String(page)); } catch {}
+        } else {
+          try { localStorage.setItem('nf_palette_desktop_page', String(page)); } catch {}
         }
-        updatePaletteSelectionUI();
-        syncPalettePagerUI();
-        return;
-      }
-      state.activeColor = color;
-      if (isMobileLayout()) {
-        const idx = colorPalette.indexOf(color);
-        if (idx >= 0) setPaletteMobilePage(Math.floor(idx / PALETTE_PAGE_SIZE), true);
       }
       updatePaletteSelectionUI();
       syncPalettePagerUI();
-      el.paletteStatus.textContent = `Color seleccionado: ${color}`;
+      el.paletteStatus.textContent = state.eyedropperMode ? 'Cuentagotas activo: toca un pixel para copiar su color' : `Color seleccionado: ${selected}`;
       playClickSound();
     }
 
@@ -2655,7 +2724,8 @@
     }
 
     function refreshCamera() {
-      el.canvas.style.transform = `translate3d(${state.originX}px, ${state.originY}px, 0) scale(${state.scale})`;
+      const transform = `translate3d(${state.originX}px, ${state.originY}px, 0) scale(${state.scale})`;
+      el.canvas.style.transform = transform;
       if (state.hoverPoint) {
         updateCoordsOverlay(state.hoverPoint.clientX, state.hoverPoint.clientY);
       }
@@ -2696,31 +2766,30 @@
     }
 
     function getCanvasCoords(clientX, clientY) {
-      const rect = el.canvas.getBoundingClientRect();
+      const rect = el.viewport.getBoundingClientRect();
       const localX = clientX - rect.left;
       const localY = clientY - rect.top;
-      const x = Math.floor((localX * getBoardWidth()) / rect.width);
-      const y = Math.floor((localY * getBoardHeight()) / rect.height);
+      const scale = Math.max(0.0001, Number(state.scale) || 1);
+      const x = Math.floor((localX - state.originX) / scale);
+      const y = Math.floor((localY - state.originY) / scale);
       return { x, y, rect };
     }
 
     function updateCoordsOverlay(clientX, clientY) {
-      const { x, y, rect } = getCanvasCoords(clientX, clientY);
+      const { x, y } = getCanvasCoords(clientX, clientY);
       if (x >= 0 && x < getBoardWidth() && y >= 0 && y < getBoardHeight()) {
-        const viewportRect = el.viewport.getBoundingClientRect();
-        const cellW = rect.width / getBoardWidth();
-        const cellH = rect.height / getBoardHeight();
-        const left = Math.floor((rect.left - viewportRect.left) + x * cellW);
-        const top = Math.floor((rect.top - viewportRect.top) + y * cellH);
-        const sizeW = Math.max(1, Math.ceil(cellW));
-        const sizeH = Math.max(1, Math.ceil(cellH));
+        const scale = Math.max(0.0001, Number(state.scale) || 1);
+        const left = Math.round(state.originX + (x * scale));
+        const top = Math.round(state.originY + (y * scale));
+        const pixelSize = Math.max(1, scale);
         state.hoverPoint = { clientX, clientY, x, y };
         el.viewport.classList.add('pixel-hover');
         el.pixelSelector.style.display = 'block';
-        el.pixelSelector.style.left = `${left}px`;
-        el.pixelSelector.style.top = `${top}px`;
-        el.pixelSelector.style.width = `${sizeW}px`;
-        el.pixelSelector.style.height = `${sizeH}px`;
+        el.pixelSelector.style.left = '0px';
+        el.pixelSelector.style.top = '0px';
+        el.pixelSelector.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+        el.pixelSelector.style.width = `${pixelSize}px`;
+        el.pixelSelector.style.height = `${pixelSize}px`;
         el.coordsInfo.style.display = 'block';
         el.coordsInfo.style.left = `${Math.min(window.innerWidth - 120, clientX + 15)}px`;
         el.coordsInfo.style.top = `${Math.min(window.innerHeight - 30, clientY + 15)}px`;
@@ -2954,11 +3023,39 @@
       const cutoff = Date.now() - 60000;
       state.recentEventTimes = state.recentEventTimes.filter(t => t >= cutoff);
       state.pixelRate = state.recentEventTimes.length;
-      if (el.statRate) el.statRate.textContent = formatNumber(state.pixelRate);
-      if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(state.pixelRate)}/min`;
+      if (el.statRate) el.statRate.textContent = formatNumber(Number(state.pixelRate || 0));
+      if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(Number(state.pixelRate || 0))}/min`;
       if (meta.persist !== false) {
         state.lastPixelRateAt = value;
       }
+    }
+
+    function showTrackingPixelPopup({ username, x, y, color, ts }) {
+      if (!state.isAuthorized || !state.settings?.trackingEnabled) return;
+      if (!el.viewport) return;
+      const popup = document.createElement('div');
+      popup.className = 'pixel-pop';
+      const canvasRect = el.canvas?.getBoundingClientRect?.() || el.viewport.getBoundingClientRect();
+      const boardX = Number.isFinite(Number(x)) ? Number(x) : null;
+      const boardY = Number.isFinite(Number(y)) ? Number(y) : null;
+      let left = Math.round(window.innerWidth / 2);
+      let top = Math.max(70, Math.round(window.innerHeight * 0.18));
+      if (boardX !== null && boardY !== null && canvasRect.width > 0 && canvasRect.height > 0) {
+        left = Math.round(canvasRect.left + ((boardX + 0.5) / Math.max(1, getBoardWidth())) * canvasRect.width);
+        top = Math.round(canvasRect.top + ((boardY + 0.5) / Math.max(1, getBoardHeight())) * canvasRect.height - 10);
+      }
+      popup.style.left = `${Math.max(20, Math.min(window.innerWidth - 20, left))}px`;
+      popup.style.top = `${Math.max(70, Math.min(window.innerHeight - 20, top))}px`;
+      popup.style.background = 'rgba(0,0,0,.82)';
+      popup.innerHTML = `${escapeHtmlText(username || 'Anónimo')} · (${Number(x)}, ${Number(y)}) · <span style="color:${normalizeColorHex(color || '#ffffff')}">${escapeHtmlText(normalizeColorHex(color || '#ffffff'))}</span>`;
+      document.body.appendChild(popup);
+      setTimeout(() => {
+        popup.style.opacity = '0';
+        popup.style.transform = 'translate(-50%,-135%) scale(.96)';
+      }, 980);
+      setTimeout(() => {
+        try { popup.remove(); } catch {}
+      }, 1450);
     }
 
     function logPixelEvent(ts, payload = {}) {
@@ -2977,14 +3074,27 @@
 
     function consumePixelEvent(eventSnap) {
       const eventKey = String(eventSnap?.key || '');
+      const value = eventSnap?.val?.() || {};
       if (eventKey && state.pendingPixelEventKeys && state.pendingPixelEventKeys.has(eventKey)) {
         state.pendingPixelEventKeys.delete(eventKey);
         return;
       }
-      const value = eventSnap?.val?.() || {};
-      const ts = Number(value.ts) || Date.now();
-      if (ts && (Date.now() - ts) > 60000) return;
-      registerRecentEvent(ts, { persist: false });
+      if (value && Number.isFinite(Number(value.ts))) {
+        const ts = Number(value.ts);
+        registerRecentEvent(ts, { persist: false });
+        const eventStartedAt = Number(state.pixelEventsListenerStartedAt || 0);
+        const isLiveEvent = !eventStartedAt || ts >= (eventStartedAt - 1500);
+        const eventUid = normalizeActivityText(value.uid || '', 64);
+        if (isLiveEvent && eventUid !== ensureUid()) {
+          showTrackingPixelPopup({
+            username: normalizeUsername(value.username || value.user || 'Anónimo'),
+            x: Number.isFinite(Number(value.x)) ? Number(value.x) : null,
+            y: Number.isFinite(Number(value.y)) ? Number(value.y) : null,
+            color: normalizeColorHex(value.color || '#ffffff'),
+            ts
+          });
+        }
+      }
     }
 
     function applyPresenceSnapshot(presence = {}) {
@@ -3643,14 +3753,6 @@
 
       const pending = state.popQueue.get(key);
       const isLocalEcho = !!pending && pending.color === color && (Date.now() - pending.ts) < 5000;
-      const resolvedName = normalizeUsername(
-        (rawObject && (rawObject.username || rawObject.user || rawObject.by)) ||
-        (rawObject && rawObject.uid && state.usersSnapshot && state.usersSnapshot[rawObject.uid] && state.usersSnapshot[rawObject.uid].username) ||
-        (isLocalEcho ? pending.username : '') ||
-        'Anónimo'
-      );
-
-      announcePixel(x, y, color, resolvedName, isLocalEcho);
 
       if (isLocalEcho) {
         state.popQueue.delete(key);
@@ -3661,6 +3763,7 @@
     function attachPixelEventListeners() {
       if (state.pixelEventsListenerAttached) return;
       state.pixelEventsListenerAttached = true;
+      state.pixelEventsListenerStartedAt = Date.now();
       const startTs = Date.now() - 60000;
       const queryRef = db.ref(PIXEL_EVENTS_PATH).orderByChild('ts').startAt(startTs);
       queryRef.off('child_added');
@@ -3685,6 +3788,10 @@
         if (e.target === el.modalSessionLogin) hideAllModals();
       });
       el.centerBtn.addEventListener('click', centerCanvas);
+      el.paletteToggleBtn?.addEventListener('click', () => {
+        if (isMobileLayout()) toggleMobilePalette();
+        else toggleDesktopPalette();
+      });
       el.chatSendBtn?.addEventListener('click', sendChatMessage);
       el.chatClearBtn?.addEventListener('click', () => {
         clearRecentChatHistoryView();
@@ -3721,6 +3828,10 @@
           }
         }, { passive:true });
       }
+      el.statOnline?.addEventListener('pointerenter', showUsers);
+      el.statOnline?.addEventListener('mouseenter', showUsers);
+      el.statOnline?.addEventListener('pointerleave', scheduleHideUsers);
+      el.statOnline?.addEventListener('mouseleave', scheduleHideUsers);
       if (activeUsersNode) {
         activeUsersNode.addEventListener('pointerenter', showUsers);
         activeUsersNode.addEventListener('mouseenter', showUsers);
@@ -3745,16 +3856,17 @@
         if (isMobileLayout()) {
           toggleMobilePalette();
         } else {
-          el.uiBottom.scrollIntoView({ behavior:'smooth', block:'start' });
+          toggleDesktopPalette();
         }
       });
+      el.eyedropperBtn?.addEventListener('click', () => toggleEyedropperMode());
       el.palettePrevBtn?.addEventListener('click', () => {
-        if (!isMobileLayout()) return;
-        setPaletteMobilePage(state.palettePageMobile - 1);
+        const page = (isMobileLayout() ? state.palettePageMobile : state.palettePageDesktop) - 1;
+        setPalettePage(page);
       });
       el.paletteNextBtn?.addEventListener('click', () => {
-        if (!isMobileLayout()) return;
-        setPaletteMobilePage(state.palettePageMobile + 1);
+        const page = (isMobileLayout() ? state.palettePageMobile : state.palettePageDesktop) + 1;
+        setPalettePage(page);
       });
 
       el.usernameInput.addEventListener('input', syncUiWithUsername);
@@ -3848,9 +3960,12 @@
       window.addEventListener('resize', () => {
         refreshCamera();
         keepCanvasAliveAfterSleep();
+        syncPaletteVisibilityUI();
       });
 
       updateBrushButtonUI();
+      setEyedropperMode(state.eyedropperMode, false);
+      syncPaletteVisibilityUI();
       updateSessionLoginModal();
 
       const activePointers = new Map();
@@ -3884,7 +3999,13 @@
         }
 
         if (activePointers.size === 0) {
-          if (hadDrag && !hadMove && !(isMobileLayout() && state.brushMode && e.pointerType === 'touch')) handlePixelCommit(e);
+          if (hadDrag && !hadMove) {
+            if (state.eyedropperMode) {
+              sampleColorAt(e.clientX, e.clientY, 'eyedropper');
+            } else if (!(isMobileLayout() && state.brushMode && e.pointerType === 'touch')) {
+              handlePixelCommit(e);
+            }
+          }
           state.dragging = false;
           state.dragMoved = false;
           el.viewport.classList.remove('dragging');
@@ -3899,13 +4020,30 @@
       }
 
       el.viewport.addEventListener('pointerdown', e => {
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
         if (isInteractiveUiTarget(e.target)) return;
         unlockAudio();
 
+        if (e.pointerType === 'mouse' && e.button === 1) {
+          e.preventDefault();
+          sampleColorAt(e.clientX, e.clientY, 'middle-click');
+          return;
+        }
+
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
         const mobileBrushTouch = isMobileLayout() && e.pointerType === 'touch' && state.brushMode;
+        const pickerActive = !!state.eyedropperMode;
         setPointerPosition(e);
         try { el.viewport.setPointerCapture(e.pointerId); } catch {}
+
+        if (pickerActive) {
+          state.dragging = false;
+          state.dragMoved = false;
+          state.pinchDistance = null;
+          updateCoordsOverlay(e.clientX, e.clientY);
+          sampleColorAt(e.clientX, e.clientY, 'eyedropper');
+          return;
+        }
 
         if (mobileBrushTouch) {
           state.dragging = false;
@@ -3945,6 +4083,10 @@
           if (state.touchPainting) {
             commitPixelAt(e.clientX, e.clientY, 'touch');
           }
+          return;
+        }
+        if (state.eyedropperMode) {
+          updateCoordsOverlay(e.clientX, e.clientY);
           return;
         }
 
@@ -3989,6 +4131,12 @@
         }
       });
 
+      el.viewport.addEventListener('mousedown', e => {
+        if (e.button === 1 && !isInteractiveUiTarget(e.target)) {
+          e.preventDefault();
+        }
+      }, true);
+
       el.viewport.addEventListener('pointerup', endViewportInteraction);
       el.viewport.addEventListener('pointercancel', endViewportInteraction);
       el.viewport.addEventListener('lostpointercapture', () => {
@@ -4002,7 +4150,7 @@
       el.viewport.addEventListener('pointerleave', () => {
         if (!state.dragging && activePointers.size === 0) {
           state.hoverPoint = null;
-          el.viewport.classList.remove('pixel-hover');
+          if (!state.eyedropperMode) el.viewport.classList.remove('pixel-hover');
           el.pixelSelector.style.display = 'none';
           el.coordsInfo.style.display = 'none';
         }
@@ -4142,39 +4290,115 @@
 
     function updatePaintModeUI() {
       el.cooldownBar.style.width = '100%';
-      el.cooldownText.textContent = 'Pintura continua';
-      el.cooldownValue.textContent = '∞';
+      el.cooldownText.textContent = 'Listo para pintar';
+      el.cooldownValue.textContent = '—';
     }
 
     function updateBrushButtonUI() {
       if (!el.quickBrush) return;
-      const active = !!state.brushMode;
-      el.quickBrush.classList.toggle('brush-on', active);
-      el.quickBrush.classList.toggle('active', active);
-      el.quickBrush.setAttribute('aria-pressed', String(active));
-      el.quickBrush.title = active ? 'Pincel continuo activado' : 'Toggle pincel continuo';
+      el.quickBrush.style.display = 'none';
+      el.quickBrush.setAttribute('aria-hidden', 'true');
     }
 
-    function toggleBrushMode(force) {
-      state.brushMode = typeof force === 'boolean' ? !!force : !state.brushMode;
-      if (isMobileLayout()) {
-        if (!state.brushMode) {
-          state.touchPainting = false;
-          stopPaintLoop();
-        }
-      }
+    function toggleBrushMode() {
+      state.brushMode = false;
+      state.touchPainting = false;
       updateBrushButtonUI();
     }
 
+
+    function getActiveUsersCountForUI() {
+      if (Array.isArray(state.activeUsers)) return state.activeUsers.length;
+      if (Number.isFinite(Number(state.activeUserCount))) return Number(state.activeUserCount) || 0;
+      if (Number.isFinite(Number(state.onlineCount))) return Number(state.onlineCount) || 0;
+      return 0;
+    }
+
+    function syncPaletteVisibilityUI() {
+      const mobile = isMobileLayout();
+      const visible = mobile ? state.paletteVisibleMobile : state.paletteVisibleDesktop;
+      if (el.uiBottom) el.uiBottom.classList.toggle('mobile-hidden', mobile && !state.paletteVisibleMobile);
+      if (el.uiBottom) el.uiBottom.classList.toggle('hidden-desktop', !mobile && !state.paletteVisibleDesktop);
+      if (el.paletteToggleBtn) {
+        el.paletteToggleBtn.classList.toggle('active', !mobile ? state.paletteVisibleDesktop : state.paletteVisibleMobile);
+        el.paletteToggleBtn.setAttribute('aria-pressed', String(visible));
+        el.paletteToggleBtn.title = mobile
+          ? (state.paletteVisibleMobile ? 'Ocultar paleta' : 'Mostrar paleta')
+          : (state.paletteVisibleDesktop ? 'Ocultar paleta' : 'Mostrar paleta');
+      }
+      if (el.quickPalette) {
+        el.quickPalette.classList.toggle('active', mobile ? state.paletteVisibleMobile : state.paletteVisibleDesktop);
+        el.quickPalette.setAttribute('aria-pressed', String(visible));
+        el.quickPalette.title = mobile ? (state.paletteVisibleMobile ? 'Ocultar paleta' : 'Mostrar paleta') : 'Paleta';
+      }
+      syncPalettePagerUI();
+    }
+
+    function setDesktopPaletteVisible(visible, persist = true) {
+      state.paletteVisibleDesktop = !!visible;
+      if (persist) {
+        try { localStorage.setItem('nf_palette_visible_desktop', state.paletteVisibleDesktop ? '1' : '0'); } catch {}
+      }
+      syncPaletteVisibilityUI();
+    }
+
+    function toggleDesktopPalette() {
+      setDesktopPaletteVisible(!state.paletteVisibleDesktop);
+    }
+
+    function setEyedropperMode(enabled, persist = true) {
+      state.eyedropperMode = !!enabled;
+      if (persist) {
+        try { localStorage.setItem('nf_eyedropper_mode', state.eyedropperMode ? '1' : '0'); } catch {}
+      }
+
+      if (el.eyedropperBtn) {
+        el.eyedropperBtn.classList.toggle('active', state.eyedropperMode);
+        el.eyedropperBtn.setAttribute('aria-pressed', String(state.eyedropperMode));
+        el.eyedropperBtn.title = state.eyedropperMode ? 'Cuentagotas activo' : 'Cuentagotas';
+      }
+
+      if (el.quickBrush) {
+        el.quickBrush.classList.toggle('active', state.eyedropperMode);
+      }
+
+      if (el.viewport) {
+        if (state.eyedropperMode) el.viewport.classList.add('pixel-hover');
+        else if (!state.dragging) el.viewport.classList.remove('pixel-hover');
+      }
+
+      if (el.paletteStatus) {
+        el.paletteStatus.textContent = state.eyedropperMode
+          ? 'Cuentagotas activo: toca un pixel para copiar su color'
+          : `Color seleccionado: ${state.activeColor || '#ffffff'}`;
+      }
+    }
+
+    function toggleEyedropperMode() {
+      setEyedropperMode(!state.eyedropperMode);
+    }
+
+    function sampleColorAt(clientX, clientY, source = 'sample') {
+      const { x, y } = getCanvasCoords(clientX, clientY);
+      if (x < 0 || x >= getBoardWidth() || y < 0 || y >= getBoardHeight()) return false;
+      const color = normalizeColorHex(getCurrentPixelHex(x, y));
+      selectColor(color);
+      if (el.paletteStatus) {
+        el.paletteStatus.textContent = `Color tomado: ${color}`;
+      }
+      playClickSound();
+      return true;
+    }
+
     function updateTopStats() {
-      const activeUsers = Number(state.onlineCount || (state.activeUsers && state.activeUsers.length) || state.activeUserCount || 0);
+      const activeUsers = getActiveUsersCountForUI();
       const totalPlaced = Number.isFinite(Number(state.totalPixelsPlaced)) ? Number(state.totalPixelsPlaced) : 0;
       const contributors = Number.isFinite(Number(state.contributorCount)) ? Number(state.contributorCount) : 0;
       el.statMine.textContent = formatNumber(state.myPixels);
       el.statTotal.textContent = formatNumber(totalPlaced);
       el.statOnline.textContent = formatNumber(activeUsers);
       el.statUnique.textContent = formatNumber(contributors);
-      el.statRate.textContent = formatNumber(state.pixelRate);
+      el.statRate.textContent = formatNumber(Number(state.pixelRate || 0));
       el.toggleTracking.disabled = !state.isAuthorized;
       const trackingToggleRow = el.toggleTracking?.closest('.toggle-row');
       if (trackingToggleRow) trackingToggleRow.style.display = state.isAuthorized ? 'flex' : 'none';
@@ -4186,7 +4410,7 @@
       el.statTs.className = state.settings.timestampEnabled ? 'good' : 'warn';
       if (el.mobileStatOnline) el.mobileStatOnline.textContent = formatNumber(activeUsers);
       if (el.mobileStatTotal) el.mobileStatTotal.textContent = formatNumber(totalPlaced);
-      if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(state.pixelRate)}/min`;
+      if (el.mobileStatRate) el.mobileStatRate.textContent = `${formatNumber(Number(state.pixelRate || 0))}/min`;
       if (el.mobileStatUnique) el.mobileStatUnique.textContent = formatNumber(contributors);
       if (el.mobileSessionClock) el.mobileSessionClock.textContent = el.sessionClock.textContent || '00:00:00';
       el.minimapZoom.textContent = `${state.scale.toFixed(1)}×`;
@@ -4199,10 +4423,18 @@
 
     function syncPaletteVisibilityUI() {
       const mobile = isMobileLayout();
-      const visible = !mobile || state.paletteVisibleMobile;
-      if (el.uiBottom) el.uiBottom.classList.toggle('mobile-hidden', mobile && !state.paletteVisibleMobile);
+      const visible = mobile ? state.paletteVisibleMobile : state.paletteVisibleDesktop;
+      if (el.uiBottom) {
+        el.uiBottom.classList.toggle('mobile-hidden', mobile && !state.paletteVisibleMobile);
+        el.uiBottom.classList.toggle('hidden-desktop', !mobile && !state.paletteVisibleDesktop);
+      }
+      if (el.paletteToggleBtn) {
+        el.paletteToggleBtn.classList.toggle('active', visible);
+        el.paletteToggleBtn.setAttribute('aria-pressed', String(visible));
+        el.paletteToggleBtn.title = visible ? 'Ocultar paleta' : 'Mostrar paleta';
+      }
       if (el.quickPalette) {
-        el.quickPalette.classList.toggle('active', mobile ? state.paletteVisibleMobile : true);
+        el.quickPalette.classList.toggle('active', visible);
         el.quickPalette.setAttribute('aria-pressed', String(visible));
         el.quickPalette.title = mobile ? (state.paletteVisibleMobile ? 'Ocultar paleta' : 'Mostrar paleta') : 'Paleta';
       }
@@ -4431,11 +4663,7 @@
     }
 
     function startSpacePaintLoop() {
-      if (isMobileLayout()) return;
-      if (state.banned) return;
-      if (!state.spaceHeld) return;
-      if (!state.hoverPoint) return;
-      startPaintLoop('space');
+      return;
     }
 
     function stopSpacePaintLoop() {
@@ -4446,18 +4674,7 @@
     }
 
     function startPaintLoop(mode = 'manual') {
-      if (state.paintLoopId) return;
-      const tick = () => {
-        if (state.banned) {
-          stopPaintLoop();
-          return;
-        }
-        if ((state.spaceHeld || state.touchPainting || state.brushMode) && state.hoverPoint) {
-          commitPixelAt(state.hoverPoint.clientX, state.hoverPoint.clientY, mode);
-        }
-      };
-      state.paintLoopId = setInterval(tick, PAINT_REPEAT_MS);
-      tick();
+      return;
     }
 
     function stopPaintLoop() {
@@ -5056,14 +5273,6 @@
 
       const pending = state.popQueue.get(key);
       const isLocalEcho = !!pending && pending.color === color && (Date.now() - pending.ts) < 5000;
-      const resolvedName = normalizeUsername(
-        (rawObject && (rawObject.username || rawObject.user || rawObject.by)) ||
-        (rawObject && rawObject.uid && state.usersSnapshot && state.usersSnapshot[rawObject.uid] && state.usersSnapshot[rawObject.uid].username) ||
-        (isLocalEcho ? pending.username : '') ||
-        'Anónimo'
-      );
-
-      announcePixel(x, y, color, resolvedName, isLocalEcho);
 
       if (isLocalEcho) {
         state.popQueue.delete(key);
