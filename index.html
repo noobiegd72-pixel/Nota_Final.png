@@ -2555,7 +2555,11 @@
     }
 
     function normalizeSidebarForMobile() {
-      if (window.matchMedia('(max-width: 768px)').matches) closeSidebar();
+      if (!window.matchMedia('(max-width: 768px)').matches) return;
+      const isChatFocused = document.activeElement === el.chatInput;
+      const isChatSectionOpen = el.sidebar?.classList.contains('show') && el.sidebar?.dataset.mobileSection === 'chat';
+      if (isChatFocused || isChatSectionOpen) return;
+      closeSidebar();
     }
 
     const PALETTE_PAGE_SIZE_MOBILE = 32;
@@ -3952,6 +3956,12 @@
         const v = Math.max(1, parseInt(el.tlFreqInput.value, 10) || DEFAULT_SETTINGS.timelapseIntervalSec);
         el.tlFreqInput.value = String(v);
       });
+      el.chatInput.addEventListener('focus', () => {
+        if (isMobileLayout()) openSidebar('chat');
+      });
+      el.chatInput.addEventListener('click', () => {
+        if (isMobileLayout()) openSidebar('chat');
+      });
       el.chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) sendChatMessage(); } });
       [document.getElementById('module-stats'), document.getElementById('module-globalstats')].filter(Boolean).forEach(node => {
         node.addEventListener('click', () => { if (isMobileLayout()) showActiveUsersPopover(); });
@@ -4165,6 +4175,8 @@
 
       window.addEventListener('keydown', e => {
         if (e.code === 'Space' && !isMobileLayout()) {
+          const typingTarget = isTypingTarget(e.target) || isTypingTarget(document.activeElement) || document.activeElement === el.chatInput;
+          if (typingTarget) return;
           if (e.repeat) {
             e.preventDefault();
             return;
@@ -4183,6 +4195,8 @@
 
       window.addEventListener('keyup', e => {
         if (e.code === 'Space') {
+          const typingTarget = isTypingTarget(e.target) || isTypingTarget(document.activeElement) || document.activeElement === el.chatInput;
+          if (typingTarget) return;
           e.preventDefault();
           stopSpacePaintLoop();
         }
@@ -4663,18 +4677,53 @@
     }
 
     function startSpacePaintLoop() {
-      return;
+      if (isMobileLayout()) return;
+      if (!state.spaceHeld || !state.hoverPoint || !state.username || state.banned) return;
+      if (state.paintLoopId) return;
+
+      const tick = () => {
+        if (!state.spaceHeld || !state.hoverPoint || isMobileLayout()) {
+          stopPaintLoop();
+          return;
+        }
+        commitPixelAt(state.hoverPoint.clientX, state.hoverPoint.clientY, 'space');
+      };
+
+      tick();
+      state.paintLoopId = setInterval(tick, PAINT_REPEAT_MS);
     }
 
     function stopSpacePaintLoop() {
       state.spaceHeld = false;
+      if (state.paintLoopId) {
+        clearInterval(state.paintLoopId);
+        state.paintLoopId = null;
+      }
       if (!state.touchPainting && !state.brushMode) {
         stopPaintLoop();
       }
     }
 
     function startPaintLoop(mode = 'manual') {
-      return;
+      if (state.paintLoopId) return;
+      if (!state.touchPainting && mode !== 'space') return;
+      if (!state.hoverPoint || !state.username || state.banned) return;
+
+      const source = mode === 'touch' ? 'touch' : 'space';
+      const tick = () => {
+        if (!state.hoverPoint || state.banned) {
+          stopPaintLoop();
+          return;
+        }
+        if (mode === 'space' && (!state.spaceHeld || isMobileLayout())) {
+          stopPaintLoop();
+          return;
+        }
+        commitPixelAt(state.hoverPoint.clientX, state.hoverPoint.clientY, source);
+      };
+
+      tick();
+      state.paintLoopId = setInterval(tick, PAINT_REPEAT_MS);
     }
 
     function stopPaintLoop() {
