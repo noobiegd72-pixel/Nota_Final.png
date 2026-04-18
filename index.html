@@ -647,7 +647,10 @@
       updateTopStats();
       updateLoaderStats();
       updateSidebarUnreadIndicator();
+      syncGridToggleUI();
+      resizeGridCanvas();
       requestMinimapRefresh(true);
+      requestGridRefresh(true);
     }
 
   </script>
@@ -720,10 +723,22 @@
 
     #viewport{
       position:fixed;inset:var(--header-h) 0 0 0;overflow:hidden;touch-action:none;overscroll-behavior:none;
-      background:transparent;cursor:grab
+      background:#000;cursor:grab;isolation:isolate
     }
     #viewport.dragging{cursor:grabbing}
     #viewport.pixel-hover{cursor:crosshair}
+    #viewport.is-interacting{background:#000}
+    #viewport.is-interacting canvas#canvas{
+      transition:none !important;
+      will-change:transform;
+    }
+
+    #grid-canvas{
+      position:absolute;left:0;top:0;display:block;pointer-events:none;
+      z-index:8;image-rendering:pixelated;image-rendering:crisp-edges;
+      background:transparent;transform:translate3d(0,0,0);backface-visibility:hidden;-webkit-backface-visibility:hidden;
+      will-change:transform,opacity
+    }
 
     .palette-pager{display:flex;align-items:center;justify-content:center;gap:10px;padding:0 14px 12px}
     .palette-page-btn{width:34px;height:34px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);font-weight:900;cursor:pointer;line-height:1}
@@ -734,6 +749,7 @@
       position:absolute;left:0;top:0;width:auto;height:auto;display:block;pointer-events:none;
       image-rendering:pixelated;image-rendering:crisp-edges;background:#fff;
       box-shadow:0 0 60px rgba(0,0,0,.78);transform-origin:0 0;will-change:transform;
+      transform:translate3d(0,0,0) scale(1);backface-visibility:hidden;-webkit-backface-visibility:hidden;
       transition:transform .16s cubic-bezier(.2,.8,.2,1),opacity .16s ease,filter .16s ease
     }
 
@@ -1311,6 +1327,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
           <span class="label">Centro</span>
         </button>
+        <button class="top-btn" id="grid-toggle-btn" title="Mostrar u ocultar grid">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M4 9h16M4 15h16M9 4v16M15 4v16"/></svg>
+          <span class="label">Grid</span>
+        </button>
         <button class="top-btn desktop-sidebar-toggle" id="desktop-sidebar-toggle" title="Ocultar o mostrar la interfaz lateral">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>
           <span class="label">Lateral</span>
@@ -1334,6 +1354,7 @@
 
   <div id="viewport">
     <div id="pixel-selector"></div>
+    <canvas id="grid-canvas"></canvas>
     <canvas id="canvas" width="125" height="125"></canvas>
   </div>
 
@@ -1495,6 +1516,9 @@
     </button>
     <button class="quick-btn" id="quick-center" title="Centrar lienzo">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
+    </button>
+    <button class="quick-btn" id="quick-grid" title="Mostrar u ocultar grid">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M4 9h16M4 15h16M9 4v16M15 4v16"/></svg>
     </button>
   </div>
   <div id="admin-entry" title="Administrador">
@@ -1809,12 +1833,14 @@
       coordsInfo: document.getElementById('coords-info'),
       viewport: document.getElementById('viewport'),
       canvas: document.getElementById('canvas'),
+      gridCanvas: document.getElementById('grid-canvas'),
       pixelSelector: document.getElementById('pixel-selector'),
       sidebar: document.getElementById('sidebar-right'),
       mobileMenuBtn: document.getElementById('mobile-menu-btn'),
       chatBtn: document.getElementById('chat-btn'),
       statsBtn: document.getElementById('stats-btn'),
       centerBtn: document.getElementById('center-btn'),
+      gridToggleBtn: document.getElementById('grid-toggle-btn'),
       paletteToggleBtn: document.getElementById('palette-toggle-btn'),
       sidebarCloseBtn: document.getElementById('sidebar-close-btn'),
       chatArea: document.getElementById('chat-area'),
@@ -1893,8 +1919,9 @@
       quickPalette: document.getElementById('quick-palette')
     };
 
-    const ctx = el.canvas.getContext('2d', { alpha: false });
-    const minimapCtx = el.minimap.getContext('2d', { alpha: false });
+    const ctx = el.canvas?.getContext ? el.canvas.getContext('2d', { alpha: false }) : null;
+    const gridCtx = el.gridCanvas?.getContext ? el.gridCanvas.getContext('2d', { alpha: true }) : null;
+    const minimapCtx = el.minimap?.getContext ? el.minimap.getContext('2d', { alpha: false }) : null;
 
     function getBoardWidth() {
       const value = Number(state?.boardWidth ?? state?.boardSize ?? state?.settings?.boardWidth ?? state?.settings?.boardSize ?? DEFAULT_BOARD_SIZE);
@@ -1977,6 +2004,7 @@
       knownBoardKeys: new Set(),
       pendingFlush: false,
       minimapRaf: 0,
+      gridRaf: 0,
       boardLoaded: false,
       loadingTotal: 1,
       loadingDone: 0,
@@ -2003,6 +2031,7 @@
       palettePageMobile: Math.max(0, parseInt(localStorage.getItem('nf_palette_mobile_page') || '0', 10) || 0),
       palettePageDesktop: Math.max(0, parseInt(localStorage.getItem('nf_palette_desktop_page') || '0', 10) || 0),
       eyedropperMode: localStorage.getItem('nf_eyedropper_mode') === '1',
+      gridEnabled: localStorage.getItem('nf_grid_enabled') === '1',
       lastMessageTime: 0,
       lastChatSendAt: 0,
       lastChatSendText: '',
@@ -2021,7 +2050,8 @@
       chatUnreadCount: 0,
       presenceRef: null,
       currentUserRef: null,
-      currentUserStatsRef: null
+      currentUserStatsRef: null,
+      canvasInteractionActive: false
     };
 
     initBoardImageData();
@@ -2158,6 +2188,7 @@
       state.knownBoardKeys = state.knownBoardKeys || new Set();
       renderBoardFromData(state.boardData || {});
       requestMinimapRefresh();
+      requestGridRefresh(true);
       updateTopStats();
       updateLoaderPreview();
       if (el.boardSizeInfo) el.boardSizeInfo.textContent = `${width}×${height} px`;
@@ -2176,6 +2207,7 @@
       });
       scheduleCanvasFlush();
       updateLoaderPreview();
+      requestGridRefresh(true);
     }
 
     function getActiveUserNamesFromSnapshot(snapshot) {
@@ -2254,6 +2286,7 @@
         renderBoardFromData(state.boardData || {});
         scheduleCanvasFlush();
         requestMinimapRefresh();
+        requestGridRefresh(true);
       } catch (err) {
         console.error('No se pudo refrescar el lienzo tras volver a la pestaña:', err);
       }
@@ -2727,6 +2760,112 @@
       return !el.sidebar?.classList.contains('hidden-desktop');
     }
 
+    function setCanvasInteractionState(active) {
+      if (!el.viewport || !el.canvas) return;
+      const next = !!active;
+      if (state.canvasInteractionActive === next) return;
+      state.canvasInteractionActive = next;
+      el.viewport.classList.toggle('is-interacting', next);
+      if (next) {
+        el.canvas.style.transition = 'none';
+      } else {
+        el.canvas.style.transition = '';
+      }
+    }
+
+    function resizeGridCanvas() {
+      if (!el.gridCanvas || !el.viewport || !gridCtx) return;
+      const rect = el.viewport.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const cssW = Math.max(1, Math.round(rect.width));
+      const cssH = Math.max(1, Math.round(rect.height));
+      const nextW = Math.max(1, Math.round(cssW * dpr));
+      const nextH = Math.max(1, Math.round(cssH * dpr));
+      if (el.gridCanvas.width !== nextW) el.gridCanvas.width = nextW;
+      if (el.gridCanvas.height !== nextH) el.gridCanvas.height = nextH;
+      el.gridCanvas.style.width = `${cssW}px`;
+      el.gridCanvas.style.height = `${cssH}px`;
+    }
+
+    function renderGridOverlay() {
+      if (!el.gridCanvas || !gridCtx) return;
+      resizeGridCanvas();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const cssW = Math.max(1, Math.round(el.viewport.clientWidth));
+      const cssH = Math.max(1, Math.round(el.viewport.clientHeight));
+      gridCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      gridCtx.clearRect(0, 0, cssW, cssH);
+      if (!state.gridEnabled) return;
+
+      const scale = Math.max(0.0001, Number(state.scale) || 1);
+      const boardW = getBoardWidth();
+      const boardH = getBoardHeight();
+      const minX = Math.max(0, Math.floor((0 - state.originX) / scale) - 1);
+      const maxX = Math.min(boardW, Math.ceil((cssW - state.originX) / scale) + 1);
+      const minY = Math.max(0, Math.floor((0 - state.originY) / scale) - 1);
+      const maxY = Math.min(boardH, Math.ceil((cssH - state.originY) / scale) + 1);
+
+      gridCtx.save();
+      gridCtx.strokeStyle = 'rgba(0,0,0,.16)';
+      gridCtx.lineWidth = 1;
+      gridCtx.beginPath();
+
+      for (let x = minX; x <= maxX; x++) {
+        const sx = state.originX + x * scale;
+        if (sx < -1 || sx > cssW + 1) continue;
+        const px = Math.round(sx) + 0.5;
+        gridCtx.moveTo(px, 0);
+        gridCtx.lineTo(px, cssH);
+      }
+
+      for (let y = minY; y <= maxY; y++) {
+        const sy = state.originY + y * scale;
+        if (sy < -1 || sy > cssH + 1) continue;
+        const py = Math.round(sy) + 0.5;
+        gridCtx.moveTo(0, py);
+        gridCtx.lineTo(cssW, py);
+      }
+
+      gridCtx.stroke();
+      gridCtx.restore();
+    }
+
+    function requestGridRefresh(force = false) {
+      if (!force && state.gridRaf) return;
+      state.gridRaf = requestAnimationFrame(() => {
+        state.gridRaf = 0;
+        renderGridOverlay();
+      });
+    }
+
+    function syncGridToggleUI() {
+      const active = !!state.gridEnabled;
+      if (el.gridToggleBtn) {
+        el.gridToggleBtn.classList.toggle('active', active);
+        el.gridToggleBtn.setAttribute('aria-pressed', String(active));
+        el.gridToggleBtn.title = active ? 'Ocultar grid' : 'Mostrar grid';
+      }
+      if (el.quickGrid) {
+        el.quickGrid.classList.toggle('active', active);
+        el.quickGrid.setAttribute('aria-pressed', String(active));
+        el.quickGrid.title = active ? 'Ocultar grid' : 'Mostrar grid';
+      }
+    }
+
+    function setGridEnabled(next, persist = true) {
+      state.gridEnabled = !!next;
+      if (persist) {
+        try { localStorage.setItem('nf_grid_enabled', state.gridEnabled ? '1' : '0'); } catch {}
+      }
+      syncGridToggleUI();
+      requestGridRefresh(true);
+    }
+
+    function toggleGrid() {
+      setGridEnabled(!state.gridEnabled);
+      playClickSound();
+    }
+
     function refreshCamera() {
       const transform = `translate3d(${state.originX}px, ${state.originY}px, 0) scale(${state.scale})`;
       el.canvas.style.transform = transform;
@@ -2734,6 +2873,7 @@
         updateCoordsOverlay(state.hoverPoint.clientX, state.hoverPoint.clientY);
       }
       requestMinimapRefresh();
+      requestGridRefresh();
     }
 
     function getViewportLocalPoint(clientX, clientY) {
@@ -2751,7 +2891,10 @@
       state.originX = (vw - getBoardWidth() * state.scale) / 2;
       state.originY = (vh - getBoardHeight() * state.scale) / 2;
       refreshCamera();
-      requestAnimationFrame(() => requestMinimapRefresh());
+      requestAnimationFrame(() => {
+        requestMinimapRefresh();
+        requestGridRefresh(true);
+      });
     }
 
     function applyZoom(factor, clientX, clientY) {
@@ -3792,6 +3935,7 @@
         if (e.target === el.modalSessionLogin) hideAllModals();
       });
       el.centerBtn.addEventListener('click', centerCanvas);
+      el.gridToggleBtn?.addEventListener('click', toggleGrid);
       el.paletteToggleBtn?.addEventListener('click', () => {
         if (isMobileLayout()) toggleMobilePalette();
         else toggleDesktopPalette();
@@ -3855,6 +3999,7 @@
       el.quickActivity?.addEventListener('click', () => openSidebar('activity'));
       el.quickStats?.addEventListener('click', () => openSidebar('session'));
       el.quickCenter.addEventListener('click', centerCanvas);
+      el.quickGrid?.addEventListener('click', toggleGrid);
       el.quickBrush?.addEventListener('click', () => toggleBrushMode());
       el.quickPalette.addEventListener('click', () => {
         if (isMobileLayout()) {
@@ -3968,6 +4113,7 @@
       });
 
       window.addEventListener('resize', () => {
+        resizeGridCanvas();
         refreshCamera();
         keepCanvasAliveAfterSleep();
         syncPaletteVisibilityUI();
@@ -3976,6 +4122,7 @@
       updateBrushButtonUI();
       setEyedropperMode(state.eyedropperMode, false);
       syncPaletteVisibilityUI();
+      syncGridToggleUI();
       updateSessionLoginModal();
 
       const activePointers = new Map();
@@ -4020,6 +4167,7 @@
           state.dragMoved = false;
           el.viewport.classList.remove('dragging');
           state.pinchDistance = null;
+          setCanvasInteractionState(false);
           if (state.touchPainting) {
             stopPaintLoop();
             state.touchPainting = false;
@@ -4032,6 +4180,7 @@
       el.viewport.addEventListener('pointerdown', e => {
         if (isInteractiveUiTarget(e.target)) return;
         unlockAudio();
+        setCanvasInteractionState(true);
 
         if (e.pointerType === 'mouse' && e.button === 1) {
           e.preventDefault();
@@ -4155,6 +4304,7 @@
         el.viewport.classList.remove('dragging');
         state.dragMoved = false;
         state.pinchDistance = null;
+        setCanvasInteractionState(false);
       });
 
       el.viewport.addEventListener('pointerleave', () => {
@@ -4207,6 +4357,7 @@
         state.spaceHeld = false;
         el.viewport.classList.remove('dragging');
         state.pinchDistance = null;
+        setCanvasInteractionState(false);
         if (!state.touchPainting && !state.brushMode) {
           stopPaintLoop();
         }
@@ -5513,6 +5664,7 @@ function startSession() {
       if (recenter) {
         centerCanvas();
       }
+      requestGridRefresh(true);
 
       return changed;
     }
