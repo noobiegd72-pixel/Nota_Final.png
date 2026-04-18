@@ -5078,6 +5078,33 @@
       return await response.blob();
     }
 
+    async function convertBlobToPngBlob(blob) {
+      if (!(blob instanceof Blob)) return null;
+      const mimeType = String(blob.type || '').toLowerCase();
+      if (mimeType === 'image/png' || mimeType === 'image/apng') return blob;
+
+      const objectUrl = URL.createObjectURL(blob);
+      try {
+        const img = await loadImageSafe(objectUrl);
+        const width = Math.max(1, img.naturalWidth || img.width || 1);
+        const height = Math.max(1, img.naturalHeight || img.height || 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d', { alpha: true });
+        if (!ctx) return blob;
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        const pngBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        return pngBlob instanceof Blob ? pngBlob : blob;
+      } catch (err) {
+        console.warn('No se pudo convertir la imagen a PNG:', err);
+        return blob;
+      } finally {
+        try { URL.revokeObjectURL(objectUrl); } catch {}
+      }
+    }
+
     const SNAPSHOT_DOWNLOAD_CACHE_DB = 'nf_snapshot_download_cache';
     const SNAPSHOT_DOWNLOAD_CACHE_STORE = 'snapshot_blobs';
     const SNAPSHOT_DOWNLOAD_CACHE_VERSION = 1;
@@ -5200,7 +5227,7 @@
         let cachedCount = 0;
         let downloadedCount = 0;
         for (const item of items) {
-          const ext = item.mime === 'image/webp' ? 'webp' : 'png';
+          const ext = 'png';
           const safeDate = String(item.dateTimeLabel || item.ts || Date.now()).replace(/[^a-z0-9_-]+/gi, '_');
           const pixelsLabel = String(item.galleryPixelsLabel || item.placedPixels || 0).replace(/[^a-z0-9_-]+/gi, '_');
           const name = `${safeDate}_${pixelsLabel}.${ext}`;
@@ -5213,16 +5240,19 @@
           } else {
             blob = await blobFromDataUrlOrFetch(item.image);
             downloadedCount += 1;
+          }
+          blob = await convertBlobToPngBlob(blob);
+          if (blob) {
             await setCachedSnapshotBlob(cacheKey, signature, blob, {
               ts: item.ts,
-              fileBytes: item.fileBytes,
-              mime: item.mime,
+              fileBytes: blob.size || item.fileBytes,
+              mime: 'image/png',
               name,
               width: item.width,
               height: item.height
             });
+            folder.file(name, blob);
           }
-          if (blob) folder.file(name, blob);
         }
         const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
         const url = URL.createObjectURL(zipBlob);
