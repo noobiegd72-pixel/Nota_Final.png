@@ -1518,9 +1518,9 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M4 9h16M4 15h16M9 4v16M15 4v16"/></svg>
           <span class="label">Grid</span>
         </button>
-        <button class="top-btn" id="images-toggle-btn" title="Abrir imágenes guardadas">
+        <button class="top-btn" id="images-toggle-btn" title="Descargar ZIP de imágenes guardadas">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect><circle cx="8" cy="9" r="1.5"></circle><path d="M21 16l-5-5-4 4-2-2-5 5"></path></svg>
-          <span class="label">Imágenes</span>
+          <span class="label">ZIP</span>
         </button>
         <button class="top-btn desktop-sidebar-toggle" id="desktop-sidebar-toggle" title="Ocultar o mostrar la interfaz lateral">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>
@@ -1746,7 +1746,7 @@
     <button class="quick-btn" id="quick-center" title="Centrar lienzo">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
     </button>
-    <button class="quick-btn" id="quick-images" title="Abrir imágenes guardadas">
+    <button class="quick-btn" id="quick-images" title="Descargar ZIP de imágenes guardadas">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect><circle cx="8" cy="9" r="1.5"></circle><path d="M21 16l-5-5-4 4-2-2-5 5"></path></svg>
     </button>
     <button class="quick-btn" id="quick-grid" title="Mostrar u ocultar grid">
@@ -4324,7 +4324,7 @@
       });
       el.centerBtn.addEventListener('click', centerCanvas);
       el.gridToggleBtn?.addEventListener('click', () => toggleGrid());
-      el.imagesToggleBtn?.addEventListener('click', () => openImagesPanel());
+      el.imagesToggleBtn?.addEventListener('click', () => downloadSnapshotGalleryZip());
       document.querySelectorAll('[data-sidebar-section]').forEach(btn => {
         btn.addEventListener('click', () => openSidebar(btn.getAttribute('data-sidebar-section') || 'chat'));
       });
@@ -4337,7 +4337,7 @@
         clearRecentChatHistoryView();
         el.chatInput?.focus();
       });
-      el.quickImages?.addEventListener('click', () => openImagesPanel());
+      el.quickImages?.addEventListener('click', () => downloadSnapshotGalleryZip());
       el.snapshotDownloadZipBtn?.addEventListener('click', () => downloadSnapshotGalleryZip());
       el.imagesPanelClose?.addEventListener('click', closeImagesPanel);
       el.modalImagesPanel?.addEventListener('click', (e) => { if (e.target === el.modalImagesPanel) closeImagesPanel(); });
@@ -4851,7 +4851,7 @@
 
     function setMobileSection(section) {
       if (section === 'images') {
-        openImagesPanel();
+        downloadSnapshotGalleryZip().catch(() => {});
         return;
       }
       const next = section === 'stats' ? 'session' : (section || 'chat');
@@ -5060,19 +5060,7 @@
     }
 
     function openImagesPanel() {
-      closeSidebar();
-      hideAllModals();
-      showModal(el.modalImagesPanel);
-      el.modalImagesPanel?.setAttribute('aria-hidden', 'false');
-      if (isMobileLayout()) {
-        setTimeout(() => el.snapshotSearchInput?.focus(), 40);
-      }
-      if (!state.snapshotGalleryLoaded && !state.snapshotGalleryLoading) {
-        loadSnapshotGallery({ force: false });
-      } else {
-        renderSnapshotGallery();
-        if (el.snapshotNote) el.snapshotNote.textContent = 'La galería solo se actualiza al recargar la página.';
-      }
+      downloadSnapshotGalleryZip().catch(() => {});
     }
 
     function closeImagesPanel() {
@@ -5081,11 +5069,33 @@
     }
 
     function toggleImagesPanel() {
-      if (el.modalImagesPanel?.classList.contains('visible')) closeImagesPanel();
-      else openImagesPanel();
+      downloadSnapshotGalleryZip().catch(() => {});
+    }
+
+    function dataUrlToBlob(dataUrl) {
+      const value = String(dataUrl || '');
+      if (!value.startsWith('data:')) return null;
+      const match = value.match(/^data:([^;,]+)?((?:;[^,]*)?),(.*)$/s);
+      if (!match) return null;
+      const mime = match[1] || 'application/octet-stream';
+      const isBase64 = /;base64/i.test(match[2] || '');
+      const payload = match[3] || '';
+      try {
+        if (isBase64) {
+          const binary = atob(payload);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return new Blob([bytes], { type: mime });
+        }
+        return new Blob([decodeURIComponent(payload)], { type: mime });
+      } catch {
+        return null;
+      }
     }
 
     async function blobFromDataUrlOrFetch(url) {
+      const dataBlob = dataUrlToBlob(url);
+      if (dataBlob) return dataBlob;
       const response = await fetch(url);
       return await response.blob();
     }
@@ -5221,28 +5231,36 @@
         if (el.snapshotNote) el.snapshotNote.textContent = 'JSZip no está disponible en este navegador.';
         return;
       }
-      if (!state.snapshotGalleryLoaded && !state.snapshotGalleryLoading) {
-        await loadSnapshotGallery({ force: false });
-      }
-      const items = (state.snapshotGallery || []).filter(item => !isSnapshotImageBlank(item));
-      if (!items.length) {
-        if (el.snapshotNote) el.snapshotNote.textContent = 'No hay imágenes para comprimir.';
-        return;
-      }
       try {
         if (el.snapshotDownloadZipBtn) {
           el.snapshotDownloadZipBtn.disabled = true;
           el.snapshotDownloadZipBtn.textContent = 'Preparando...';
         }
+        if (el.snapshotNote) el.snapshotNote.textContent = 'Leyendo capturas guardadas...';
+
+        const snap = await db.ref(BOARD_SNAPSHOT_HISTORY_PATH).limitToLast(300).once('value');
+        const data = snap.val() || {};
+        const items = Object.entries(data)
+          .map(([key, raw]) => normalizeSnapshotRecord(key, raw))
+          .filter(Boolean)
+          .filter(item => !isSnapshotImageBlank(item))
+          .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+        if (!items.length) {
+          if (el.snapshotNote) el.snapshotNote.textContent = 'No hay imágenes para comprimir.';
+          return;
+        }
+
         const zip = new JSZip();
         const folder = zip.folder('imagenes_galeria');
         let cachedCount = 0;
-        let downloadedCount = 0;
+        let decodedCount = 0;
+
         for (const item of items) {
-          const ext = 'png';
           const safeDate = String(item.dateTimeLabel || item.ts || Date.now()).replace(/[^a-z0-9_-]+/gi, '_');
-          const pixelsLabel = String(item.galleryPixelsLabel || item.placedPixels || 0).replace(/[^a-z0-9_-]+/gi, '_');
-          const name = `${safeDate}_${pixelsLabel}.${ext}`;
+          const pixelsLabel = String(item.globalPixelsLabel || item.placedPixels || 0).replace(/[^a-z0-9_-]+/gi, '_');
+          const mimeExt = /png/i.test(String(item.mime || '')) ? 'png' : (/jpe?g/i.test(String(item.mime || '')) ? 'jpg' : 'webp');
+          const name = `${safeDate}_${pixelsLabel}.${mimeExt}`;
           const cacheKey = String(item.key || '');
           const signature = String(item.cacheSignature || `${item.ts || 0}|${item.fileBytes || 0}|${item.mime || 'image/png'}|${item.width || 0}x${item.height || 0}`);
           const cached = await getCachedSnapshotBlob(cacheKey, signature);
@@ -5251,29 +5269,31 @@
             cachedCount += 1;
           } else {
             blob = await blobFromDataUrlOrFetch(item.image);
-            downloadedCount += 1;
+            decodedCount += 1;
           }
-          blob = await convertBlobToPngBlob(blob);
-          if (blob) {
-            await setCachedSnapshotBlob(cacheKey, signature, blob, {
-              ts: item.ts,
-              fileBytes: blob.size || item.fileBytes,
-              mime: 'image/png',
-              name,
-              width: item.width,
-              height: item.height
-            });
-            folder.file(name, blob);
-          }
+          if (!(blob instanceof Blob)) continue;
+          await setCachedSnapshotBlob(cacheKey, signature, blob, {
+            ts: item.ts,
+            fileBytes: blob.size || item.fileBytes,
+            mime: blob.type || item.mime || 'application/octet-stream',
+            name,
+            width: item.width,
+            height: item.height
+          });
+          folder.file(name, blob, { binary: true });
         }
-        const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+
+        const zipBlob = await zip.generateAsync({
+          type: 'blob',
+          compression: 'STORE'
+        });
         const url = URL.createObjectURL(zipBlob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `imagenes_galeria_${Date.now()}.zip`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 3000);
-        if (el.snapshotNote) el.snapshotNote.textContent = `ZIP generado con ${formatNumber(items.length)} imágenes · ${formatNumber(cachedCount)} desde caché, ${formatNumber(downloadedCount)} nuevas.`;
+        if (el.snapshotNote) el.snapshotNote.textContent = `ZIP generado con ${formatNumber(items.length)} imágenes · ${formatNumber(cachedCount)} desde caché, ${formatNumber(decodedCount)} nuevas.`;
       } catch (err) {
         console.warn('No se pudo generar el ZIP de la galería:', err);
         if (el.snapshotNote) el.snapshotNote.textContent = 'No se pudo generar el ZIP.';
@@ -5287,7 +5307,7 @@
 
     function openSidebar(section = 'chat') {
       if (section === 'images') {
-        openImagesPanel();
+        downloadSnapshotGalleryZip().catch(() => {});
         return;
       }
       const next = section === 'stats' ? 'session' : section;
@@ -6277,7 +6297,6 @@ function startSession() {
           }, 250);
         }
       });
-      loadSnapshotGallery().catch(() => {});
     }
 
     function applyInitialBoardState() {
@@ -6658,7 +6677,7 @@ function startSession() {
       if (!items.length) {
         const empty = document.createElement('div');
         empty.className = 'snapshot-empty';
-        empty.textContent = state.snapshotGalleryLoaded ? 'No hay imágenes que coincidan con la búsqueda.' : 'Cargando imágenes...';
+        empty.textContent = 'Sin galería: usa Descargar ZIP.';
         el.snapshotGallery.appendChild(empty);
         updateSnapshotGallerySummary(0, state.snapshotGallery.length || 0);
         return;
@@ -6707,67 +6726,12 @@ function startSession() {
     }
 
     async function loadSnapshotGallery({ force = false } = {}) {
-      if (state.snapshotGalleryLoading) return;
-      if (state.snapshotGalleryLoaded) {
-        renderSnapshotGallery();
-        return;
-      }
-      state.snapshotGalleryLoading = true;
-      try {
-        if (el.snapshotGallery) {
-          el.snapshotGallery.innerHTML = '<div class="snapshot-empty">Cargando imágenes...</div>';
-        }
-        const localItems = loadLocalSnapshotHistory();
-        let firebaseItems = [];
-        try {
-          const snap = await db.ref(BOARD_SNAPSHOT_HISTORY_PATH).limitToLast(300).once('value');
-          const data = snap.val() || {};
-          firebaseItems = Object.entries(data)
-            .map(([key, raw]) => normalizeSnapshotRecord(key, raw))
-            .filter(Boolean)
-            .sort((a, b) => (a.ts || 0) - (b.ts || 0))
-            .map(item => ({
-              ...item,
-              cacheSignature: String(item.cacheSignature || `${item.ts || 0}|${item.fileBytes || 0}|${item.mime || 'image/png'}|${item.width || 0}x${item.height || 0}`)
-            }));
-        } catch (firebaseErr) {
-          console.warn('No se pudo leer Firebase para la galería, usando caché local:', firebaseErr);
-        }
-        const merged = [...localItems, ...firebaseItems]
-          .filter(Boolean)
-          .filter(item => !isSnapshotImageBlank(item))
-          .reduce((acc, item) => {
-            const signature = String(item.cacheSignature || `${item.ts || 0}|${item.fileBytes || 0}|${item.mime || 'image/png'}|${item.width || 0}x${item.height || 0}`);
-            const existing = acc.get(signature);
-            if (!existing || (Number(item.ts) || 0) >= (Number(existing.ts) || 0)) {
-              acc.set(signature, {
-                ...item,
-                cacheSignature: signature
-              });
-            }
-            return acc;
-          }, new Map());
-        const cleaned = [...merged.values()].sort((a, b) => (a.ts || 0) - (b.ts || 0));
-        state.snapshotGallery = cleaned;
-        state.snapshotGalleryLoaded = true;
-        renderSnapshotGallery();
-      } catch (err) {
-        console.warn('No se pudo cargar el historial de imágenes:', err);
-        state.snapshotGalleryLoaded = true;
-        const localItems = loadLocalSnapshotHistory().filter(item => !isSnapshotImageBlank(item));
-        state.snapshotGallery = localItems;
-        if (el.snapshotGallery) {
-          el.snapshotGallery.innerHTML = localItems.length ? '' : '<div class="snapshot-empty">No se pudo cargar el historial de imágenes.</div>';
-          if (localItems.length) renderSnapshotGallery();
-        }
-      } finally {
-        state.snapshotGalleryLoading = false;
-      }
+      return false;
     }
 
     function refreshSnapshotGallery() {
       if (el.snapshotNote) {
-        el.snapshotNote.textContent = 'La galería solo se actualiza al recargar la página.';
+        el.snapshotNote.textContent = 'Descarga ZIP directa sin galería.';
       }
       return Promise.resolve(false);
     }
