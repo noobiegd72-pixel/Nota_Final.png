@@ -793,29 +793,16 @@
     .brand-title-line h1{margin:0}
     #app-version{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:999px;border:1px solid rgba(41,121,255,.28);background:rgba(41,121,255,.12);color:#dce9ff;font-size:.66rem;font-weight:800;letter-spacing:.6px;line-height:1;flex:0 0 auto}
     #app-version-mobile{display:none;align-items:center;justify-content:center;padding:2px 8px;border-radius:999px;border:1px solid rgba(41,121,255,.28);background:rgba(41,121,255,.12);color:#dce9ff;font-size:.66rem;font-weight:800;letter-spacing:.6px;line-height:1;flex:0 0 auto}
-    .header-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-    .global-stats{display:flex;gap:16px;align-items:center;color:var(--dim);font-size:.72rem;font-family:"Courier New",monospace;white-space:nowrap;cursor:pointer}
+    .header-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:flex-end;min-width:0;overflow:hidden}
+    .global-stats{display:flex;gap:12px;align-items:center;color:var(--dim);font-size:.67rem;font-family:"Courier New",monospace;white-space:nowrap;cursor:pointer;min-width:0;flex:0 0 auto;overflow:hidden}
     .global-stats b{color:var(--accent)}
-    .top-actions{display:flex;gap:8px;align-items:center}
-    .top-btn{
-      height:38px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.02);color:var(--text);
-      padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
-      transition:transform .12s ease,border-color .12s ease,background .12s ease,opacity .12s ease,filter .12s ease;
-      font-size:.75rem;font-weight:700;letter-spacing:.2px
-    }
+    .top-actions{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;min-width:0;overflow:hidden;flex:0 1 auto}
+    .top-btn{height:32px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.02);color:var(--text);padding:0 9px;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:transform .12s ease,border-color .12s ease,background .12s ease,opacity .12s ease,filter .12s ease;font-size:.66rem;font-weight:700;letter-spacing:.1px;flex:0 0 auto;white-space:nowrap}
     .top-btn:hover{transform:translateY(-1px);border-color:rgba(41,121,255,.45);background:rgba(41,121,255,.08)}
     .top-btn.active{background:rgba(41,121,255,.16);border-color:rgba(41,121,255,.55)}
-    .notify-dot{
-      width:8px;height:8px;border-radius:50%;
-      background:var(--bad);
-      box-shadow:0 0 0 0 rgba(255,82,82,.72), 0 0 12px rgba(255,82,82,.45);
-      margin-left:6px;
-      opacity:0;
-      transform:scale(.55);
-      transition:opacity .18s ease,transform .18s ease,box-shadow .18s ease;
-      pointer-events:none;
-      flex:0 0 auto;
-    }
+.top-btn svg{width:14px;height:14px;flex:0 0 auto}
+    .top-btn .label{line-height:1;display:inline-block;overflow:hidden;text-overflow:ellipsis;max-width:8.5ch}
+    .notify-dot{width:7px;height:7px;border-radius:50%;background:var(--bad);box-shadow:0 0 0 0 rgba(255,82,82,.72), 0 0 12px rgba(255,82,82,.45);margin-left:4px;opacity:0;transform:scale(.55);transition:opacity .18s ease,transform .18s ease,box-shadow .18s ease;pointer-events:none;flex:0 0 auto}
     .notify-dot.visible{
       opacity:1;
       transform:scale(1);
@@ -1110,6 +1097,16 @@
       .palette-topline{padding:7px 9px 0}
     }
 
+    @media (max-width: 1100px){
+      .global-stats{gap:10px;font-size:.64rem}
+      .top-actions{gap:5px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+      .top-actions::-webkit-scrollbar{display:none}
+      .top-btn{height:30px;padding:0 8px;font-size:.62rem;gap:5px}
+      .top-btn .label{display:none}
+      .top-btn svg{width:13px;height:13px}
+      #desktop-sidebar-toggle .notify-dot{margin-left:3px}
+    }
+
     @media (max-width: 960px){
       #sidebar-right{bottom:14px;width:320px}
       .global-stats{gap:12px;font-size:.68rem}
@@ -1120,14 +1117,16 @@
     }
 
     @media (max-width: 768px){
-      header{padding:0 12px}
-      .brand h1{font-size:.88rem}
+      header{padding:0 10px;gap:8px}
+      .brand h1{font-size:.84rem}
       .brand small{display:none}
       .global-stats{display:none}
       #app-version{display:none}
-      #app-version-mobile{display:inline-flex;margin-left:auto;margin-right:6px}
-      .top-actions{gap:6px}
-      .top-btn{height:36px;padding:0 10px;font-size:.72rem}
+      #app-version-mobile{display:inline-flex;margin-left:auto;margin-right:4px}
+      .top-actions{gap:4px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+      .top-actions::-webkit-scrollbar{display:none}
+      .top-btn{height:34px;padding:0 8px;font-size:.68rem}
+      .top-btn svg{width:13px;height:13px}
       #mobile-menu-btn{display:inline-flex}
       #sidebar-right{
         top:var(--header-h);right:0;bottom:0;width:min(92vw,360px);
@@ -1209,8 +1208,8 @@
 
     @media (max-width: 420px){
       .top-btn span.label{display:none}
-      .top-btn{width:38px;padding:0}
-      .top-btn svg{width:18px;height:18px}
+      .top-btn{width:36px;padding:0}
+      .top-btn svg{width:16px;height:16px}
       .quick-btn{width:42px;height:42px;border-radius:13px}
       .palette-topline{padding:7px 8px 0}
       .palette-topline small{font-size:.58rem}
@@ -1485,7 +1484,7 @@
       <div class="brand-title-wrap">
         <div class="brand-title-line">
           <h1>Nota_Final.png</h1>
-          <span id="app-version">v5.2</span>
+          <span id="app-version">v5.2.1</span>
         </div>
         <small id="header-subtitle">Lienzo colaborativo en tiempo real</small>
       </div>
@@ -1500,7 +1499,7 @@
         <span id="session-clock">00:00:00</span>
       </div>
 
-      <span id="app-version-mobile">v5.2</span>
+      <span id="app-version-mobile">v5.2.1</span>
 
       <div class="top-actions">
         <button class="top-btn" id="chat-btn" title="Abrir chat">
