@@ -1484,7 +1484,7 @@
       <div class="brand-title-wrap">
         <div class="brand-title-line">
           <h1>Nota_Final.png</h1>
-          <span id="app-version">v5.2.2</span>
+          <span id="app-version">v5.2.3</span>
         </div>
         <small id="header-subtitle">Lienzo colaborativo en tiempo real</small>
       </div>
@@ -1499,7 +1499,7 @@
         <span id="session-clock">00:00:00</span>
       </div>
 
-      <span id="app-version-mobile">v5.2.2</span>
+      <span id="app-version-mobile">v5.2.3</span>
 
       <div class="top-actions">
         <button class="top-btn" id="chat-btn" title="Abrir chat">
@@ -2051,8 +2051,8 @@
     const SESSION_CODES_PATH = 'session_codes';
     const BOARD_SNAPSHOT_HISTORY_PATH = 'board_snapshots';
     const BOARD_SNAPSHOT_LOCK_PATH = 'board_snapshot_lock';
-    const BOARD_SNAPSHOT_SCALE = 4;
-    const BOARD_SNAPSHOT_QUALITY = 0.1;
+    const BOARD_SNAPSHOT_SCALE = 2;
+    const BOARD_SNAPSHOT_QUALITY = 0.08;
     const SNAPSHOT_MIN_BYTES = 8 * 1024;
     const SNAPSHOT_LOCAL_HISTORY_KEY = 'nf_local_board_snapshots';
     const SNAPSHOT_LOCAL_HISTORY_LIMIT = 24;
@@ -5236,9 +5236,9 @@
           el.snapshotDownloadZipBtn.disabled = true;
           el.snapshotDownloadZipBtn.textContent = 'Preparando...';
         }
-        if (el.snapshotNote) el.snapshotNote.textContent = 'Leyendo capturas guardadas...';
+        if (el.snapshotNote) el.snapshotNote.textContent = 'Leyendo todas las capturas guardadas...';
 
-        const snap = await db.ref(BOARD_SNAPSHOT_HISTORY_PATH).limitToLast(300).once('value');
+        const snap = await db.ref(BOARD_SNAPSHOT_HISTORY_PATH).once('value');
         const data = snap.val() || {};
         const items = Object.entries(data)
           .map(([key, raw]) => normalizeSnapshotRecord(key, raw))
