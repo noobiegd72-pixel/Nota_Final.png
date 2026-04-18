@@ -1147,6 +1147,7 @@
       .top-btn{width:38px;padding:0}
       .top-btn svg{width:18px;height:18px}
       .quick-btn{width:42px;height:42px;border-radius:13px}
+      #quick-grid{display:none !important;}
       .palette-topline{padding:7px 8px 0}
       .palette-topline small{font-size:.58rem}
       .palette-grid{grid-template-columns:repeat(8,1fr);gap:3px;padding:8px 8px 8px;max-height:38vh;overflow-y:auto}
@@ -2791,19 +2792,22 @@
       if (!el.gridCanvas || !gridCtx) return;
       resizeGridCanvas();
       const dpr = Math.max(1, window.devicePixelRatio || 1);
-      const cssW = Math.max(1, Math.round(el.viewport.clientWidth));
-      const cssH = Math.max(1, Math.round(el.viewport.clientHeight));
+      const viewportRect = el.viewport.getBoundingClientRect();
+      const cssW = Math.max(1, Math.round(viewportRect.width));
+      const cssH = Math.max(1, Math.round(viewportRect.height));
       gridCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       gridCtx.clearRect(0, 0, cssW, cssH);
       if (!state.gridEnabled) return;
 
-      const scale = Math.max(0.0001, Number(state.scale) || 1);
       const boardW = getBoardWidth();
       const boardH = getBoardHeight();
-      const minX = Math.max(0, Math.floor((0 - state.originX) / scale) - 1);
-      const maxX = Math.min(boardW, Math.ceil((cssW - state.originX) / scale) + 1);
-      const minY = Math.max(0, Math.floor((0 - state.originY) / scale) - 1);
-      const maxY = Math.min(boardH, Math.ceil((cssH - state.originY) / scale) + 1);
+      const scale = Math.max(0.0001, state.scale || 1);
+      const originX = state.originX || 0;
+      const originY = state.originY || 0;
+      const minX = Math.max(0, Math.floor((-originX) / scale) - 1);
+      const maxX = Math.min(boardW, Math.ceil((cssW - originX) / scale) + 1);
+      const minY = Math.max(0, Math.floor((-originY) / scale) - 1);
+      const maxY = Math.min(boardH, Math.ceil((cssH - originY) / scale) + 1);
 
       gridCtx.save();
       gridCtx.strokeStyle = 'rgba(0,0,0,.16)';
@@ -2811,7 +2815,7 @@
       gridCtx.beginPath();
 
       for (let x = minX; x <= maxX; x++) {
-        const sx = state.originX + x * scale;
+        const sx = originX + x * scale;
         if (sx < -1 || sx > cssW + 1) continue;
         const px = Math.round(sx) + 0.5;
         gridCtx.moveTo(px, 0);
@@ -2819,7 +2823,7 @@
       }
 
       for (let y = minY; y <= maxY; y++) {
-        const sy = state.originY + y * scale;
+        const sy = originY + y * scale;
         if (sy < -1 || sy > cssH + 1) continue;
         const py = Math.round(sy) + 0.5;
         gridCtx.moveTo(0, py);
@@ -2852,8 +2856,24 @@
       }
     }
 
+    function syncGridAvailabilityUI() {
+      const mobile = isMobileLayout();
+      if (el.quickGrid) {
+        el.quickGrid.disabled = mobile;
+        el.quickGrid.setAttribute('aria-disabled', String(mobile));
+        el.quickGrid.style.display = mobile ? 'none' : '';
+      }
+      if (mobile && state.gridEnabled) {
+        state.gridEnabled = false;
+        try { localStorage.setItem('nf_grid_enabled', '0'); } catch {}
+        syncGridToggleUI();
+        requestGridRefresh(true);
+      }
+    }
+
     function setGridEnabled(next, persist = true) {
-      state.gridEnabled = !!next;
+      const mobile = isMobileLayout();
+      state.gridEnabled = mobile ? false : !!next;
       if (persist) {
         try { localStorage.setItem('nf_grid_enabled', state.gridEnabled ? '1' : '0'); } catch {}
       }
@@ -2862,6 +2882,7 @@
     }
 
     function toggleGrid() {
+      if (isMobileLayout()) return;
       setGridEnabled(!state.gridEnabled);
       playClickSound();
     }
@@ -2913,30 +2934,28 @@
     }
 
     function getCanvasCoords(clientX, clientY) {
-      const rect = el.viewport.getBoundingClientRect();
-      const localX = clientX - rect.left;
-      const localY = clientY - rect.top;
-      const scale = Math.max(0.0001, Number(state.scale) || 1);
-      const x = Math.floor((localX - state.originX) / scale);
-      const y = Math.floor((localY - state.originY) / scale);
-      return { x, y, rect };
+      const point = getViewportLocalPoint(clientX, clientY);
+      const scale = Math.max(0.0001, state.scale || 1);
+      const x = Math.floor((point.x - state.originX) / scale);
+      const y = Math.floor((point.y - state.originY) / scale);
+      return { x, y, point, scale };
     }
 
     function updateCoordsOverlay(clientX, clientY) {
-      const { x, y } = getCanvasCoords(clientX, clientY);
+      const { x, y, point, scale } = getCanvasCoords(clientX, clientY);
       if (x >= 0 && x < getBoardWidth() && y >= 0 && y < getBoardHeight()) {
-        const scale = Math.max(0.0001, Number(state.scale) || 1);
-        const left = Math.round(state.originX + (x * scale));
-        const top = Math.round(state.originY + (y * scale));
-        const pixelSize = Math.max(1, scale);
+        const left = state.originX + (x * scale);
+        const top = state.originY + (y * scale);
+        const pixelW = Math.max(1, scale);
+        const pixelH = Math.max(1, scale);
         state.hoverPoint = { clientX, clientY, x, y };
         el.viewport.classList.add('pixel-hover');
         el.pixelSelector.style.display = 'block';
         el.pixelSelector.style.left = '0px';
         el.pixelSelector.style.top = '0px';
         el.pixelSelector.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-        el.pixelSelector.style.width = `${pixelSize}px`;
-        el.pixelSelector.style.height = `${pixelSize}px`;
+        el.pixelSelector.style.width = `${pixelW}px`;
+        el.pixelSelector.style.height = `${pixelH}px`;
         el.coordsInfo.style.display = 'block';
         el.coordsInfo.style.left = `${Math.min(window.innerWidth - 120, clientX + 15)}px`;
         el.coordsInfo.style.top = `${Math.min(window.innerHeight - 30, clientY + 15)}px`;
@@ -3935,7 +3954,7 @@
         if (e.target === el.modalSessionLogin) hideAllModals();
       });
       el.centerBtn.addEventListener('click', centerCanvas);
-      el.gridToggleBtn?.addEventListener('click', toggleGrid);
+      el.gridToggleBtn?.addEventListener('click', () => { if (!isMobileLayout()) toggleGrid(); });
       el.paletteToggleBtn?.addEventListener('click', () => {
         if (isMobileLayout()) toggleMobilePalette();
         else toggleDesktopPalette();
@@ -3999,7 +4018,7 @@
       el.quickActivity?.addEventListener('click', () => openSidebar('activity'));
       el.quickStats?.addEventListener('click', () => openSidebar('session'));
       el.quickCenter.addEventListener('click', centerCanvas);
-      el.quickGrid?.addEventListener('click', toggleGrid);
+      el.quickGrid?.addEventListener('click', () => { if (!isMobileLayout()) toggleGrid(); });
       el.quickBrush?.addEventListener('click', () => toggleBrushMode());
       el.quickPalette.addEventListener('click', () => {
         if (isMobileLayout()) {
@@ -4114,6 +4133,7 @@
 
       window.addEventListener('resize', () => {
         resizeGridCanvas();
+        syncGridAvailabilityUI();
         refreshCamera();
         keepCanvasAliveAfterSleep();
         syncPaletteVisibilityUI();
@@ -4123,6 +4143,7 @@
       setEyedropperMode(state.eyedropperMode, false);
       syncPaletteVisibilityUI();
       syncGridToggleUI();
+      syncGridAvailabilityUI();
       updateSessionLoginModal();
 
       const activePointers = new Map();
