@@ -12,6 +12,8 @@
 
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script>
+    const VERSION = 'v5.3';
+    window.VERSION = VERSION;
     function isMobileLayout() {
       return window.matchMedia('(max-width: 768px)').matches;
     }
@@ -43,7 +45,7 @@
     }
 
     function syncUiWithUsername() {
-      if (!el) return;
+      if (typeof el === 'undefined' || !el) return;
       const name = normalizeUsername(state.username || localStorage.getItem('nf_username') || '');
       if (el.statUser) el.statUser.textContent = name || 'Sin asignar';
       if (el.sessionAccountName) el.sessionAccountName.textContent = name || 'Sin asignar';
@@ -311,6 +313,11 @@
 
       requestAnimationFrame(processChunk);
     }
+
+    window.downloadHeatmap = window.downloadHeatmap || function () {
+      console.warn('[NF] downloadHeatmap todavía no está listo.');
+      return false;
+    };
 
     function openAdminLogin() {
       if (el.adminKeyInput) el.adminKeyInput.value = '';
@@ -923,7 +930,7 @@
 
     .minimap-wrap{padding:12px 14px 14px;display:grid;gap:10px}
     .minimap-frame{
-      position:relative;width:100%;aspect-ratio:1 / 1;min-height:330px;border-radius:14px;overflow:hidden;transition:aspect-ratio .2s ease,transform .2s ease,opacity .2s ease;
+      position:relative;width:100%;aspect-ratio:var(--minimap-aspect, 1 / 1);min-height:330px;border-radius:14px;overflow:hidden;transition:aspect-ratio .2s ease,transform .2s ease,opacity .2s ease;
       border:1px solid rgba(255,255,255,.08);background:#fff;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)
     }
     #minimap{
@@ -1453,7 +1460,7 @@
 
   </style>
 </head>
-<body>
+<body tabindex="-1">
   <div id="loader">
     <div class="loader-card">
       <div class="loader-top">
@@ -1483,7 +1490,7 @@
       <div class="brand-title-wrap">
         <div class="brand-title-line">
           <h1>Nota_Final.png</h1>
-          <span id="app-version">v5.2.3</span>
+          <span id="app-version">v5.3</span>
         </div>
         <small id="header-subtitle">Lienzo colaborativo en tiempo real</small>
       </div>
@@ -1498,7 +1505,7 @@
         <span id="session-clock">00:00:00</span>
       </div>
 
-      <span id="app-version-mobile">v5.2.3</span>
+      <span id="app-version-mobile">v5.3</span>
 
       <div class="top-actions">
         <button class="top-btn" id="chat-btn" title="Abrir chat">
@@ -1900,6 +1907,15 @@
         <button class="action-btn btn-soft" id="export-stats-btn">Actualizar estadísticas</button>
       </div>
 
+      <button class="action-btn btn-soft heatmap-download-btn" id="heatmap-download-btn" type="button" onclick="if(window.downloadHeatmap){window.downloadHeatmap();} return false;">Descargar heatmap</button>
+
+      <div class="heatmap-download-progress" id="heatmap-download-progress" aria-live="polite" aria-atomic="true">
+        <div class="heatmap-download-progress-bar" aria-hidden="true">
+          <div class="heatmap-download-progress-fill" id="heatmap-download-progress-fill"></div>
+        </div>
+        <div class="heatmap-download-progress-text" id="heatmap-download-progress-text">Listo para descargar.</div>
+      </div>
+
       <div class="small-note" style="margin-top:12px;">
         El timelapse exporta a resolución dinámica según el lienzo, escalando cada pixel del canvas a 10×10 sin cambiar el tamaño base de captura. Las instantáneas del lienzo se guardan como imágenes ligeras en Firebase, con cada pixel ampliado a 4×4.
       </div>
@@ -2009,6 +2025,7 @@
     }
 
     const BOARD_PATH = 'board';
+    const BOARD_META_PATH = 'board_meta';
     const SETTINGS_PATH = 'settings';
     const MESSAGES_PATH = 'messages';
     const PRESENCE_PATH = 'presence';
@@ -2209,6 +2226,16 @@
       return `${getBoardWidth()}×${getBoardHeight()} px`;
     }
 
+    function syncMinimapFrameAspectRatio(width, height) {
+      const frame = el?.minimapFrame;
+      if (!frame) return;
+      const safeW = Math.max(1, Math.round(Number(width) || 1));
+      const safeH = Math.max(1, Math.round(Number(height) || 1));
+      const ratio = safeW + " / " + safeH;
+      frame.style.aspectRatio = ratio;
+      frame.style.setProperty("--minimap-aspect", ratio);
+    }
+
     function initBoardImageData() {
 
       const width = getBoardWidth();
@@ -2229,9 +2256,7 @@
       if (el.loaderPreviewFrame) {
         el.loaderPreviewFrame.style.aspectRatio = `${width} / ${height}`;
       }
-      if (el.minimapFrame) {
-        el.minimapFrame.style.aspectRatio = `${width} / ${height}`;
-      }
+      syncMinimapFrameAspectRatio(width, height);
       if (el.boardSizeInfo) el.boardSizeInfo.textContent = formatBoardDims();
       if (el.boardSizeStats) el.boardSizeStats.textContent = formatBoardDims();
       if (el.tlFramesInfo) el.tlFramesInfo.textContent = `Video ${getTimelapseWidth()}×${getTimelapseHeight()}`;
@@ -2347,8 +2372,25 @@
       presenceRef: null,
       currentUserRef: null,
       currentUserStatsRef: null,
-      canvasInteractionActive: false
+      canvasInteractionActive: false,
+      adminDashboardOpen: false,
+      pixelInfoVisible: false,
+      pixelInfoCurrentKey: '',
+      pixelInfoLastFetchedAt: 0,
+      pixelInfoCache: new Map(),
+      lastSelectedPixel: null,
+      mobilePanZoomLocked__removed: false,
+      pixelInfoTouchTimer: null,
+      pixelInfoTouchPointerId: null,
+      pixelInfoTouchStartX: 0,
+      pixelInfoTouchStartY: 0,
+      pixelInfoTouchTriggered: false,
+      mostChangedPixel: null,
+      activitySummaryReady: false,
+      renderedActivityKeys: new Set()
     };
+
+    window.state = state;
 
     initBoardImageData();
 
@@ -2420,6 +2462,43 @@
     function normalizeUsername(value) {
       return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 20);
     }
+
+    window.normalizeColorHexSafe = window.normalizeColorHexSafe || function(value) {
+      if (typeof window.normalizeColorHex === 'function') return window.normalizeColorHex(value);
+      const raw = String(value || '').trim();
+      if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) {
+        return raw.length === 4
+          ? '#' + raw.slice(1).split('').map(ch => ch + ch).join('').toLowerCase()
+          : raw.toLowerCase();
+      }
+      return '#ffffff';
+    };
+
+    window.normalizeUsernameSafe = window.normalizeUsernameSafe || function(value) {
+      if (typeof window.normalizeUsername === 'function') return window.normalizeUsername(value);
+      return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 20);
+    };
+
+    window.lerp = window.lerp || function(a, b, t) {
+      return a + (b - a) * t;
+    };
+
+    window.hasPixelMetadata = window.hasPixelMetadata || function(record) {
+      if (!record) return false;
+      return !record.legacy && (
+        Number(record.changeCount || 0) > 0 ||
+        !!record.ts ||
+        !!record.placedAt ||
+        !!record.updatedAt ||
+        !!record.uid ||
+        !!record.username ||
+        !!record.placedBy ||
+        !!record.updatedBy ||
+        !!record.previousColor ||
+        !!record.metaVersion ||
+        !!record.schemaVersion
+      );
+    };
 
     function normalizeActivityText(value, maxLen = 120) {
       return String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLen);
@@ -2803,6 +2882,204 @@
       ctx.fillRect(0, 0, getBoardWidth(), getBoardHeight());
     }
 
+    function setHeatmapDownloadProgress(percent, message = '', visible = true) {
+      if (typeof refreshUiRefs === 'function') refreshUiRefs();
+      const wrap = el.heatmapDownloadProgress || document.getElementById('heatmap-download-progress');
+      const fill = el.heatmapDownloadProgressFill || document.getElementById('heatmap-download-progress-fill');
+      const label = el.heatmapDownloadProgressText || document.getElementById('heatmap-download-progress-text');
+      if (visible) {
+        console.log('[NF] progreso heatmap', { percent, message });
+        console.log('[NF] heatmap progress visible', { percent, message });
+      }
+      if (!wrap || !fill || !label) {
+        console.warn('[NF] heatmap progress no disponible en el DOM', {
+          hasWrap: !!wrap,
+          hasFill: !!fill,
+          hasLabel: !!label
+        });
+        try { syncHeatmapDebugOverlay(percent, message, visible); } catch {}
+        return;
+      }
+      const safePercent = clamp(Number(percent) || 0, 0, 100);
+      wrap.hidden = !visible ? false : false;
+      wrap.classList.toggle('visible', !!visible);
+      wrap.style.display = visible ? 'grid' : 'none';
+      wrap.style.visibility = visible ? 'visible' : 'hidden';
+      wrap.style.opacity = visible ? '1' : '0';
+      wrap.style.position = 'sticky';
+      wrap.style.top = '10px';
+      wrap.style.zIndex = '9999';
+      wrap.style.minHeight = '48px';
+      fill.style.width = `${safePercent}%`;
+      label.textContent = message || `${Math.round(safePercent)}%`;
+      try { syncHeatmapDebugOverlay(safePercent, message || `${Math.round(safePercent)}%`, visible); } catch {}
+      if (visible) {
+        console.log('[NF] heatmap progress actualizado en pantalla', { percent: safePercent, message });
+        try { wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch {}
+      }
+      if (visible && wrap && typeof wrap.getBoundingClientRect === 'function') {
+        const rect = wrap.getBoundingClientRect();
+        console.log('[NF] heatmap progress rect', {
+          top: Math.round(rect.top),
+          left: Math.round(rect.left),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          display: getComputedStyle(wrap).display,
+          visibility: getComputedStyle(wrap).visibility
+        });
+      }
+    }
+
+    function hideHeatmapDownloadProgress(message = '') {
+      console.log('[NF] heatmap progress oculto', { message });
+      const wrap = el.heatmapDownloadProgress;
+      const fill = el.heatmapDownloadProgressFill;
+      const label = el.heatmapDownloadProgressText;
+      if (!wrap || !fill || !label) {
+        hideHeatmapDebugOverlay();
+        return;
+      }
+      wrap.classList.remove('visible');
+      wrap.style.display = 'none';
+      fill.style.width = '0%';
+      if (message) label.textContent = message;
+      hideHeatmapDebugOverlay();
+    }
+
+    window.setHeatmapDownloadProgress = setHeatmapDownloadProgress;
+    window.hideHeatmapDownloadProgress = hideHeatmapDownloadProgress;
+
+    function ensurePixelInfoDebugOverlay() {
+      let overlay = document.getElementById('nf-debug-pixel-info');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'nf-debug-pixel-info';
+        overlay.setAttribute('aria-live', 'polite');
+        overlay.style.position = 'fixed';
+        overlay.style.top = 'calc(var(--header-h) + 14px)';
+        overlay.style.left = '50%';
+        overlay.style.right = 'auto';
+        overlay.style.zIndex = '99999';
+        overlay.style.width = 'min(94vw, 640px)';
+        overlay.style.maxWidth = 'min(94vw, 640px)';
+        overlay.style.maxHeight = 'min(88vh, 780px)';
+        overlay.style.transform = 'translateX(-50%)';
+        overlay.style.overflow = 'auto';
+        overlay.style.padding = '0';
+        overlay.style.background = 'transparent';
+        overlay.style.pointerEvents = 'none';
+        overlay.style.display = 'none';
+        overlay.innerHTML = `
+          <div class="pixel-info-dialog" style="pointer-events:auto;">
+            <div class="pixel-info-header">
+              <span>Información del pixel</span>
+              <button type="button" data-nf-close-pixel-info="1" aria-label="Cerrar información">✖</button>
+            </div>
+            <div class="pixel-info-body" data-nf-pixel-info-body="1"></div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+        overlay.querySelector('[data-nf-close-pixel-info="1"]')?.addEventListener('click', () => {
+          try { window.setPixelInfoVisible(false); } catch {}
+        });
+      }
+      return overlay;
+    }
+
+    function syncPixelInfoDebugOverlay(forceVisible = false) {
+      const overlay = ensurePixelInfoDebugOverlay();
+      const body = overlay.querySelector('[data-nf-pixel-info-body="1"]');
+      if (!body) return false;
+      if (window.el?.pixelInfoBody?.innerHTML) {
+        body.innerHTML = window.el.pixelInfoBody.innerHTML;
+      }
+      overlay.style.display = forceVisible || window.state?.pixelInfoVisible ? 'block' : 'none';
+      overlay.style.visibility = forceVisible || window.state?.pixelInfoVisible ? 'visible' : 'hidden';
+      overlay.style.opacity = forceVisible || window.state?.pixelInfoVisible ? '1' : '0';
+      overlay.style.pointerEvents = forceVisible || window.state?.pixelInfoVisible ? 'none' : 'none';
+      overlay.style.left = '50%';
+      overlay.style.right = 'auto';
+      overlay.style.top = 'calc(var(--header-h) + 14px)';
+      overlay.style.bottom = 'auto';
+      overlay.style.transform = 'translateX(-50%)';
+      overlay.style.width = 'min(94vw, 640px)';
+      overlay.style.maxWidth = 'min(94vw, 640px)';
+      overlay.style.maxHeight = 'min(88vh, 780px)';
+      const dialog = overlay.querySelector('.pixel-info-dialog');
+      if (dialog) {
+        dialog.style.opacity = '1';
+        dialog.style.transform = 'translateY(0) scale(1)';
+      }
+      return true;
+    }
+
+    function hidePixelInfoDebugOverlay() {
+      const overlay = document.getElementById('nf-debug-pixel-info');
+      if (!overlay) return;
+      overlay.style.display = 'none';
+      overlay.style.visibility = 'hidden';
+      overlay.style.opacity = '0';
+    }
+
+    function ensureHeatmapDebugOverlay() {
+      let overlay = document.getElementById('nf-debug-heatmap-progress');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'nf-debug-heatmap-progress';
+        overlay.setAttribute('aria-live', 'polite');
+        overlay.style.position = 'fixed';
+        overlay.style.left = '50%';
+        overlay.style.bottom = '18px';
+        overlay.style.transform = 'translateX(-50%)';
+        overlay.style.zIndex = '99999';
+        overlay.style.width = 'min(92vw, 560px)';
+        overlay.style.display = 'none';
+        overlay.style.pointerEvents = 'none';
+        overlay.innerHTML = `
+          <div class="heatmap-download-progress visible" style="display:grid; position:static; top:auto; z-index:auto; min-height:48px;">
+            <div class="heatmap-download-progress-bar" aria-hidden="true">
+              <div class="heatmap-download-progress-fill" data-nf-heatmap-fill="1"></div>
+            </div>
+            <div class="heatmap-download-progress-text" data-nf-heatmap-text="1">Listo para descargar.</div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      }
+      return overlay;
+    }
+
+    function syncHeatmapDebugOverlay(percent = 0, message = '', visible = true) {
+      const overlay = ensureHeatmapDebugOverlay();
+      const fill = overlay.querySelector('[data-nf-heatmap-fill="1"]');
+      const text = overlay.querySelector('[data-nf-heatmap-text="1"]');
+      const safePercent = clamp(Number(percent) || 0, 0, 100);
+      if (fill) fill.style.width = `${safePercent}%`;
+      if (text) text.textContent = message || `${Math.round(safePercent)}%`;
+      overlay.style.display = visible ? 'block' : 'none';
+      overlay.style.visibility = visible ? 'visible' : 'hidden';
+      overlay.style.opacity = visible ? '1' : '0';
+      return true;
+    }
+
+    function hideHeatmapDebugOverlay() {
+      const overlay = document.getElementById('nf-debug-heatmap-progress');
+      if (!overlay) return;
+      overlay.style.display = 'none';
+      overlay.style.visibility = 'hidden';
+      overlay.style.opacity = '0';
+    }
+
+    window.ensurePixelInfoDebugOverlay = ensurePixelInfoDebugOverlay;
+    window.syncPixelInfoDebugOverlay = syncPixelInfoDebugOverlay;
+    window.hidePixelInfoDebugOverlay = hidePixelInfoDebugOverlay;
+    window.ensureHeatmapDebugOverlay = ensureHeatmapDebugOverlay;
+    window.syncHeatmapDebugOverlay = syncHeatmapDebugOverlay;
+    window.hideHeatmapDebugOverlay = hideHeatmapDebugOverlay;
+
+    function yieldToBrowser() {
+      return new Promise(resolve => requestAnimationFrame(() => resolve()));
+    }
+
     function persistBoardCache(data) {
       try { localStorage.setItem(state.cacheKey, JSON.stringify({ ts: Date.now(), width: getBoardWidth(), height: getBoardHeight(), size: Math.max(getBoardWidth(), getBoardHeight()), data })); } catch {}
     }
@@ -2942,7 +3219,7 @@
     const PALETTE_PAGE_SIZE_DESKTOP = 48;
 
     function getPalettePageSize() {
-      return isMobileLayout() ? PALETTE_PAGE_SIZE_MOBILE : PALETTE_PAGE_SIZE_DESKTOP;
+      return isMobileLayout() ? 32 : 48;
     }
 
     function getPalettePageState() {
@@ -3241,10 +3518,18 @@
     function centerCanvas() {
       const vw = el.viewport.clientWidth;
       const vh = el.viewport.clientHeight;
+      console.log('[NF] clic en centrar lienzo', {
+        viewportWidth: vw,
+        viewportHeight: vh,
+        boardWidth: getBoardWidth(),
+        boardHeight: getBoardHeight(),
+        scale: 4
+      });
       state.scale = 4;
       state.originX = (vw - getBoardWidth() * state.scale) / 2;
       state.originY = (vh - getBoardHeight() * state.scale) / 2;
       refreshCamera();
+      console.log('[NF] lienzo centrado');
       requestAnimationFrame(() => {
         requestMinimapRefresh();
         requestGridRefresh(true);
@@ -4088,6 +4373,8 @@
       activeUserCount: 0,
       paintLoopId: null,
       spaceHeld: false,
+      cHeld: false,
+      pixelInfoLoopId: null,
       pointerOverCanvas: false,
       mouseIsDown: false,
       touchPainting: false,
@@ -4121,7 +4408,7 @@
       buildPalette();
       centerCanvas();
       applyZoomPointerFix();
-      if (el.minimapFrame) el.minimapFrame.style.aspectRatio = `${getBoardWidth()} / ${getBoardHeight()}`;
+      syncMinimapFrameAspectRatio(getBoardWidth(), getBoardHeight());
     });
 
     // init
@@ -4289,7 +4576,10 @@
       el.modalSessionLogin?.addEventListener('click', (e) => {
         if (e.target === el.modalSessionLogin) hideAllModals();
       });
-      el.centerBtn.addEventListener('click', centerCanvas);
+      el.centerBtn.addEventListener('click', () => {
+        console.log('[NF] clic en botón centrar');
+        centerCanvas();
+      });
       el.gridToggleBtn?.addEventListener('click', () => toggleGrid());
       document.querySelectorAll('[data-sidebar-section]').forEach(btn => {
         btn.addEventListener('click', () => openSidebar(btn.getAttribute('data-sidebar-section') || 'chat'));
@@ -4367,7 +4657,10 @@
       el.quickLeaderboard?.addEventListener('click', () => openSidebar('leaderboard'));
       el.quickActivity?.addEventListener('click', () => openSidebar('activity'));
       el.quickStats?.addEventListener('click', () => openSidebar('session'));
-      el.quickCenter.addEventListener('click', centerCanvas);
+      el.quickCenter.addEventListener('click', () => {
+        console.log('[NF] clic en botón centrar rápido');
+        centerCanvas();
+      });
       el.quickGrid?.addEventListener('click', () => toggleGrid());
       el.quickBrush?.addEventListener('click', () => toggleBrushMode());
       el.quickPalette.addEventListener('click', () => {
@@ -4516,6 +4809,17 @@
         return Array.from(activePointers.values());
       }
 
+      function clearLockedPixelHoldIfMismatched(e) {
+        if (!window.state?.pixelInfoTouchTimer) return;
+        if (window.state.pixelInfoTouchPointerId !== e.pointerId) return;
+        const startX = Number(window.state.pixelInfoTouchStartX) || 0;
+        const startY = Number(window.state.pixelInfoTouchStartY) || 0;
+        const move = Math.hypot(e.clientX - startX, e.clientY - startY);
+        if (move > 10) {
+          cancelLockedPixelInfoHold();
+        }
+      }
+
       function isInteractiveUiTarget(target) {
         return el.sidebar.contains(target) || document.querySelector('.modal-overlay.visible')?.contains(target);
       }
@@ -4560,8 +4864,27 @@
         setCanvasInteractionState(true);
 
         if (e.pointerType === 'mouse' && e.button === 1) {
+          console.log('[NF] clic central en viewport detectado', {
+            type: e.type,
+            button: e.button,
+            buttons: e.buttons,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            target: e.target?.id || e.target?.className || e.target?.tagName || ''
+          });
           e.preventDefault();
-          sampleColorAt(e.clientX, e.clientY, 'middle-click');
+          e.stopPropagation();
+          if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+          try {
+            if (typeof window.openPixelInfoFromPointer === 'function') {
+              const opened = !!window.openPixelInfoFromPointer(e.clientX, e.clientY, `viewport-middle:${e.type}`);
+              console.log(opened ? '[NF] marco de información abierto desde el viewport' : '[NF] no se pudo abrir el marco de información desde el viewport');
+            } else {
+              console.warn('[NF] openPixelInfoFromPointer no está disponible');
+            }
+          } catch (err) {
+            console.error('[NF] error al abrir información con clic central en viewport', err);
+          }
           return;
         }
 
@@ -4593,6 +4916,7 @@
           startPaintLoop('touch');
           return;
         }
+
 
         if (activePointers.size === 2) {
           const [p1, p2] = getPointerPoints();
@@ -4673,8 +4997,12 @@
         }
       }, true);
 
-      el.viewport.addEventListener('pointerup', endViewportInteraction);
-      el.viewport.addEventListener('pointercancel', endViewportInteraction);
+      el.viewport.addEventListener('pointerup', e => {
+        endViewportInteraction(e);
+      });
+      el.viewport.addEventListener('pointercancel', e => {
+        endViewportInteraction(e);
+      });
       el.viewport.addEventListener('lostpointercapture', () => {
         activePointers.clear();
         state.dragging = false;
@@ -4701,8 +5029,9 @@
       }, { passive:false });
 
       window.addEventListener('keydown', e => {
-        if (e.code === 'Space' && !isMobileLayout()) {
-          const typingTarget = isTypingTarget(e.target) || isTypingTarget(document.activeElement) || document.activeElement === el.chatInput;
+        const typingTarget = isTypingTarget(e.target) || isTypingTarget(document.activeElement) || document.activeElement === el.chatInput;
+
+        if ((e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') && !isMobileLayout()) {
           if (typingTarget) return;
           if (e.repeat) {
             e.preventDefault();
@@ -4714,6 +5043,7 @@
           return;
         }
 
+
         if (e.key === 'Escape') {
           closeSidebar();
           if (!state.isCapturing) hideAllModals();
@@ -4721,12 +5051,15 @@
       });
 
       window.addEventListener('keyup', e => {
-        if (e.code === 'Space') {
-          const typingTarget = isTypingTarget(e.target) || isTypingTarget(document.activeElement) || document.activeElement === el.chatInput;
+        const typingTarget = isTypingTarget(e.target) || isTypingTarget(document.activeElement) || document.activeElement === el.chatInput;
+
+        if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') {
           if (typingTarget) return;
           e.preventDefault();
           stopSpacePaintLoop();
+          return;
         }
+
       });
 
       window.addEventListener('blur', () => {
@@ -4735,7 +5068,7 @@
         el.viewport.classList.remove('dragging');
         state.pinchDistance = null;
         setCanvasInteractionState(false);
-        if (!state.touchPainting && !state.brushMode) {
+                if (!state.touchPainting && !state.brushMode) {
           stopPaintLoop();
         }
       });
@@ -4932,6 +5265,17 @@
       setEyedropperMode(!state.eyedropperMode);
     }
 
+    function getPixelKeyFromTarget(target) {
+      if (!target) return '';
+      const x = Number(target.x);
+      const y = Number(target.y);
+      const width = typeof boardWidth === 'function' ? boardWidth() : (window.state?.boardWidth || 0);
+      const height = typeof boardHeight === 'function' ? boardHeight() : (window.state?.boardHeight || 0);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return '';
+      if (x < 0 || x >= width || y < 0 || y >= height) return '';
+      return `${Math.floor(x)}_${Math.floor(y)}`;
+    }
+
     function sampleColorAt(clientX, clientY, source = 'sample') {
       const { x, y } = getCanvasCoords(clientX, clientY);
       if (x < 0 || x >= getBoardWidth() || y < 0 || y >= getBoardHeight()) return false;
@@ -4941,6 +5285,132 @@
         el.paletteStatus.textContent = `Color tomado: ${color}`;
       }
       playClickSound();
+      return true;
+    }
+
+    function openPixelInfoFromPointer(clientX, clientY, source = 'pointer') {
+      console.log('[NF] clic central en pixel / intento de abrir marco de información', { source, clientX, clientY });
+      if (typeof window.refreshUiRefs === 'function') window.refreshUiRefs();
+      const coords = typeof getCanvasCoords === 'function' ? getCanvasCoords(clientX, clientY) : null;
+      if (!coords || !Number.isFinite(coords.x) || !Number.isFinite(coords.y)) return false;
+      const target = { x: Number(coords.x), y: Number(coords.y) };
+      const width = typeof boardWidth === 'function' ? boardWidth() : (window.state?.boardWidth || 0);
+      const height = typeof boardHeight === 'function' ? boardHeight() : (window.state?.boardHeight || 0);
+      const pixelX = Math.floor(Number(target.x));
+      const pixelY = Math.floor(Number(target.y));
+      const pixelKey = (Number.isFinite(pixelX) && Number.isFinite(pixelY) && pixelX >= 0 && pixelX < width && pixelY >= 0 && pixelY < height)
+        ? `${pixelX}_${pixelY}`
+        : '';
+      const setPixelInfoVisibleSafe = (visible) => {
+        try {
+          if (typeof window.setPixelInfoVisible === 'function') {
+            window.setPixelInfoVisible(visible);
+            return true;
+          }
+          if (typeof setPixelInfoVisible === 'function') {
+            setPixelInfoVisible(visible);
+            return true;
+          }
+        } catch (err) {
+          console.warn('No se pudo cambiar la visibilidad del panel de información:', err);
+        }
+        try {
+          if (!window.state) return false;
+          window.state.pixelInfoVisible = !!visible;
+          if (!window.state.pixelInfoVisible) {
+            window.state.pixelInfoPinnedKey = '';
+          }
+          if (window.el && window.el.pixelInfoPanel) {
+            window.el.pixelInfoPanel.classList.toggle('is-hidden', !window.state.pixelInfoVisible);
+            window.el.pixelInfoPanel.style.display = window.state.pixelInfoVisible ? 'flex' : 'none';
+            window.el.pixelInfoPanel.style.visibility = window.state.pixelInfoVisible ? 'visible' : 'hidden';
+          }
+          if (window.el && window.el.quickPixelInfo__removed) {
+            window.el.quickPixelInfo__removed.classList.toggle('active', window.state.pixelInfoVisible);
+            window.el.quickPixelInfo__removed.setAttribute('aria-pressed', String(window.state.pixelInfoVisible));
+          }
+          return true;
+        } catch (err) {
+          console.warn('Fallback de visibilidad del panel de información falló:', err);
+          return false;
+        }
+      };
+      const ensureImmediateFallbackMarkup = (keyToShow) => {
+        const baseRecord = normalizeBoardPixelRecord(
+          (window.state?.boardData && keyToShow && window.state.boardData[keyToShow]) ? window.state.boardData[keyToShow] : {},
+          keyToShow
+        );
+        const fallbackRecord = {
+          ...baseRecord,
+          key: keyToShow,
+          x: Number.isFinite(pixelX) ? pixelX : baseRecord.x,
+          y: Number.isFinite(pixelY) ? pixelY : baseRecord.y,
+          color: window.normalizeColorHexSafe(baseRecord.color || getCurrentPixelHex(pixelX, pixelY) || '#ffffff'),
+          username: window.normalizeUsernameSafe(baseRecord.username || baseRecord.placedBy || baseRecord.updatedBy || ''),
+          legacy: !window.hasPixelMetadata(baseRecord),
+          metaVersion: baseRecord.metaVersion || VERSION,
+          schemaVersion: baseRecord.schemaVersion || VERSION
+        };
+        if (window.el?.pixelInfoBody) {
+          window.el.pixelInfoBody.innerHTML = `
+            <div class="standalone-loading">
+              <div class="standalone-spinner"></div>
+              <strong>Cargando pixel ${escapeHtmlText(keyToShow)}...</strong>
+              <span>Se consulta únicamente este pixel en Firebase.</span>
+            </div>
+          `;
+        }
+        try { updatePixelInfoPanelMarkup(fallbackRecord, keyToShow, 'Cargando...'); } catch {}
+      };
+      if (!pixelKey) {
+        setPixelInfoVisibleSafe(true);
+        window.state.pixelInfoPinnedKey = '';
+        window.state.pixelInfoCurrentKey = '';
+        (window.updatePixelInfoPanelLoading || updatePixelInfoPanelLoading)('Mueve el cursor sobre un pixel antes de usar el botón central.');
+        return false;
+      }
+      window.state.pixelInfoPinnedKey = pixelKey;
+      window.state.pixelInfoCurrentKey = pixelKey;
+      console.log('[NF] marco de información solicitado', { source, pixelKey, target });
+      setPixelInfoVisibleSafe(true);
+      forcePixelInfoPanelVisible(`openPixelInfoFromPointer:${source}:${pixelKey}`);
+      ensureImmediateFallbackMarkup(pixelKey);
+      console.log('[NF] marco de información abierto', { source, pixelKey });
+
+      (window.updatePixelInfoPanelLoading || updatePixelInfoPanelLoading)(`Cargando pixel ${pixelKey}...`);
+      try { syncPixelInfoDebugOverlay(true); } catch {}
+
+      if (typeof window.updatePixelInfoForKey === 'function') {
+        Promise.resolve(window.updatePixelInfoForKey(pixelKey, true)).catch(err => {
+          console.warn('[NF] error al cargar info del pixel desde el click central', err);
+          if (window.el?.pixelInfoBody) {
+            const safeColor = window.normalizeColorHexSafe(getCurrentPixelHex(pixelX, pixelY) || '#ffffff');
+            window.el.pixelInfoBody.innerHTML = `
+              <div class="pixel-info-swatch">
+                <div class="pixel-info-color-chip" style="background:${escapeHtmlText(safeColor)}"></div>
+                <div>
+                  <div class="pixel-info-note">Pixel seleccionado</div>
+                  <strong style="font-size:.92rem;line-height:1.25">${escapeHtmlText(pixelKey)}</strong>
+                </div>
+              </div>
+              <div class="pixel-info-legacy-box">
+                <strong>No se pudo cargar la información</strong>
+                <span>Se muestra el color actual del pixel mientras se recupera la información.</span>
+              </div>
+              <div class="pixel-info-grid">
+                <div class="pixel-info-item">
+                  <span>Color actual</span>
+                  <strong>${escapeHtmlText(safeColor)}</strong>
+                </div>
+                <div class="pixel-info-item">
+                  <span>Posición</span>
+                  <strong>${escapeHtmlText(pixelKey)}</strong>
+                </div>
+              </div>
+            `;
+          }
+        });
+      }
       return true;
     }
 
@@ -5398,6 +5868,48 @@
       }
     }
 
+    function startPixelInfoHoldLoop() {
+      if (isMobileLayout()) return;
+      if (!state.cHeld || !state.hoverPoint) return;
+      if (state.pixelInfoLoopId) return;
+
+      const tick = () => {
+        if (!state.cHeld || !state.hoverPoint || isMobileLayout()) {
+                    return;
+        }
+
+        const target = {
+          x: Number(state.hoverPoint.x),
+          y: Number(state.hoverPoint.y)
+        };
+        const key = getPixelKeyFromTarget(target);
+        if (!key) {
+          setPixelInfoVisible(true);
+          (window.updatePixelInfoPanelLoading || updatePixelInfoPanelLoading)('Mueve el cursor sobre un pixel antes de usar el botón central.');
+          return;
+        }
+
+        if (!state.pixelInfoVisible) {
+          setPixelInfoVisible(true);
+        }
+
+        state.pixelInfoCurrentKey = key;
+        openPixelInfoStandaloneTab(key, target);
+        if (typeof window.updatePixelInfoForKey === 'function') window.updatePixelInfoForKey(key, true);
+      };
+
+      tick();
+      state.pixelInfoLoopId = setInterval(tick, PAINT_REPEAT_MS);
+    }
+
+    function stopPixelInfoHoldLoop() {
+      state.cHeld = false;
+      if (state.pixelInfoLoopId) {
+        clearInterval(state.pixelInfoLoopId);
+        state.pixelInfoLoopId = null;
+      }
+    }
+
     function startPaintLoop(mode = 'manual') {
       if (state.paintLoopId) return;
       if (!state.touchPainting && mode !== 'space') return;
@@ -5428,6 +5940,42 @@
       state.touchPainting = false;
     }
 
+
+    function normalizeBoardPixelRecordBridge(raw, key = '') {
+      const color = typeof normalizeColorHexSafe === 'function'
+        ? window.normalizeColorHexSafe(raw && typeof raw === 'object' ? (raw.color || raw.hex || '#ffffff') : raw)
+        : normalizeColorHex(raw && typeof raw === 'object' ? (raw.color || raw.hex || '#ffffff') : raw);
+      const normalizeUser = typeof normalizeUsernameSafe === 'function' ? normalizeUsernameSafe : normalizeUsername;
+      const normalizeText = typeof normalizeActivityTextSafe === 'function' ? normalizeActivityTextSafe : normalizeActivityText;
+      const obj = raw && typeof raw === 'object' ? raw : {};
+      const username = normalizeUser(obj.username || obj.placedBy || obj.user || obj.creator || obj.author || '');
+      const uid = normalizeText(obj.uid || obj.userId || obj.ownerUid || '', 64);
+      const tsCandidate = Number(obj.ts ?? obj.time ?? obj.updatedAt ?? obj.lastChangedAt ?? obj.placedAt ?? obj.createdAt ?? 0);
+      const placedAtCandidate = Number(obj.placedAt ?? obj.createdAt ?? obj.firstPlacedAt ?? obj.ts ?? obj.time ?? tsCandidate ?? 0);
+      const updatedAtCandidate = Number(obj.updatedAt ?? obj.lastChangedAt ?? obj.ts ?? obj.time ?? tsCandidate ?? 0);
+      const changeCountCandidate = Number(obj.changeCount ?? obj.changes ?? obj.change_count ?? obj.timesChanged ?? 0);
+      return {
+        key,
+        color,
+        username,
+        uid,
+        ts: Number.isFinite(tsCandidate) && tsCandidate > 0 ? tsCandidate : null,
+        changeCount: Number.isFinite(changeCountCandidate) && changeCountCandidate > 0 ? Math.floor(changeCountCandidate) : 0,
+        placedAt: Number.isFinite(placedAtCandidate) && placedAtCandidate > 0 ? placedAtCandidate : null,
+        updatedAt: Number.isFinite(updatedAtCandidate) && updatedAtCandidate > 0 ? updatedAtCandidate : null,
+        placedBy: normalizeUser(obj.placedBy || obj.username || username || ''),
+        updatedBy: normalizeUser(obj.updatedBy || obj.username || username || ''),
+        source: normalizeText(obj.source || '', 32),
+        changedAt: Number.isFinite(updatedAtCandidate) && updatedAtCandidate > 0 ? updatedAtCandidate : null,
+        previousColor: typeof obj.previousColor === 'string'
+          ? (typeof normalizeColorHexSafe === 'function' ? window.normalizeColorHexSafe(obj.previousColor) : normalizeColorHex(obj.previousColor))
+          : '',
+        metaVersion: typeof getPixelMetaVersion === 'function' ? getPixelMetaVersion(obj) : '',
+        schemaVersion: typeof getPixelMetaVersion === 'function' ? getPixelMetaVersion(obj) : ''
+      };
+    }
+
+    var normalizeBoardPixelRecord = window.normalizeBoardPixelRecord = window.normalizeBoardPixelRecord || normalizeBoardPixelRecordBridge;
     function commitPixelAt(clientX, clientY, source = 'manual') {
       if (state.banned) return;
       if (!state.username) { showModal(el.modalUsername); return; }
@@ -5442,9 +5990,11 @@
       const ts = Date.now();
       const user = state.username;
       const uid = ensureUid();
-      const payload = { color, username: user, uid, ts, source };
+      const previousRecord = normalizeBoardPixelRecord(state.boardData?.[key] || {}, key);
+      const nextChangeCount = Math.max(0, Number(previousRecord.changeCount || previousRecord.changes || previousRecord.change_count || previousRecord.timesChanged || 0) || 0) + 1;
+      const payload = { color, username: user, uid, ts, source, changeCount: nextChangeCount, metaVersion: VERSION, schemaVersion: VERSION, placedAt: ts, updatedAt: ts, placedBy: user, updatedBy: user, changedAt: ts, previousColor: currentColor || '' };
 
-      state.popQueue.set(key, { username: user, color, ts });
+      state.popQueue.set(key, { username: user, color, ts, changeCount: nextChangeCount, uid });
       state.boardData = state.boardData || {};
       state.boardData[key] = payload;
       state.knownBoardKeys.add(key);
@@ -5453,7 +6003,28 @@
       requestMinimapRefresh();
 
       Promise.resolve()
-        .then(() => db.ref(`${BOARD_PATH}/${key}`).set(payload))
+        .then(() => Promise.all([
+          db.ref(`${BOARD_PATH}/${key}`).set(payload),
+          db.ref(`${BOARD_META_PATH}/${key}`).set({
+            key,
+            x,
+            y,
+            color,
+            username: user,
+            uid,
+            ts,
+            source,
+            changeCount: nextChangeCount,
+            metaVersion: VERSION,
+            schemaVersion: VERSION,
+            placedAt: ts,
+            updatedAt: ts,
+            placedBy: user,
+            updatedBy: user,
+            changedAt: ts,
+            previousColor: currentColor || ''
+          })
+        ]))
         .then(() => Promise.all([
           db.ref(`${USER_STATS_PATH}/${uid}/lastPixelAt`).set(ts),
           db.ref(`${USER_STATS_PATH}/${uid}/username`).set(user),
@@ -6796,6 +7367,3586 @@ function startSession() {
 
     initUiHooks();
     startSession();
+  </script>
+
+
+  <style>
+    #ui-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #pixel-info-panel {
+      position: fixed;
+      top: calc(var(--header-h) + 14px);
+      left: 50%;
+      right: auto;
+      bottom: auto;
+      z-index: 9900;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      width: min(94vw, 520px);
+      max-width: min(94vw, 520px);
+      pointer-events: none;
+      padding: 0;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(-50%) translateY(-10px) scale(.985);
+      will-change: opacity, transform, left, top, width;
+      transition: opacity .22s ease, transform .22s ease, visibility .22s ease;
+    }
+
+    #pixel-info-panel:not(.is-hidden) {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+
+    #pixel-info-panel.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(-50%) translateY(-10px) scale(.985);
+      pointer-events: none;
+    }
+
+    .pixel-info-backdrop {
+      position: absolute;
+      inset: -12px;
+      background: radial-gradient(circle at 50% 0%, rgba(41,121,255,.12), rgba(0,0,0,0) 55%);
+      pointer-events: none;
+      display: block;
+      border-radius: 24px;
+      filter: blur(1px);
+      opacity: .55;
+    }
+
+    .pixel-info-dialog {
+      position: relative;
+      width: 100%;
+      max-height: min(86vh, 760px);
+      overflow: auto;
+      background: linear-gradient(180deg, rgba(18,18,18,.99), rgba(12,12,12,.99));
+      border: 1px solid rgba(41,121,255,.32);
+      border-radius: 20px;
+      box-shadow: 0 24px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04) inset;
+      padding: 14px 14px 15px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      scrollbar-gutter: stable;
+      pointer-events: auto;
+      opacity: 0;
+      transform: translateY(10px) scale(.98);
+      transition: opacity .22s ease, transform .22s ease, box-shadow .22s ease;
+      overflow-x: hidden;
+    }
+
+    #pixel-info-panel:not(.is-hidden) .pixel-info-dialog {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .pixel-info-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      color: #dce9ff;
+      font-size: .76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+    }
+
+    .pixel-info-header button {
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .pixel-info-header button:hover {
+      border-color: rgba(41,121,255,.42);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .pixel-info-body {
+      display: grid;
+      gap: 8px;
+      font-size: .75rem;
+      line-height: 1.5;
+    }
+
+    .pixel-info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .pixel-info-item {
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      border-radius: 12px;
+      padding: 8px 9px;
+      min-width: 0;
+    }
+
+    .pixel-info-item span {
+      display: block;
+      font-size: .64rem;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: .55px;
+      margin-bottom: 4px;
+    }
+
+    .pixel-info-item strong {
+      display: block;
+      color: var(--text);
+      word-break: break-word;
+      font-size: .78rem;
+      line-height: 1.35;
+    }
+
+    .pixel-info-swatch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pixel-info-color-chip {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: #fff;
+      flex: 0 0 auto;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.18);
+    }
+
+    .pixel-info-note {
+      color: var(--dim);
+      font-size: .69rem;
+      line-height: 1.45;
+      font-family: "Courier New", monospace;
+      word-break: break-word;
+    }
+
+    .standalone-loading {
+      display: grid;
+      gap: 10px;
+      place-items: start;
+      padding: 18px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      border-radius: 14px;
+    }
+
+    .standalone-loading strong {
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .standalone-loading span {
+      color: var(--dim);
+      font-size: .78rem;
+      line-height: 1.5;
+    }
+
+    .standalone-spinner {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.12);
+      border-top-color: var(--accent);
+      animation: spin 1s linear infinite;
+    }
+
+    .pixel-info-body {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pixel-info-body > * {
+      animation: pixelInfoContentIn .24s ease both;
+    }
+
+    @keyframes pixelInfoContentIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .pixel-info-legacy-box {
+      border: 1px solid rgba(41,121,255,.24);
+      background: rgba(41,121,255,.08);
+      border-radius: 14px;
+      padding: 12px 13px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .pixel-info-legacy-box strong {
+      color: #dce9ff;
+      font-size: .82rem;
+      line-height: 1.35;
+    }
+
+    .pixel-info-legacy-box span {
+      color: var(--text);
+      font-size: .76rem;
+      line-height: 1.5;
+    }
+
+    .pixel-info-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 2px;
+    }
+
+    .pixel-info-actions .action-btn {
+      padding: 9px 12px;
+      min-height: 34px;
+      font-size: .66rem;
+    }
+
+    .pixel-info-raw-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .pixel-info-item--wide {
+      min-height: 64px;
+    }
+
+    .pixel-info-item--wide strong {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "Courier New", monospace;
+      font-size: .72rem;
+      line-height: 1.45;
+    }
+
+    .pixel-info-item--wide span {
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 560px) {
+      .pixel-info-raw-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    #quick-pixel-info {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #quick-panzoom-lock {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .palette-side-tools {
+      justify-content: center;
+      align-items: center;
+    }
+
+    #mobile-quickbar {
+      align-items: center;
+      justify-content: center;
+    }
+
+    .quick-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #module-stats .stats-row[data-row="timestamp"] {
+      display: none !important;
+    }
+
+    .activity-summary-wrap {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .activity-summary-card {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.03);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: .76rem;
+      line-height: 1.45;
+    }
+
+    .activity-summary-card span {
+      color: var(--dim);
+      display: block;
+      font-size: .64rem;
+      text-transform: uppercase;
+      letter-spacing: .45px;
+      margin-bottom: 4px;
+    }
+
+    .activity-summary-card strong {
+      color: var(--text);
+      word-break: break-word;
+      display: block;
+    }
+
+    .activity-summary-card em {
+      color: var(--accent);
+      font-style: normal;
+      font-weight: 800;
+      white-space: nowrap;
+      flex: 0 0 auto;
+      font-family: "Courier New", monospace;
+    }
+
+    .heatmap-download-btn {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .heatmap-download-progress {
+      display: none;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      background: rgba(255,255,255,.03);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+      position: sticky;
+      top: 10px;
+      z-index: 6;
+    }
+
+    .heatmap-download-progress.visible {
+      display: grid;
+    }
+
+    .heatmap-download-progress-bar {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: #000;
+      border: 1px solid rgba(255,255,255,.08);
+      overflow: hidden;
+    }
+
+    .heatmap-download-progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #6aa4ff);
+      border-radius: 999px;
+      transition: width .15s linear;
+    }
+
+    .heatmap-download-progress-text {
+      font-size: .68rem;
+      color: var(--dim);
+      font-family: "Courier New", monospace;
+      line-height: 1.45;
+    }
+
+    #modal-dashboard .heatmap-download-btn {
+      margin-top: 10px;
+    }
+
+    #modal-dashboard .heatmap-download-progress {
+      margin-top: 10px;
+    }
+
+    @media (max-width: 768px) {
+      #ui-bottom {
+        gap: 8px;
+      }
+
+      #pixel-info-panel {
+        padding: 12px;
+      }
+
+      .pixel-info-dialog {
+        width: min(94vw, 560px);
+      }
+
+      .pixel-info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .pixel-info-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .pixel-info-actions .action-btn {
+        width: 100%;
+      }
+    }
+  </style>
+
+
+  <script>
+  (function () {
+    const VERSION = 'v5.3';
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    const SEVEN_DAYS_MS = 7 * ONE_DAY_MS;
+    const MESSAGE_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
+    const HEATMAP_STOPS = ['#1d4ed8', '#10b981', '#facc15', '#f97316', '#ef4444'];
+    const PREFERRED_PIXEL_INFO_CACHE_MS = 5000;
+
+    const original = {
+      updateCoordsOverlay: window.updateCoordsOverlay,
+      selectColor: window.selectColor,
+      sampleColorAt: window.sampleColorAt,
+      toggleGrid: window.toggleGrid,
+      buildPalette: window.buildPalette,
+      logActivity: window.logActivity,
+      formatActivityText: window.formatActivityText,
+      renderActivityEntry: window.renderActivityEntry,
+      updateLiveSummary: window.updateLiveSummary,
+      clearRecentActivity: window.clearRecentActivity,
+      consumePixelEvent: window.consumePixelEvent,
+      showTrackingPixelPopup: window.showTrackingPixelPopup,
+      getCurrentPixelHex: window.getCurrentPixelHex,
+      renderBoardFromData: window.renderBoardFromData,
+      applyPendingBoardWrites: window.applyPendingBoardWrites,
+      processBoardSnapshot: window.processBoardSnapshot,
+      refreshBoardFromServer: window.refreshBoardFromServer,
+      applyRealtimeBoardChange: window.applyRealtimeBoardChange,
+      commitPixelAt: window.commitPixelAt,
+      hideAllModals: window.hideAllModals,
+      openAdminLogin: window.openAdminLogin,
+      openAdminDashboard: window.openAdminDashboard,
+      closeAdminDashboard: window.closeAdminDashboard,
+      performAdminLogin: window.performAdminLogin,
+      updateTopStats: window.updateTopStats,
+      updateSettingsDisplay: window.updateSettingsDisplay,
+      syncSettings: window.syncSettings,
+      applyAdminRuntimeBindings: window.applyAdminRuntimeBindings,
+      setPalettePage: window.setPalettePage,
+      setMobilePaletteVisible: window.setMobilePaletteVisible,
+      setDesktopPaletteVisible: window.setDesktopPaletteVisible,
+      toggleMobilePalette: window.toggleMobilePalette,
+      toggleDesktopPalette: window.toggleDesktopPalette,
+      setGridEnabled: window.setGridEnabled
+    };
+
+    function normalizeColorHexSafe(value) {
+      if (typeof window.normalizeColorHex === 'function') return window.normalizeColorHex(value);
+      const raw = String(value || '').trim();
+      if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) {
+        return raw.length === 4
+          ? '#' + raw.slice(1).split('').map(ch => ch + ch).join('').toLowerCase()
+          : raw.toLowerCase();
+      }
+      return '#ffffff';
+    }
+
+    function normalizeUsernameSafe(value) {
+      if (typeof window.normalizeUsername === 'function') return window.normalizeUsername(value);
+      return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 20);
+    }
+
+    function normalizeActivityTextSafe(value, maxLen = 120) {
+      if (typeof window.normalizeActivityText === 'function') return window.normalizeActivityText(value, maxLen);
+      return String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLen);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function formatNumber(value) {
+      try {
+        const n = Number(value || 0);
+        return Number.isFinite(n) ? n.toLocaleString('en-US') : '0';
+      } catch {
+        return '0';
+      }
+    }
+
+    function formatShortTime(ts) {
+      try {
+        const date = new Date(Number(ts));
+        if (!Number.isFinite(date.getTime())) return 'Sin datos';
+        return date.toLocaleString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+      } catch {
+        return 'Sin datos';
+      }
+    }
+
+    function escapeHtmlText(text) {
+      if (typeof window.escapeHtmlText === 'function') return window.escapeHtmlText(text);
+      return String(text).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+    }
+
+    function ensureStyleVersion() {
+      document.documentElement.style.setProperty('--app-version', VERSION);
+      const title = document.querySelector('title');
+      if (title) title.textContent = 'Nota_Final.png';
+      const desktopVersion = document.getElementById('app-version');
+      const mobileVersion = document.getElementById('app-version-mobile');
+      if (desktopVersion) desktopVersion.textContent = VERSION;
+      if (mobileVersion) mobileVersion.textContent = VERSION;
+    }
+
+    function ensureUiInjected() {
+      const host = document.body || document.documentElement;
+      if (host && !document.getElementById('pixel-info-panel')) {
+        host.insertAdjacentHTML('beforeend', `
+          <div id="pixel-info-panel" class="is-hidden" aria-live="polite">
+            <div class="pixel-info-backdrop" data-pixel-info-close="1"></div>
+            <div class="pixel-info-dialog" role="dialog" aria-modal="true" aria-labelledby="pixel-info-title">
+              <div class="pixel-info-header">
+                <span id="pixel-info-title">Información del pixel</span>
+                <button id="pixel-info-close" type="button" aria-label="Cerrar información">✖</button>
+              </div>
+              <div class="pixel-info-body" id="pixel-info-body">
+                <div class="standalone-loading" style="margin:0;">
+                  <div class="standalone-spinner"></div>
+                  <strong>Información del pixel</strong>
+                  <span>Pulsa el botón central del mouse sobre un pixel para fijar su color, usuario y metadatos en este marco independiente.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `);
+      }
+
+      const mobileQuickbar = document.getElementById('mobile-quickbar');
+      if (window.el?.pixelInfoBody) {
+        ensurePixelInfoBodySeed('ensureUiInjected');
+      }
+
+      const adminExportBtn = document.getElementById('export-stats-btn');
+      if (adminExportBtn && !document.getElementById('heatmap-download-btn')) {
+        adminExportBtn.insertAdjacentHTML('afterend', `
+          <button class="action-btn btn-soft heatmap-download-btn" id="heatmap-download-btn" type="button" onclick="if(window.downloadHeatmap){window.downloadHeatmap();} return false;">Descargar heatmap</button>
+        `);
+      }
+      if (adminExportBtn && !document.getElementById('heatmap-download-progress')) {
+        adminExportBtn.insertAdjacentHTML('afterend', `
+          <div class="heatmap-download-progress" id="heatmap-download-progress" aria-live="polite" aria-atomic="true">
+            <div class="heatmap-download-progress-bar" aria-hidden="true">
+              <div class="heatmap-download-progress-fill" id="heatmap-download-progress-fill"></div>
+            </div>
+            <div class="heatmap-download-progress-text" id="heatmap-download-progress-text">Listo para descargar.</div>
+          </div>
+        `);
+      }
+    }
+
+    function focusAppForHotkeys() {
+      try {
+        window.focus?.();
+      } catch {}
+      try {
+        document.body?.focus?.({ preventScroll: true });
+      } catch {
+        try { document.body?.focus?.(); } catch {}
+      }
+    }
+
+    function getEl(id) {
+      return document.getElementById(id);
+    }
+
+    function refreshUiRefs() {
+      if (!window.el) return;
+      window.el.pixelInfoPanel = getEl('pixel-info-panel');
+      window.el.pixelInfoBody = getEl('pixel-info-body');
+      window.el.pixelInfoClose = getEl('pixel-info-close');
+      window.el.heatmapDownloadBtn = getEl('heatmap-download-btn');
+      window.el.heatmapDownloadProgress = getEl('heatmap-download-progress');
+      window.el.heatmapDownloadProgressFill = getEl('heatmap-download-progress-fill');
+      window.el.heatmapDownloadProgressText = getEl('heatmap-download-progress-text');
+      try { ensurePixelInfoBodySeed('refreshUiRefs'); } catch {}
+    }
+
+    function renderPixelInfoPanelHtml(record, key, status = '', context = 'panel', message = '') {
+      const safeString = (value, fallback = 'Sin datos') => {
+        const text = String(value ?? '').trim();
+        return text || fallback;
+      };
+      const safeEscape = (value) => {
+        const text = String(value ?? '');
+        return text.replace(/[&<>"']/g, ch => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[ch] || ch));
+      };
+      const safeColorFn = typeof window.normalizeColorHexSafe === 'function' ? window.normalizeColorHexSafe : (value) => normalizeColorHex(value);
+      const safeUserFn = typeof window.normalizeUsernameSafe === 'function' ? window.normalizeUsernameSafe : (value) => normalizeUsername(value);
+      const x = Number.isFinite(Number(record?.x)) ? Number(record.x) : null;
+      const y = Number.isFinite(Number(record?.y)) ? Number(record.y) : null;
+      const color = safeColorFn(record?.color || '#ffffff');
+      const username = safeUserFn(record?.username || record?.placedBy || record?.updatedBy || '');
+      const positionText = (x !== null && y !== null) ? `(${x}, ${y})` : (safeString(key, 'Sin datos'));
+      const latestAt = Number(record?.lastChangedAt || record?.updatedAt || record?.ts || 0);
+      const firstAt = Number(record?.firstPlacedAt || record?.placedAt || record?.ts || 0);
+      const latestText = latestAt > 0 ? formatShortTime(latestAt) : 'Sin datos';
+      const firstText = firstAt > 0 ? formatShortTime(firstAt) : 'Sin datos';
+      const changeCount = Number(record?.changeCount || record?.changes || 0) || 0;
+      const latestBy = safeUserFn(record?.lastChangedBy || record?.updatedBy || record?.username || '');
+      const firstBy = safeUserFn(record?.firstPlacedBy || record?.placedBy || record?.username || '');
+      const uidText = safeString(normalizeActivityTextSafe(record?.uid || '', 64), 'Sin datos');
+      const sourceText = safeString(normalizeActivityTextSafe(record?.source || '', 32), '—');
+      const previousColor = safeColorFn(record?.previousColor || '#ffffff');
+      const detailMessage = safeString(message, key
+        ? 'Se muestra información básica mientras se termina de cargar Firebase.'
+        : 'Selecciona o pulsa un pixel para ver sus datos aquí.');
+      const statusText = safeString(status, context === 'tab' ? 'Consulta individual' : 'Sin estado');
+
+      let html = '';
+      try {
+        html = buildPixelInfoBodyMarkup(record, key, status, context);
+      } catch (err) {
+        console.warn('[NF] no se pudo construir el markup del pixel:', err);
+      }
+
+      if (!html || !String(html).trim()) {
+        try {
+          html = buildPixelInfoFallbackMarkup(record && typeof record === 'object' ? record : {
+            color,
+            username,
+            key,
+            x,
+            y
+          }, key, status, context);
+        } catch (err) {
+          console.warn('[NF] no se pudo construir el fallback del pixel:', err);
+        }
+      }
+
+      if (!html || !String(html).trim()) {
+        html = `
+          <div class="standalone-loading">
+            <div class="standalone-spinner"></div>
+            <strong>Información del pixel</strong>
+            <span>${safeEscape(detailMessage)}</span>
+          </div>
+          <div class="pixel-info-legacy-box">
+            <strong>Sin pixel seleccionado</strong>
+            <span>${safeEscape(detailMessage)}</span>
+          </div>
+          <div class="pixel-info-grid">
+            <div class="pixel-info-item">
+              <span>Pixel</span>
+              <strong>${safeEscape(positionText)}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Color</span>
+              <strong>${safeEscape(color)}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Usuario</span>
+              <strong>${safeEscape(username || 'Sin datos')}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Estado</span>
+              <strong>${safeEscape(statusText)}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Veces que cambió</span>
+              <strong>${safeEscape(formatNumber(changeCount))}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Última vez</span>
+              <strong>${safeEscape(latestText)}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Primera colocación</span>
+              <strong>${safeEscape(firstText)}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>UID</span>
+              <strong>${safeEscape(uidText)}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Fuente</span>
+              <strong>${safeEscape(sourceText)}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Color previo</span>
+              <strong>${safeEscape(previousColor)}</strong>
+            </div>
+          </div>
+        `;
+      }
+
+      if (window.state) {
+        window.state.pixelInfoLastRenderedHTML = html;
+        window.state.pixelInfoLastRecord = record && typeof record === 'object' ? { ...record } : { color, username, key, x, y };
+        window.state.pixelInfoLastRenderedAt = Date.now();
+      }
+      return html;
+    }
+
+    function ensurePixelInfoBodySeed(reason = '') {
+      if (!window.el?.pixelInfoBody) return false;
+      const body = window.el.pixelInfoBody;
+      const text = String(body.textContent || '').replace(/\s+/g, ' ').trim();
+      if (text) return true;
+      const currentKey = window.state?.pixelInfoPinnedKey || window.state?.pixelInfoCurrentKey || '';
+      const currentTarget = typeof getActivePixelTarget === 'function' ? getActivePixelTarget() : null;
+      const record = window.state?.pixelInfoLastRecord || {
+        key: currentKey,
+        x: Number.isFinite(Number(currentTarget?.x)) ? Number(currentTarget.x) : null,
+        y: Number.isFinite(Number(currentTarget?.y)) ? Number(currentTarget.y) : null,
+        color: '#ffffff',
+        username: 'Sin datos',
+        legacy: true
+      };
+      const fallbackMessage = reason
+        ? `Estado actual: ${reason}.`
+        : 'Mueve el cursor sobre el lienzo o pulsa el botón central del mouse sobre un pixel para cargar color, usuario y metadatos.';
+      const html = renderPixelInfoPanelHtml(record, currentKey || 'Sin pixel seleccionado', 'Sin datos', 'panel', fallbackMessage);
+      body.innerHTML = html;
+      return false;
+    }
+
+    function ensureStateFields() {
+      if (!window.state) return;
+      if (!window.state.pixelInfoCache) window.state.pixelInfoCache = new Map();
+      if (!window.state.renderedActivityKeys) window.state.renderedActivityKeys = new Set();
+      Object.assign(window.state, {
+        adminDashboardOpen: !!window.state.adminDashboardOpen,
+        pixelInfoVisible: !!window.state.pixelInfoVisible,
+        pixelInfoCurrentKey: window.state.pixelInfoCurrentKey || '',
+        pixelInfoPinnedKey: window.state.pixelInfoPinnedKey || '',
+        pixelInfoLastFetchedAt: Number(window.state.pixelInfoLastFetchedAt) || 0,
+        pixelInfoCache: window.state.pixelInfoCache,
+        lastSelectedPixel: window.state.lastSelectedPixel || null,
+        mostChangedPixel: window.state.mostChangedPixel || null,
+        activitySummaryReady: !!window.state.activitySummaryReady
+      });
+      window.state.cacheKey = 'nf_board_cache_v5_3';
+      try { localStorage.removeItem('nf_admin_authorized'); } catch {}
+      window.state.isAuthorized = false;
+    }
+
+    function boardWidth() {
+      return typeof window.getBoardWidth === 'function' ? window.getBoardWidth() : 125;
+    }
+
+    function boardHeight() {
+      return typeof window.getBoardHeight === 'function' ? window.getBoardHeight() : 125;
+    }
+
+    function boardDims() {
+      return `${boardWidth()}×${boardHeight()} px`;
+    }
+
+    function syncMinimapFrameAspectRatio(width = boardWidth(), height = boardHeight()) {
+      const frame = window.el?.minimapFrame;
+      if (!frame) return;
+      const safeW = Math.max(1, Math.round(Number(width) || 1));
+      const safeH = Math.max(1, Math.round(Number(height) || 1));
+      const ratio = `${safeW} / ${safeH}`;
+      frame.style.aspectRatio = ratio;
+      frame.style.setProperty('--minimap-aspect', ratio);
+    }
+
+    function normalizeBoardPixelRecord(raw, key = '') {
+      if (typeof raw === 'string') {
+        const color = window.normalizeColorHexSafe(raw);
+        return {
+          key,
+          color,
+          username: '',
+          uid: '',
+          ts: null,
+          changeCount: 1,
+          placedAt: null,
+          updatedAt: null,
+          placedBy: '',
+          updatedBy: '',
+          source: '',
+          changedAt: null,
+          previousColor: ''
+        };
+      }
+
+      const obj = raw && typeof raw === 'object' ? raw : {};
+      const color = window.normalizeColorHexSafe(obj.color || obj.hex || '#ffffff');
+      const username = window.normalizeUsernameSafe(obj.username || obj.placedBy || obj.user || obj.creator || obj.author || '');
+      const uid = normalizeActivityTextSafe(obj.uid || obj.userId || obj.ownerUid || '', 64);
+      const tsCandidate = Number(obj.ts ?? obj.time ?? obj.updatedAt ?? obj.lastChangedAt ?? obj.placedAt ?? obj.createdAt ?? 0);
+      const placedAtCandidate = Number(obj.placedAt ?? obj.createdAt ?? obj.firstPlacedAt ?? obj.ts ?? obj.time ?? tsCandidate ?? 0);
+      const updatedAtCandidate = Number(obj.updatedAt ?? obj.lastChangedAt ?? obj.ts ?? obj.time ?? tsCandidate ?? 0);
+      const changeCountCandidate = Number(obj.changeCount ?? obj.changes ?? obj.change_count ?? obj.timesChanged ?? 0);
+      const previousColor = typeof obj.previousColor === 'string' ? window.normalizeColorHexSafe(obj.previousColor) : '';
+      const metaVersion = getPixelMetaVersion(obj);
+      return {
+        ...(obj && typeof obj === 'object' ? obj : {}),
+        key,
+        color,
+        username,
+        uid,
+        ts: Number.isFinite(tsCandidate) && tsCandidate > 0 ? tsCandidate : null,
+        changeCount: Number.isFinite(changeCountCandidate) && changeCountCandidate > 0 ? Math.floor(changeCountCandidate) : 0,
+        placedAt: Number.isFinite(placedAtCandidate) && placedAtCandidate > 0 ? placedAtCandidate : null,
+        updatedAt: Number.isFinite(updatedAtCandidate) && updatedAtCandidate > 0 ? updatedAtCandidate : null,
+        placedBy: window.normalizeUsernameSafe(obj.placedBy || obj.username || username || ''),
+        updatedBy: window.normalizeUsernameSafe(obj.updatedBy || obj.username || username || ''),
+        source: normalizeActivityTextSafe(obj.source || '', 32),
+        changedAt: Number.isFinite(updatedAtCandidate) && updatedAtCandidate > 0 ? updatedAtCandidate : null,
+        previousColor,
+        metaVersion,
+        schemaVersion: metaVersion
+      };
+    }
+
+
+    function isLegacyPixelRecord(raw, record = null) {
+      if (raw === null || typeof raw === 'undefined') return true;
+      if (typeof raw === 'string') return true;
+      const obj = raw && typeof raw === 'object' ? raw : {};
+      const metaVersion = getPixelMetaVersion(obj);
+      if (metaVersion === 'v5.3') return false;
+      if (record && String(record.metaVersion || '').trim().toLowerCase() === 'v5.3') return false;
+      return true;
+    }
+
+    function hasPixelMetadata(record) {
+      if (!record) return false;
+      return !record.legacy && (
+        Number(record.changeCount || 0) > 0 ||
+        !!record.ts ||
+        !!record.placedAt ||
+        !!record.updatedAt ||
+        !!record.uid ||
+        !!record.username ||
+        !!record.placedBy ||
+        !!record.updatedBy ||
+        !!record.previousColor ||
+        !!record.metaVersion ||
+        !!record.schemaVersion
+      );
+    }
+
+    function getPixelMetaVersion(raw) {
+      const obj = raw && typeof raw === 'object' ? raw : {};
+      const version = String(obj.metaVersion || obj.schemaVersion || obj.version || '').trim().toLowerCase();
+      if (!version) return '';
+      if (version === '5.3' || version === 'v5.3') return 'v5.3';
+      return version;
+    }
+
+    async function fetchBoardPixelMeta(key) {
+      if (!window.db || !key) return null;
+      try {
+        const snap = await window.db.ref(`${BOARD_META_PATH}/${key}`).once('value');
+        return snap.val() || null;
+      } catch (err) {
+        console.warn('No se pudo leer metadata del pixel:', err);
+        return null;
+      }
+    }
+
+    function mergePixelRecordWithMeta(record, meta, key = '') {
+      const base = normalizeBoardPixelRecord(record || {}, key);
+      const metaObj = meta && typeof meta === 'object' ? meta : {};
+      const metaCount = Number(metaObj.changeCount ?? metaObj.changes ?? metaObj.change_count ?? metaObj.timesChanged ?? 0);
+      const metaVersion = getPixelMetaVersion(metaObj);
+      const merged = {
+        ...base,
+        ...(metaObj || {}),
+        key,
+        color: window.normalizeColorHexSafe(metaObj.color || base.color || '#ffffff'),
+        username: window.normalizeUsernameSafe(metaObj.username || metaObj.placedBy || base.username || base.placedBy || ''),
+        uid: normalizeActivityTextSafe(metaObj.uid || metaObj.userId || base.uid || '', 64),
+        ts: Number.isFinite(Number(metaObj.ts)) && Number(metaObj.ts) > 0 ? Number(metaObj.ts) : base.ts,
+        changeCount: Number.isFinite(metaCount) && metaCount > 0 ? Math.floor(metaCount) : Math.max(0, Number(base.changeCount || 0) || 0),
+        placedAt: Number.isFinite(Number(metaObj.placedAt)) && Number(metaObj.placedAt) > 0 ? Number(metaObj.placedAt) : base.placedAt,
+        updatedAt: Number.isFinite(Number(metaObj.updatedAt)) && Number(metaObj.updatedAt) > 0 ? Number(metaObj.updatedAt) : base.updatedAt,
+        placedBy: window.normalizeUsernameSafe(metaObj.placedBy || base.placedBy || base.username || ''),
+        updatedBy: window.normalizeUsernameSafe(metaObj.updatedBy || base.updatedBy || base.username || ''),
+        source: normalizeActivityTextSafe(metaObj.source || base.source || '', 32),
+        changedAt: Number.isFinite(Number(metaObj.changedAt)) && Number(metaObj.changedAt) > 0 ? Number(metaObj.changedAt) : base.changedAt,
+        previousColor: window.normalizeColorHexSafe(metaObj.previousColor || base.previousColor || '#ffffff'),
+        metaVersion: metaVersion || base.metaVersion || '',
+        schemaVersion: metaVersion || base.schemaVersion || ''
+      };
+      merged.legacy = isLegacyPixelRecordFromMerged(merged, metaObj);
+      return merged;
+    }
+
+    function isLegacyPixelRecordFromMerged(record, rawMeta = null) {
+      if (!record) return true;
+      if (String(record.metaVersion || '').trim().toLowerCase() === 'v5.3') return false;
+      if (String(record.schemaVersion || '').trim().toLowerCase() === 'v5.3') return false;
+      if (rawMeta && typeof rawMeta === 'object') {
+        const metaVersion = getPixelMetaVersion(rawMeta);
+        if (metaVersion === 'v5.3') return false;
+      }
+      return true;
+    }
+
+    
+    function buildPixelInfoFallbackMarkup(record, key, status = '', context = 'panel') {
+      const x = Number.isFinite(Number(record?.x)) ? Number(record.x) : null;
+      const y = Number.isFinite(Number(record?.y)) ? Number(record.y) : null;
+      const color = window.normalizeColorHexSafe(record?.color || '#ffffff');
+      const username = window.normalizeUsernameSafe(record?.username || record?.placedBy || record?.updatedBy || '');
+      const positionText = (x !== null && y !== null) ? `(${x}, ${y})` : (key || 'Sin datos');
+      const statusText = status ? String(status) : (context === 'tab' ? 'Consulta individual' : 'Sin metadatos');
+      const detailText = key
+        ? 'Se muestra información básica mientras se termina de cargar Firebase.'
+        : 'Selecciona o pulsa un pixel para ver sus datos aquí.';
+
+      const allEntries = buildPixelInfoRawEntriesMarkup(record, context, status, key);
+      return `
+        <div class="pixel-info-swatch">
+          <div class="pixel-info-color-chip" style="background:${escapeHtmlText(color)}"></div>
+          <div>
+            <div class="pixel-info-note">Pixel seleccionado</div>
+            <strong style="font-size:.92rem;line-height:1.25">${escapeHtmlText(positionText)}</strong>
+          </div>
+        </div>
+        <div class="pixel-info-grid">
+          <div class="pixel-info-item">
+            <span>Color actual</span>
+            <strong>${escapeHtmlText(color)}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Usuario</span>
+            <strong>${escapeHtmlText(username || 'Sin datos')}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Posición</span>
+            <strong>${escapeHtmlText(positionText)}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Estado</span>
+            <strong>${escapeHtmlText(statusText)}</strong>
+          </div>
+        </div>
+        <div class="pixel-info-legacy-box">
+          <strong>Información básica del pixel</strong>
+          <span>${escapeHtmlText(detailText)}</span>
+        </div>
+        ${allEntries}
+      `;
+    }
+
+    function buildPixelInfoRawEntriesMarkup(record, context = 'panel', status = '', key = '') {
+      const raw = record && typeof record === 'object' ? record : {};
+      const safeEscape = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch] || ch));
+      const stringifyValue = (value) => {
+        if (value === null || typeof value === 'undefined' || value === '') return 'Sin datos';
+        if (typeof value === 'string') return value;
+        if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+        try {
+          return JSON.stringify(value);
+        } catch {
+          try {
+            return String(value);
+          } catch {
+            return 'Sin datos';
+          }
+        }
+      };
+      const knownOrder = [
+        ['Clave', 'key'],
+        ['X', 'x'],
+        ['Y', 'y'],
+        ['Color actual', 'color'],
+        ['Usuario', 'username'],
+        ['UID', 'uid'],
+        ['Timestamp', 'ts'],
+        ['Veces que cambió', 'changeCount'],
+        ['Primera colocación', 'placedAt'],
+        ['Última actualización', 'updatedAt'],
+        ['Primero colocó', 'placedBy'],
+        ['Último cambió', 'updatedBy'],
+        ['Fuente', 'source'],
+        ['Color previo', 'previousColor'],
+        ['Último cambio', 'changedAt'],
+        ['Meta version', 'metaVersion'],
+        ['Schema version', 'schemaVersion'],
+        ['Legacy', 'legacy']
+      ];
+      const seen = new Set();
+      const knownItems = knownOrder.map(([label, field]) => {
+        seen.add(field);
+        const value = Object.prototype.hasOwnProperty.call(raw, field) ? raw[field] : undefined;
+        return `
+          <div class="pixel-info-item pixel-info-item--wide">
+            <span>${safeEscape(label)}</span>
+            <strong>${safeEscape(stringifyValue(value))}</strong>
+          </div>
+        `;
+      }).join('');
+      const extraKeys = Object.keys(raw).filter(k => !seen.has(k) && k !== '__proto__' && k !== 'constructor' && k !== 'prototype');
+      const extraItems = extraKeys.length ? extraKeys.map((field) => {
+        const value = raw[field];
+        return `
+          <div class="pixel-info-item pixel-info-item--wide">
+            <span>${safeEscape(field)}</span>
+            <strong>${safeEscape(stringifyValue(value))}</strong>
+          </div>
+        `;
+      }).join('') : `
+        <div class="pixel-info-item pixel-info-item--wide">
+          <span>Variables extra</span>
+          <strong>No hay variables adicionales ocultas.</strong>
+        </div>
+      `;
+      const note = context === 'tab'
+        ? 'Ficha individual con todos los campos detectados en Firebase.'
+        : 'Ficha del pixel con campos visibles y variables adicionales sin ocultar.';
+      return `
+        <div class="pixel-info-legacy-box">
+          <strong>Variables visibles del registro</strong>
+          <span>${safeEscape(note)}${key ? ` Clave ${safeEscape(key)}.` : ''}${status ? ` Estado ${safeEscape(status)}.` : ''}</span>
+          <div class="pixel-info-raw-grid">
+            ${knownItems}
+            ${extraItems}
+          </div>
+        </div>
+      `;
+    }
+
+    function buildPixelInfoBodyMarkup(record, key, status = '', context = 'panel') {
+      const x = Number.isFinite(Number(record?.x)) ? Number(record.x) : null;
+      const y = Number.isFinite(Number(record?.y)) ? Number(record.y) : null;
+      const color = window.normalizeColorHexSafe(record?.color || '#ffffff');
+      const username = window.normalizeUsernameSafe(record?.username || record?.placedBy || record?.updatedBy || '');
+      const latestAt = Number(record?.lastChangedAt || record?.updatedAt || record?.ts || 0);
+      const firstAt = Number(record?.firstPlacedAt || record?.placedAt || record?.ts || 0);
+      const changeCount = Number(record?.changeCount || record?.changes || 0) || 0;
+      const latestBy = window.normalizeUsernameSafe(record?.lastChangedBy || record?.updatedBy || record?.username || '');
+      const firstBy = window.normalizeUsernameSafe(record?.firstPlacedBy || record?.placedBy || record?.username || '');
+      const uidText = normalizeActivityTextSafe(record?.uid || '', 64) || 'Sin datos';
+      const sourceText = normalizeActivityTextSafe(record?.source || '', 32) || '—';
+      const previousColor = window.normalizeColorHexSafe(record?.previousColor || '#ffffff');
+      const positionText = (x !== null && y !== null) ? `(${x}, ${y})` : key || 'Sin datos';
+      const latestText = latestAt > 0 ? formatShortTime(latestAt) : 'Sin datos';
+      const firstText = firstAt > 0 ? formatShortTime(firstAt) : 'Sin datos';
+      const legacyMessage = context === 'tab'
+        ? 'Este pixel se colocó previamente a la v5.3. No existe información histórica individual para este pixel.'
+        : 'Este pixel se colocó previamente a la v5.3.';
+
+      if (!record) {
+        return buildPixelInfoFallbackMarkup({
+          key,
+          x,
+          y,
+          color,
+          username,
+          legacy: true
+        }, key, status, context);
+      }
+
+      if (record?.legacy || !window.hasPixelMetadata(record)) {
+        return `
+          <div class="pixel-info-swatch">
+            <div class="pixel-info-color-chip" style="background:${escapeHtmlText(color)}"></div>
+            <div>
+              <div class="pixel-info-note">Pixel seleccionado</div>
+              <strong style="font-size:.92rem;line-height:1.25">${escapeHtmlText(positionText)}</strong>
+            </div>
+          </div>
+          <div class="pixel-info-legacy-box">
+            <strong>Pixel previo a v5.3</strong>
+            <span>${escapeHtmlText(legacyMessage)}</span>
+          </div>
+          <div class="pixel-info-grid">
+            <div class="pixel-info-item">
+              <span>Color actual</span>
+              <strong>${escapeHtmlText(color)}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Usuario</span>
+              <strong>${escapeHtmlText(username || 'Sin datos')}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Posición</span>
+              <strong>${escapeHtmlText(positionText)}</strong>
+            </div>
+            <div class="pixel-info-item">
+              <span>Fuente</span>
+              <strong>${escapeHtmlText(status || 'Sin metadatos')}</strong>
+            </div>
+          </div>
+          <div class="pixel-info-note">Pixel con metadatos limitados. ${escapeHtmlText(key ? `Clave ${key}.` : '')}</div>
+          ${buildPixelInfoRawEntriesMarkup(record, context, status, key)}
+        `;
+      }
+
+      return `
+        <div class="pixel-info-swatch">
+          <div class="pixel-info-color-chip" style="background:${escapeHtmlText(color)}"></div>
+          <div>
+            <div class="pixel-info-note">Pixel seleccionado</div>
+            <strong style="font-size:.92rem;line-height:1.25">${escapeHtmlText(positionText)}</strong>
+          </div>
+        </div>
+        <div class="pixel-info-grid">
+          <div class="pixel-info-item">
+            <span>Color actual</span>
+            <strong>${escapeHtmlText(color)}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Usuario</span>
+            <strong>${escapeHtmlText(username || 'Sin datos')}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Veces que cambió</span>
+            <strong>${escapeHtmlText(formatNumber(changeCount))}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Última vez que cambió</span>
+            <strong>${escapeHtmlText(latestText)}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Quién lo cambió por última vez</span>
+            <strong>${escapeHtmlText(latestBy || 'Sin datos')}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Primera colocación</span>
+            <strong>${escapeHtmlText(firstText)}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Quién lo colocó primero</span>
+            <strong>${escapeHtmlText(firstBy || 'Sin datos')}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Color previo</span>
+            <strong>${escapeHtmlText(previousColor || 'Sin datos')}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>UID</span>
+            <strong>${escapeHtmlText(uidText)}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Posición</span>
+            <strong>${escapeHtmlText(positionText)}</strong>
+          </div>
+        </div>
+        <div class="pixel-info-grid">
+          <div class="pixel-info-item">
+            <span>Fuente</span>
+            <strong>${escapeHtmlText(sourceText)}${status ? ` · ${escapeHtmlText(status)}` : ''}</strong>
+          </div>
+          <div class="pixel-info-item">
+            <span>Estado</span>
+            <strong>${escapeHtmlText(status || 'Sin estado')}</strong>
+          </div>
+        </div>
+        ${buildPixelInfoRawEntriesMarkup(record, context, status, key)}
+      `;
+    }
+
+
+    function openPixelInfoStandaloneTab(key, target = null) {
+      if (!window.state || !key) return null;
+      const loadingRecord = {
+        key,
+        x: Number.isFinite(Number(target?.x)) ? Number(target.x) : null,
+        y: Number.isFinite(Number(target?.y)) ? Number(target.y) : null,
+        legacy: true,
+        metaVersion: '',
+        schemaVersion: ''
+      };
+      window.state.pixelInfoPinnedKey = key;
+      window.state.pixelInfoCurrentKey = key;
+      console.log('[NF] marco de información abierto', { key, target });
+      setPixelInfoVisible(true);
+      forcePixelInfoPanelVisible(`openPixelInfoStandaloneTab:${key}`);
+      if (window.el?.pixelInfoBody) {
+        window.el.pixelInfoBody.innerHTML = `
+          <div class="standalone-loading">
+            <div class="standalone-spinner"></div>
+            <strong>Cargando pixel ${escapeHtmlText(key)}...</strong>
+            <span>Se consulta únicamente este pixel en Firebase.</span>
+          </div>
+        `;
+      }
+      try {
+        updatePixelInfoPanelMarkup(loadingRecord, key, 'Consultando solo ese pixel');
+      } catch (err) {
+        console.warn('[NF] no se pudo pintar el contenido inicial del pixel:', err);
+      }
+      return key;
+    }
+
+    window.openPixelInfoStandaloneTab = openPixelInfoStandaloneTab;
+
+    function updateStandalonePixelInfoTab(record, key, status = '') {
+      if (!window.state || !window.el?.pixelInfoPanel) return;
+      if (!window.state.pixelInfoVisible) return;
+      const safeRecord = record ? { ...record, metaVersion: record.metaVersion || 'v5.3', schemaVersion: record.schemaVersion || 'v5.3' } : record;
+      updatePixelInfoPanelMarkup(safeRecord, key, status);
+      try { syncPixelInfoDebugOverlay(true); } catch {}
+    }
+
+    function normalizeBoardDataMap(data) {
+      const out = {};
+      Object.entries(data || {}).forEach(([key, raw]) => {
+        out[key] = normalizeBoardPixelRecord(raw, key);
+      });
+      return out;
+    }
+
+    function normalizeBoardDataForStorage(data) {
+      const out = {};
+      Object.entries(data || {}).forEach(([key, raw]) => {
+        out[key] = normalizeBoardPixelRecord(raw, key);
+      });
+      return out;
+    }
+
+    async function migrateBoardPixelMetadata() {
+      if (!window.db || window.state?.boardMetadataMigrated) return;
+      if (window.state) window.state.boardMetadataMigrated = true;
+      try {
+        const snap = await window.db.ref('board').once('value');
+        const raw = snap.val() || {};
+        const updates = {};
+        Object.entries(raw).forEach(([key, value]) => {
+          const record = normalizeBoardPixelRecord(value, key);
+          const needsMigration =
+            typeof value !== 'object' || value === null ||
+            Number(value?.changeCount || 0) < 1 ||
+            typeof value?.placedAt === 'undefined' ||
+            typeof value?.placedBy === 'undefined' ||
+            typeof value?.updatedBy === 'undefined';
+          if (needsMigration) {
+            const migrated = {
+              key,
+              color: record.color,
+              username: record.username || '',
+              uid: record.uid || '',
+              ts: Number(record.ts) || record.updatedAt || record.placedAt || Date.now(),
+              changeCount: Math.max(1, Number(record.changeCount || 0) || 1),
+              placedAt: record.placedAt || record.updatedAt || record.ts || Date.now(),
+              updatedAt: record.updatedAt || record.ts || Date.now(),
+              placedBy: record.placedBy || record.username || '',
+              updatedBy: record.updatedBy || record.username || '',
+              source: record.source || 'migration',
+              changedAt: record.changedAt || record.updatedAt || record.ts || Date.now(),
+              previousColor: record.previousColor || '',
+              metaVersion: 'v5.3',
+              schemaVersion: 'v5.3'
+            };
+            updates[`board/${key}`] = migrated;
+            updates[`${BOARD_META_PATH}/${key}`] = {
+              ...migrated,
+              x: Number(String(key).split('_')[0]) || 0,
+              y: Number(String(key).split('_')[1]) || 0
+            };
+          }
+        });
+        if (Object.keys(updates).length) {
+          await window.db.ref().update(updates);
+        }
+      } catch (err) {
+        console.warn('No se pudo migrar el contador de cambios de los pixeles:', err);
+      }
+    }
+
+    function updatePixelInfoPanelMarkup(record, key, status = '') {
+      if (!window.el || !window.el.pixelInfoBody || !window.el.pixelInfoPanel) return;
+      const normalizedRecord = record && typeof record === 'object' ? { ...record } : { color: '#ffffff', legacy: true };
+      const html = renderPixelInfoPanelHtml(normalizedRecord, key, status, 'panel');
+      window.el.pixelInfoBody.innerHTML = html;
+      if (!String(window.el.pixelInfoBody.textContent || '').replace(/\s+/g, ' ').trim()) {
+        window.el.pixelInfoBody.innerHTML = renderPixelInfoPanelHtml(normalizedRecord, key, status, 'panel', 'No se pudo renderizar el contenido del pixel.');
+      }
+      window.el.pixelInfoBody.dataset.pixelInfoStatus = status || 'sin-estado';
+      window.el.pixelInfoBody.dataset.pixelInfoKey = key || '';
+      if (window.state) {
+        window.state.pixelInfoLastRenderedHTML = window.el.pixelInfoBody.innerHTML;
+        window.state.pixelInfoLastRecord = normalizedRecord;
+        window.state.pixelInfoLastRenderedAt = Date.now();
+      }
+      window.el.pixelInfoPanel.hidden = false;
+      window.el.pixelInfoPanel.classList.toggle('is-hidden', !window.state.pixelInfoVisible);
+      window.el.pixelInfoPanel.style.display = 'flex';
+      window.el.pixelInfoPanel.style.visibility = window.state.pixelInfoVisible ? 'visible' : 'hidden';
+      positionPixelInfoPanelFrame();
+      try { syncPixelInfoDebugOverlay(!!window.state.pixelInfoVisible); } catch {}
+    }
+
+    function setPixelInfoVisible(visible) {
+      if (typeof window.refreshUiRefs === 'function') window.refreshUiRefs();
+      if (!window.state) return;
+      window.state.pixelInfoVisible = !!visible;
+      if (!window.state.pixelInfoVisible) {
+        window.state.pixelInfoPinnedKey = '';
+      }
+      if (window.el && window.el.pixelInfoPanel) {
+        window.el.pixelInfoPanel.hidden = false;
+        window.el.pixelInfoPanel.classList.toggle('is-hidden', !window.state.pixelInfoVisible);
+        window.el.pixelInfoPanel.style.display = 'flex';
+        window.el.pixelInfoPanel.style.visibility = window.state.pixelInfoVisible ? 'visible' : 'hidden';
+        positionPixelInfoPanelFrame();
+      }
+      if (window.el && window.el.quickPixelInfo__removed) {
+        window.el.quickPixelInfo__removed.classList.toggle('active', window.state.pixelInfoVisible);
+        window.el.quickPixelInfo__removed.setAttribute('aria-pressed', String(window.state.pixelInfoVisible));
+      }
+      try {
+        if (window.state.pixelInfoVisible) syncPixelInfoDebugOverlay(true);
+        else hidePixelInfoDebugOverlay();
+      } catch {}
+      if (window.state?.pixelInfoVisible) {
+        forcePixelInfoPanelVisible('setPixelInfoVisible(true)');
+        console.log('[NF] marco de información visible', {
+          pinnedKey: window.state.pixelInfoPinnedKey || '',
+          currentKey: window.state.pixelInfoCurrentKey || ''
+        });
+        const target = window.state.pixelInfoPinnedKey
+          ? (() => { const [x, y] = String(window.state.pixelInfoPinnedKey).split('_').map(Number); return { x, y }; })()
+          : getActivePixelTarget();
+        const key = getPixelKeyFromTarget(target);
+        if (key) {
+          window.state.pixelInfoCurrentKey = key;
+          refreshPixelInfoForCurrentTarget(true);
+        } else {
+          updatePixelInfoPanelLoading('Mueve el cursor o mantén pulsado sobre un pixel para ver su información.');
+          ensurePixelInfoBodySeed('setPixelInfoVisible:no-key');
+        }
+      }
+    }
+
+    function stopLockedPixelInfoHold() {}
+
+    function setMobilePanZoomLocked(locked) {
+      return;
+    }
+
+    function startLockedPixelInfoHold(clientX, clientY, pointerId) {}
+
+    function cancelLockedPixelInfoHold() {}
+
+    window.cancelLockedPixelInfoHold = cancelLockedPixelInfoHold;
+    window.stopLockedPixelInfoHold = stopLockedPixelInfoHold;
+    window.startLockedPixelInfoHold = startLockedPixelInfoHold;
+
+    function getActivePixelTarget() {
+      if (!window.state) return null;
+      if (window.state.pixelInfoPinnedKey) {
+        const parts = String(window.state.pixelInfoPinnedKey).split('_').map(Number);
+        const px = Number(parts[0]);
+        const py = Number(parts[1]);
+        if (Number.isFinite(px) && Number.isFinite(py)) {
+          return { x: px, y: py };
+        }
+      }
+      const hover = window.state.hoverPoint;
+      if (hover && Number.isFinite(Number(hover.x)) && Number.isFinite(Number(hover.y))) {
+        return { x: Number(hover.x), y: Number(hover.y) };
+      }
+      const last = window.state.lastSelectedPixel;
+      if (last && Number.isFinite(Number(last.x)) && Number.isFinite(Number(last.y))) {
+        return { x: Number(last.x), y: Number(last.y) };
+      }
+      const pinnedCurrent = window.state.pixelInfoCurrentKey;
+      if (pinnedCurrent) {
+        const parts = String(pinnedCurrent).split('_').map(Number);
+        const px = Number(parts[0]);
+        const py = Number(parts[1]);
+        if (Number.isFinite(px) && Number.isFinite(py)) {
+          return { x: px, y: py };
+        }
+      }
+      return null;
+    }
+
+    function getPixelKeyFromTarget(target) {
+      if (!target) return '';
+      const x = Number(target.x);
+      const y = Number(target.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return '';
+      if (x < 0 || x >= boardWidth() || y < 0 || y >= boardHeight()) return '';
+      return `${x}_${y}`;
+    }
+
+    function positionPixelInfoPanelFrame() {
+      const panel = window.el?.pixelInfoPanel;
+      if (!panel) return false;
+      panel.style.left = '50%';
+      panel.style.right = 'auto';
+      panel.style.top = 'calc(var(--header-h) + 14px)';
+      panel.style.bottom = 'auto';
+      panel.style.width = 'min(94vw, 520px)';
+      panel.style.maxWidth = 'min(94vw, 520px)';
+      panel.style.transformOrigin = 'top center';
+      panel.style.pointerEvents = 'none';
+      const dialog = panel.querySelector?.('.pixel-info-dialog');
+      if (dialog) {
+        dialog.style.pointerEvents = 'auto';
+      }
+      return true;
+    }
+
+    window.positionPixelInfoPanelFrame = positionPixelInfoPanelFrame;
+
+    window.setPixelInfoVisible = setPixelInfoVisible;
+    window.updatePixelInfoPanelLoading = function(message) {
+      try {
+        if (window.el && window.el.pixelInfoBody && window.el.pixelInfoPanel) {
+          const body = window.el.pixelInfoBody;
+          body.innerHTML = '';
+          const wrap = document.createElement('div');
+          wrap.className = 'standalone-loading';
+          const spinner = document.createElement('div');
+          spinner.className = 'standalone-spinner';
+          const note = document.createElement('div');
+          note.className = 'pixel-info-note';
+          note.textContent = message || 'Cargando información del pixel...';
+          wrap.appendChild(spinner);
+          wrap.appendChild(note);
+          body.appendChild(wrap);
+          window.el.pixelInfoPanel.hidden = false;
+          window.el.pixelInfoPanel.classList.remove('is-hidden');
+          window.el.pixelInfoPanel.style.display = 'flex';
+          window.el.pixelInfoPanel.style.visibility = 'visible';
+          positionPixelInfoPanelFrame();
+          return true;
+        }
+      } catch (err) {
+        console.warn('No se pudo mostrar el panel de información:', err);
+      }
+      return false;
+    };
+
+    function updatePixelInfoPanelLoading(message) {
+      if (!window.el || !window.el.pixelInfoBody || !window.el.pixelInfoPanel) return;
+      const currentKey = window.state?.pixelInfoPinnedKey || window.state?.pixelInfoCurrentKey || '';
+      const currentTarget = typeof getActivePixelTarget === 'function' ? getActivePixelTarget() : null;
+      const record = window.state?.pixelInfoLastRecord || {
+        key: currentKey,
+        x: Number.isFinite(Number(currentTarget?.x)) ? Number(currentTarget.x) : null,
+        y: Number.isFinite(Number(currentTarget?.y)) ? Number(currentTarget.y) : null,
+        color: '#ffffff',
+        username: 'Sin datos',
+        legacy: true
+      };
+      const html = renderPixelInfoPanelHtml(record, currentKey || 'Sin pixel seleccionado', 'Cargando', 'panel', message || 'Cargando información del pixel...');
+      window.el.pixelInfoBody.innerHTML = html;
+      if (!String(window.el.pixelInfoBody.textContent || '').replace(/\s+/g, ' ').trim()) {
+        window.el.pixelInfoBody.innerHTML = renderPixelInfoPanelHtml(record, currentKey || 'Sin pixel seleccionado', 'Cargando', 'panel', message || 'Cargando información del pixel...');
+      }
+      if (window.state) {
+        window.state.pixelInfoLastRenderedHTML = window.el.pixelInfoBody.innerHTML;
+        window.state.pixelInfoLastRenderedAt = Date.now();
+      }
+      window.el.pixelInfoPanel.hidden = false;
+      window.el.pixelInfoPanel.classList.remove('is-hidden');
+      window.el.pixelInfoPanel.style.display = 'flex';
+      window.el.pixelInfoPanel.style.visibility = 'visible';
+      positionPixelInfoPanelFrame();
+      try { syncPixelInfoDebugOverlay(true); } catch {}
+    }
+
+    function forcePixelInfoPanelVisible(reason = '') {
+      if (!window.el?.pixelInfoPanel) return false;
+      const panel = window.el.pixelInfoPanel;
+      panel.hidden = false;
+      panel.classList.remove('is-hidden');
+      panel.style.display = 'flex';
+      panel.style.visibility = 'visible';
+      panel.style.pointerEvents = 'none';
+      panel.style.zIndex = '9900';
+      panel.style.maxHeight = 'none';
+      positionPixelInfoPanelFrame();
+      const dialog = panel.querySelector?.('.pixel-info-dialog');
+      if (dialog) {
+        dialog.style.display = 'block';
+        dialog.style.visibility = 'visible';
+      }
+      try { syncPixelInfoDebugOverlay(true); } catch {}
+      if (reason) {
+        console.log('[NF] panel de información forzado visible', reason);
+      } else {
+        console.log('[NF] panel de información forzado visible');
+      }
+      return true;
+    }
+
+    window.updatePixelInfoPanelLoading = updatePixelInfoPanelLoading;
+    window.forcePixelInfoPanelVisible = forcePixelInfoPanelVisible;
+
+    function computeMostChangedPixel() {
+      const entries = Object.entries(window.state?.boardData || {});
+      let best = null;
+      entries.forEach(([key, raw]) => {
+        const record = normalizeBoardPixelRecord(raw, key);
+        const count = Number(record.changeCount || 0) || 0;
+        if (!best || count > best.changeCount || (count === best.changeCount && record.ts > best.ts)) {
+          const parts = String(key).split('_').map(Number);
+          best = {
+            key,
+            x: Number(parts[0]),
+            y: Number(parts[1]),
+            color: record.color,
+            username: record.username || record.placedBy || '',
+            changeCount: count,
+            ts: record.updatedAt || record.placedAt || record.ts || 0
+          };
+        }
+      });
+      window.state.mostChangedPixel = best;
+      return best;
+    }
+
+    function updateActivitySummaryRows() {
+      if (!window.el || !window.el.activityList) return;
+      if (!window.el?.liveLastPixel || !window.el?.liveLastChat || !window.el?.liveLastBan || !window.el?.liveMostEditedPixel) {
+        window.el.activityList.innerHTML = `
+          <div class="activity-summary-wrap">
+            <div class="activity-summary-card">
+              <div>
+                <span>Último pixel</span>
+                <strong id="live-last-pixel">Sin datos</strong>
+              </div>
+              <em id="live-last-pixel-meta">—</em>
+            </div>
+            <div class="activity-summary-card">
+              <div>
+                <span>Pixel más editado</span>
+                <strong id="live-most-edited-pixel">Sin datos</strong>
+              </div>
+              <em id="live-most-edited-pixel-meta">—</em>
+            </div>
+            <div class="activity-summary-card">
+              <div>
+                <span>Último chat</span>
+                <strong id="live-last-chat">Sin datos</strong>
+              </div>
+              <em id="live-last-chat-meta">—</em>
+            </div>
+            <div class="activity-summary-card">
+              <div>
+                <span>Última sanción</span>
+                <strong id="live-last-ban">Sin datos</strong>
+              </div>
+              <em id="live-last-ban-meta">—</em>
+            </div>
+          </div>
+        `;
+        window.el.liveLastPixel = getEl('live-last-pixel');
+        window.el.liveLastPixelMeta = getEl('live-last-pixel-meta');
+        window.el.liveMostEditedPixel = getEl('live-most-edited-pixel');
+        window.el.liveMostEditedPixelMeta = getEl('live-most-edited-pixel-meta');
+        window.el.liveLastChat = getEl('live-last-chat');
+        window.el.liveLastChatMeta = getEl('live-last-chat-meta');
+        window.el.liveLastBan = getEl('live-last-ban');
+        window.el.liveLastBanMeta = getEl('live-last-ban-meta');
+        window.state.activitySummaryReady = true;
+      }
+    }
+
+    function renderMostChangedPixelSummary() {
+      updateActivitySummaryRows();
+      const most = window.state?.mostChangedPixel || computeMostChangedPixel();
+      const liveMostEditedPixel = window.el?.liveMostEditedPixel;
+      const liveMostEditedPixelMeta = window.el?.liveMostEditedPixelMeta;
+      if (!liveMostEditedPixel) return;
+      if (!most) {
+        liveMostEditedPixel.textContent = 'Sin datos';
+        if (liveMostEditedPixelMeta) liveMostEditedPixelMeta.textContent = '—';
+      } else {
+        liveMostEditedPixel.textContent = `${most.username || 'Anónimo'} (${most.x}, ${most.y}) · ${formatNumber(most.changeCount)} cambios`;
+        if (liveMostEditedPixelMeta) liveMostEditedPixelMeta.textContent = most.color;
+      }
+    }
+
+    function updateLiveSummary(kind, entry) {
+      updateActivitySummaryRows();
+      const kindKey = String(kind || '').toLowerCase();
+      const ts = Number(entry?.ts || entry?.time || Date.now()) || Date.now();
+      const when = formatShortTime(ts);
+      const safeUser = window.normalizeUsernameSafe(entry?.username || entry?.user || entry?.target || entry?.bannedBy || 'Sistema');
+      const detail = normalizeActivityTextSafe(entry?.message || entry?.reason || '', 70);
+      if (kindKey === 'pixel' && window.el.liveLastPixel) {
+        const coords = Number.isFinite(Number(entry?.x)) && Number.isFinite(Number(entry?.y)) ? ` (${Number(entry.x)}, ${Number(entry.y)})` : '';
+        const count = Number(entry?.changeCount || entry?.changes || 0) || 0;
+        const countText = count > 0 ? ` · ${formatNumber(count)} cambios` : '';
+        window.el.liveLastPixel.textContent = `${safeUser}${coords} · ${window.normalizeColorHexSafe(entry?.color || '#ffffff')}${countText}`;
+        if (window.el.liveLastPixelMeta) window.el.liveLastPixelMeta.textContent = when;
+      }
+      if (kindKey === 'chat' && window.el.liveLastChat) {
+        const chatText = detail ? `${safeUser}: ${detail}` : safeUser;
+        window.el.liveLastChat.textContent = chatText;
+        if (window.el.liveLastChatMeta) window.el.liveLastChatMeta.textContent = when;
+      }
+      if ((kindKey === 'ban' || kindKey === 'unban' || kindKey === 'system') && window.el.liveLastBan) {
+        const action = kindKey === 'ban' ? 'Ban' : (kindKey === 'unban' ? 'Desban' : 'Sistema');
+        const extra = detail ? ` · ${detail}` : '';
+        window.el.liveLastBan.textContent = `${action}: ${safeUser}${extra}`;
+        if (window.el.liveLastBanMeta) window.el.liveLastBanMeta.textContent = when;
+      }
+      renderMostChangedPixelSummary();
+    }
+
+    function clearRecentActivity() {
+      updateActivitySummaryRows();
+      if (window.el?.liveLastPixel) window.el.liveLastPixel.textContent = 'Sin datos';
+      if (window.el?.liveLastPixelMeta) window.el.liveLastPixelMeta.textContent = '—';
+      if (window.el?.liveMostEditedPixel) window.el.liveMostEditedPixel.textContent = 'Sin datos';
+      if (window.el?.liveMostEditedPixelMeta) window.el.liveMostEditedPixelMeta.textContent = '—';
+      if (window.el?.liveLastChat) window.el.liveLastChat.textContent = 'Sin datos';
+      if (window.el?.liveLastChatMeta) window.el.liveLastChatMeta.textContent = '—';
+      if (window.el?.liveLastBan) window.el.liveLastBan.textContent = 'Sin datos';
+      if (window.el?.liveLastBanMeta) window.el.liveLastBanMeta.textContent = '—';
+      if (window.state) {
+        window.state.renderedActivityKeys = new Set();
+      }
+    }
+
+    function getActivityBadge(type) {
+      const map = {
+        pixel: 'PX',
+        chat: 'CHAT',
+        ban: 'BAN',
+        unban: 'UNBAN',
+        join: 'JOIN',
+        leave: 'LEAVE',
+        system: 'SYS'
+      };
+      return map[type] || 'LOG';
+    }
+
+    function getActivityTone(type) {
+      const map = {
+        pixel: 'var(--accent)',
+        chat: 'var(--good)',
+        ban: 'var(--bad)',
+        unban: 'var(--warn)',
+        join: 'var(--good)',
+        leave: 'var(--dim)',
+        system: 'var(--accent2)'
+      };
+      return map[type] || 'var(--text)';
+    }
+
+    function formatActivityText(entry) {
+      const type = String(entry?.type || 'system').toLowerCase();
+      const username = window.normalizeUsernameSafe(entry?.username || entry?.user || entry?.target || entry?.bannedBy || 'Sistema');
+      const color = window.normalizeColorHexSafe(entry?.color || '#ffffff');
+      const x = Number.isFinite(Number(entry?.x)) ? Number(entry.x) : null;
+      const y = Number.isFinite(Number(entry?.y)) ? Number(entry.y) : null;
+      const message = normalizeActivityTextSafe(entry?.message || entry?.text || '', 120);
+      const reason = normalizeActivityTextSafe(entry?.reason || '', 120);
+      const scope = normalizeActivityTextSafe(entry?.scope || '', 80);
+      const changeCount = Number(entry?.changeCount || entry?.changes || 0) || 0;
+      if (type === 'pixel') {
+        return {
+          title: username || 'Anónimo',
+          detail: `colocó un pixel${x !== null && y !== null ? ` en (${x}, ${y})` : ''}${changeCount > 0 ? ` · ${formatNumber(changeCount)} cambios` : ''}`,
+          extra: `${color}${entry?.placedBy ? ` · ${window.normalizeUsernameSafe(entry.placedBy)}` : ''}`,
+          accent: color
+        };
+      }
+      if (type === 'chat') {
+        return {
+          title: username || 'Anónimo',
+          detail: message ? `envió: ${message}` : 'envió un mensaje',
+          extra: 'chat',
+          accent: 'var(--good)'
+        };
+      }
+      if (type === 'ban') {
+        return {
+          title: username || 'Sistema',
+          detail: reason ? `baneó con razón: ${reason}` : 'aplicó una sanción',
+          extra: scope || 'sanción',
+          accent: 'var(--bad)'
+        };
+      }
+      if (type === 'unban') {
+        return {
+          title: username || 'Sistema',
+          detail: reason ? `desbaneó · ${reason}` : 'retiró una sanción',
+          extra: scope || 'desban',
+          accent: 'var(--warn)'
+        };
+      }
+      if (type === 'join') {
+        return {
+          title: username || 'Usuario',
+          detail: 'se conectó',
+          extra: 'online',
+          accent: 'var(--good)'
+        };
+      }
+      if (type === 'leave') {
+        return {
+          title: username || 'Usuario',
+          detail: 'se desconectó',
+          extra: 'offline',
+          accent: 'var(--dim)'
+        };
+      }
+      return {
+        title: username || 'Sistema',
+        detail: message || 'evento registrado',
+        extra: scope || 'evento',
+        accent: 'var(--accent2)'
+      };
+    }
+
+    function renderActivityEntry(entry) {
+      if (!entry) return;
+      updateActivitySummaryRows();
+      const resolved = formatActivityText(entry);
+      if (window.el.activityList.firstElementChild?.classList.contains('small-note')) {
+        window.el.activityList.innerHTML = '';
+      }
+      const item = document.createElement('div');
+      item.className = 'activity-item';
+      const ts = entry.ts || Date.now();
+      const badge = getActivityBadge(entry.type);
+      const accent = resolved.accent || 'var(--text)';
+      const extra = entry.color || resolved.extra || '';
+      item.innerHTML = `
+        <div class="a-top">
+          <span class="a-user">${escapeHtmlText(resolved.title)}</span>
+          <span class="a-time">${escapeHtmlText(formatShortTime(ts))}</span>
+        </div>
+        <div class="a-detail">
+          <span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="padding:2px 7px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:${escapeHtmlText(accent)};font-weight:800;font-size:.68rem;letter-spacing:.5px">${escapeHtmlText(badge)}</span>
+            <span>${escapeHtmlText(resolved.detail)}</span>
+          </span>
+          ${extra ? `<div style="margin-top:6px;color:${escapeHtmlText(accent)};font-weight:800;">${escapeHtmlText(extra)}</div>` : ''}
+        </div>
+      `;
+      window.el.activityList.prepend(item);
+      while (window.el.activityList.children.length > 20) window.el.activityList.removeChild(window.el.activityList.lastElementChild);
+    }
+
+    function logActivity(entry) {
+      const payload = {
+        type: String(entry?.type || 'system').toLowerCase(),
+        username: window.normalizeUsernameSafe(entry?.username || entry?.user || ''),
+        target: window.normalizeUsernameSafe(entry?.target || ''),
+        message: normalizeActivityTextSafe(entry?.message || entry?.text || '', 120),
+        reason: normalizeActivityTextSafe(entry?.reason || '', 120),
+        color: window.normalizeColorHexSafe(entry?.color || '#ffffff'),
+        x: Number.isFinite(Number(entry?.x)) ? Number(entry.x) : null,
+        y: Number.isFinite(Number(entry?.y)) ? Number(entry.y) : null,
+        scope: normalizeActivityTextSafe(entry?.scope || '', 80),
+        ts: Number(entry?.ts) || Date.now(),
+        eventId: entry?.eventId || (window.randomUid ? window.randomUid() : `evt_${Date.now()}_${Math.random().toString(16).slice(2)}`),
+        changeCount: Number(entry?.changeCount || entry?.changes || 0) || 0,
+        placedBy: window.normalizeUsernameSafe(entry?.placedBy || ''),
+        placedAt: Number(entry?.placedAt || 0) || null,
+        updatedAt: Number(entry?.updatedAt || 0) || null,
+        updatedBy: window.normalizeUsernameSafe(entry?.updatedBy || '')
+      };
+
+      if (window.state) window.state.renderedActivityKeys.add(payload.eventId);
+      updateLiveSummary(payload.type, payload);
+      renderActivityEntry(payload);
+      if (window.db && window.db.ref) {
+        try {
+          window.db.ref('activity_events').push(payload).catch(() => {});
+        } catch {}
+      }
+      return Promise.resolve(payload);
+    }
+
+    function selectColor(color) {
+      const selected = window.normalizeColorHexSafe(color || (window.state && window.state.activeColor) || '#ffffff');
+      if (window.state) window.state.activeColor = selected;
+      if (typeof original.selectColor === 'function' && original.selectColor !== selectColor) {
+        try {
+          // We do not call the original to avoid double audio.
+        } catch {}
+      }
+      if (window.el && window.el.paletteStatus) {
+        window.el.paletteStatus.textContent = window.state?.eyedropperMode ? 'Cuentagotas activo: toca un pixel para copiar su color' : `Color seleccionado: ${selected}`;
+      }
+      if (typeof window.updatePaletteSelectionUI === 'function') window.updatePaletteSelectionUI();
+      if (typeof window.syncPalettePagerUI === 'function') window.syncPalettePagerUI();
+      if (typeof window.playClickSound === 'function') window.playClickSound();
+      if (window.el && window.el.quickBrush) {
+        window.el.quickBrush.classList.toggle('brush-on', !!window.state?.brushMode);
+        window.el.quickBrush.classList.toggle('active', !!window.state?.brushMode);
+      }
+    }
+
+    function sampleColorAt(clientX, clientY, source = 'sample') {
+      const coords = typeof window.getCanvasCoords === 'function' ? window.getCanvasCoords(clientX, clientY) : null;
+      if (!coords) return false;
+      const { x, y } = coords;
+      if (x < 0 || x >= boardWidth() || y < 0 || y >= boardHeight()) return false;
+      const color = window.normalizeColorHexSafe(window.getCurrentPixelHex ? window.getCurrentPixelHex(x, y) : '#ffffff');
+      selectColor(color);
+      if (window.el && window.el.paletteStatus) {
+        window.el.paletteStatus.textContent = `Color tomado: ${color}`;
+      }
+      return true;
+    }
+
+    function toggleGrid() {
+      if (typeof original.setGridEnabled === 'function') {
+        original.setGridEnabled(!window.state?.gridEnabled);
+      } else if (typeof window.setGridEnabled === 'function') {
+        window.setGridEnabled(!window.state?.gridEnabled);
+      }
+    }
+
+    function buildPalette() {
+      if (!window.el || !window.el.paletteRender) return;
+      const currentPage = typeof window.getPalettePageState === 'function' ? window.getPalettePageState() : 0;
+      const pageSize = typeof window.getPalettePageSize === 'function' ? window.getPalettePageSize() : 48;
+      const totalPages = typeof window.getPalettePageCount === 'function' ? window.getPalettePageCount() : Math.max(1, Math.ceil((window.colorPalette || []).length / pageSize));
+      const colors = typeof window.getVisiblePaletteColors === 'function' ? window.getVisiblePaletteColors() : (window.colorPalette || []).slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+      const baseIndex = currentPage * pageSize;
+      window.el.paletteRender.innerHTML = '';
+      colors.forEach((color, index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'color-box';
+        btn.style.backgroundColor = color;
+        btn.dataset.color = color;
+        btn.dataset.paletteIndex = String(baseIndex + index);
+        btn.title = color;
+        btn.setAttribute('aria-pressed', String(color === window.state?.activeColor));
+        if (color === window.state?.activeColor) btn.classList.add('active');
+        btn.addEventListener('click', e => {
+          e.preventDefault();
+          selectColor(color);
+        });
+        window.el.paletteRender.appendChild(btn);
+      });
+      if (typeof window.updatePaletteSelectionUI === 'function') window.updatePaletteSelectionUI();
+      if (typeof window.syncPalettePagerUI === 'function') window.syncPalettePagerUI();
+    }
+
+    function getCurrentPixelHex(x, y) {
+      const key = `${x}_${y}`;
+      const raw = window.state?.boardData?.[key];
+      const normalized = normalizeBoardPixelRecord(raw, key);
+      if (normalized && normalized.color) return normalized.color;
+      if (typeof original.getCurrentPixelHex === 'function') {
+        return original.getCurrentPixelHex(x, y);
+      }
+      return '#ffffff';
+    }
+
+    function applyPendingBoardWrites(data) {
+      const merged = normalizeBoardDataMap(data || {});
+      try {
+        if (window.state?.popQueue && window.state.popQueue.size) {
+          window.state.popQueue.forEach((pending, key) => {
+            if (!pending) return;
+            const prev = normalizeBoardPixelRecord(merged[key] || {}, key);
+            const ts = Number(pending.ts) || Date.now();
+            merged[key] = {
+              key,
+              color: window.normalizeColorHexSafe(pending.color || window.state?.activeColor || '#ffffff'),
+              username: window.normalizeUsernameSafe(pending.username || window.state?.username || 'Anónimo'),
+              uid: normalizeActivityTextSafe(pending.uid || window.ensureUid?.() || '', 64),
+              ts,
+              changeCount: Math.max(1, Number(prev.changeCount || 0) + 1),
+              placedAt: prev.placedAt || ts,
+              updatedAt: ts,
+              placedBy: prev.placedBy || window.normalizeUsernameSafe(pending.username || window.state?.username || 'Anónimo'),
+              updatedBy: window.normalizeUsernameSafe(pending.username || window.state?.username || 'Anónimo'),
+              source: 'local-pending',
+              changedAt: ts,
+              previousColor: prev.color || ''
+            };
+          });
+        }
+      } catch (err) {
+        console.warn('No se pudieron aplicar escrituras pendientes:', err);
+      }
+      return merged;
+    }
+
+    function renderBoardFromData(data) {
+      try {
+        if (typeof boardImageData === 'undefined' || !boardImageData || boardImageData.width !== boardWidth() || boardImageData.height !== boardHeight()) {
+          if (typeof window.initBoardImageData === 'function') window.initBoardImageData();
+        }
+        const normalized = normalizeBoardDataMap(data || {});
+        window.state.boardData = normalized;
+        if (typeof window.ensureWhiteCanvas === 'function') window.ensureWhiteCanvas();
+        Object.entries(normalized).forEach(([key, raw]) => {
+          const record = normalizeBoardPixelRecord(raw, key);
+          const parts = String(key).split('_').map(Number);
+          const x = Number(parts[0]);
+          const y = Number(parts[1]);
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            if (typeof window.setPixel === 'function') window.setPixel(x, y, record.color);
+          }
+        });
+        if (typeof window.scheduleCanvasFlush === 'function') window.scheduleCanvasFlush();
+        if (typeof window.updateLoaderPreview === 'function') window.updateLoaderPreview();
+        if (typeof window.requestGridRefresh === 'function') window.requestGridRefresh(true);
+        renderMostChangedPixelSummary();
+        if (window.state?.pixelInfoVisible) refreshPixelInfoForCurrentTarget(true);
+      } catch (err) {
+        console.error('No se pudo renderizar el tablero actualizado:', err);
+      }
+    }
+
+    function applyRealtimeBoardChange(key, rawValue) {
+      const parts = String(key).split('_').map(Number);
+      const x = Number(parts[0]);
+      const y = Number(parts[1]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+      const normalized = normalizeBoardPixelRecord(rawValue, key);
+      normalized.key = key;
+      if (!normalized.metaVersion) normalized.metaVersion = getPixelMetaVersion(rawValue) || '';
+      if (!normalized.schemaVersion) normalized.schemaVersion = normalized.metaVersion || '';
+      if (!window.state.boardData) window.state.boardData = {};
+      window.state.boardData[key] = normalized;
+      if (typeof window.setPixel === 'function') window.setPixel(x, y, normalized.color);
+      if (typeof window.scheduleCanvasFlush === 'function') window.scheduleCanvasFlush();
+      const pending = window.state.popQueue?.get(key);
+      const isLocalEcho = !!pending && window.normalizeColorHexSafe(pending.color) === normalized.color && (Date.now() - Number(pending.ts || 0)) < 5000;
+      if (isLocalEcho) {
+        window.state.popQueue.delete(key);
+      }
+      if (window.db && normalized && String(normalized.metaVersion || '').toLowerCase() === 'v5.3') {
+        persistPixelMetaRecord(key, normalized, { x, y, source: normalized.source || 'realtime', previousColor: normalized.previousColor || '' }).catch(() => {});
+      }
+      renderMostChangedPixelSummary();
+      if (window.state?.pixelInfoVisible && getPixelKeyFromTarget(getActivePixelTarget()) === key) {
+        if (typeof window.updatePixelInfoForKey === 'function') window.updatePixelInfoForKey(key, true);
+      }
+      return true;
+    }
+
+    function refreshBoardFromServer() {
+      if (!window.db) return Promise.resolve(null);
+      return window.db.ref('board').once('value')
+        .then(snap => {
+          const data = applyPendingBoardWrites(snap.val() || {});
+          window.state.boardData = data;
+          window.state.knownBoardKeys = new Set(Object.keys(data || {}));
+          window.state.boardCount = window.state.knownBoardKeys.size;
+          renderBoardFromData(data);
+          if (typeof window.persistBoardCache === 'function') window.persistBoardCache(data);
+          if (typeof window.updateTopStats === 'function') window.updateTopStats();
+          if (typeof window.requestMinimapRefresh === 'function') window.requestMinimapRefresh(true);
+          return data;
+        })
+        .catch(err => {
+          console.warn('No se pudo refrescar el tablero desde Firebase:', err);
+          return null;
+        });
+    }
+
+    function processBoardSnapshot(boardSnap) {
+      const data = applyPendingBoardWrites(boardSnap?.val?.() || {});
+      const entries = Object.entries(data);
+      window.state.boardData = data;
+      window.state.loadingTotal = Math.max(window.state.loadingTotal, entries.length + 4);
+      if (typeof window.updateLoadingUI === 'function') window.updateLoadingUI();
+      if (typeof window.ensureWhiteCanvas === 'function') window.ensureWhiteCanvas();
+      const chunkSize = 120;
+      let index = 0;
+      const processChunk = () => {
+        const end = Math.min(index + chunkSize, entries.length);
+        const startIndex = index;
+        for (; index < end; index++) {
+          const [key, raw] = entries[index];
+          const record = normalizeBoardPixelRecord(raw, key);
+          const [x, y] = String(key).split('_').map(Number);
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            if (typeof window.setPixel === 'function') window.setPixel(x, y, record.color);
+            window.state.knownBoardKeys.add(key);
+          }
+        }
+        window.state.boardCount = window.state.knownBoardKeys.size;
+        if (typeof window.addLoadingDone === 'function') window.addLoadingDone(index - startIndex);
+        if (typeof window.scheduleCanvasFlush === 'function') window.scheduleCanvasFlush();
+        if (typeof window.updateTopStats === 'function') window.updateTopStats();
+        if (typeof window.requestMinimapRefresh === 'function') window.requestMinimapRefresh(true);
+        if (index < entries.length) {
+          setTimeout(processChunk, 24);
+        } else {
+          if (typeof window.persistBoardCache === 'function') window.persistBoardCache(data);
+          window.state.lastBoardSyncAt = Date.now();
+          if (typeof window.finishBoardLoading === 'function') window.finishBoardLoading();
+          renderMostChangedPixelSummary();
+        }
+      };
+      requestAnimationFrame(processChunk);
+    }
+
+    function showTrackingPixelPopup(payload) {
+      if (!window.state?.isAuthorized || !window.state?.settings?.trackingEnabled || !window.state?.adminDashboardOpen) return;
+      if (!window.el?.viewport) return;
+      const popup = document.createElement('div');
+      popup.className = 'pixel-pop';
+      const canvasRect = window.el.canvas?.getBoundingClientRect?.() || window.el.viewport.getBoundingClientRect();
+      const x = Number.isFinite(Number(payload?.x)) ? Number(payload.x) : null;
+      const y = Number.isFinite(Number(payload?.y)) ? Number(payload.y) : null;
+      let left = Math.round(window.innerWidth / 2);
+      let top = Math.max(70, Math.round(window.innerHeight * 0.18));
+      if (x !== null && y !== null && canvasRect.width > 0 && canvasRect.height > 0) {
+        left = Math.round(canvasRect.left + ((x + 0.5) / Math.max(1, boardWidth())) * canvasRect.width);
+        top = Math.round(canvasRect.top + ((y + 0.5) / Math.max(1, boardHeight())) * canvasRect.height - 10);
+      }
+      popup.style.left = `${Math.max(20, Math.min(window.innerWidth - 20, left))}px`;
+      popup.style.top = `${Math.max(70, Math.min(window.innerHeight - 20, top))}px`;
+      popup.style.background = 'rgba(0,0,0,.82)';
+      popup.innerHTML = `${escapeHtmlText(window.normalizeUsernameSafe(payload?.username || 'Anónimo'))} · (${x}, ${y}) · <span style="color:${escapeHtmlText(window.normalizeColorHexSafe(payload?.color || '#ffffff'))}">${escapeHtmlText(window.normalizeColorHexSafe(payload?.color || '#ffffff'))}</span>`;
+      document.body.appendChild(popup);
+      setTimeout(() => {
+        popup.style.opacity = '0';
+        popup.style.transform = 'translate(-50%,-135%) scale(.96)';
+      }, 980);
+      setTimeout(() => {
+        try { popup.remove(); } catch {}
+      }, 1450);
+    }
+
+    function consumePixelEvent(eventSnap) {
+      const eventKey = String(eventSnap?.key || '');
+      const value = eventSnap?.val?.() || {};
+      if (eventKey && window.state?.pendingPixelEventKeys && window.state.pendingPixelEventKeys.has(eventKey)) {
+        window.state.pendingPixelEventKeys.delete(eventKey);
+        return;
+      }
+      if (value && Number.isFinite(Number(value.ts))) {
+        const ts = Number(value.ts);
+        if (typeof window.registerRecentEvent === 'function') window.registerRecentEvent(ts, { persist: false });
+        const eventStartedAt = Number(window.state.pixelEventsListenerStartedAt || 0);
+        const isLiveEvent = !eventStartedAt || ts >= (eventStartedAt - 1500);
+        const eventUid = normalizeActivityTextSafe(value.uid || '', 64);
+        if (isLiveEvent && eventUid !== (window.ensureUid ? window.ensureUid() : '')) {
+          showTrackingPixelPopup({
+            username: window.normalizeUsernameSafe(value.username || value.user || 'Anónimo'),
+            x: Number.isFinite(Number(value.x)) ? Number(value.x) : null,
+            y: Number.isFinite(Number(value.y)) ? Number(value.y) : null,
+            color: window.normalizeColorHexSafe(value.color || '#ffffff'),
+            ts
+          });
+        }
+        if (window.state?.pixelInfoVisible && getPixelKeyFromTarget(getActivePixelTarget()) === `${Number(value.x)}_${Number(value.y)}`) {
+          if (typeof window.updatePixelInfoForKey === 'function') window.updatePixelInfoForKey(`${Number(value.x)}_${Number(value.y)}`, true);
+        }
+      }
+    }
+
+    async function updatePixelInfoForKey(key, forceFetch = false) {
+      const fallbackRecord = {
+        color: '#ffffff',
+        legacy: true,
+        key: key || '',
+        metaVersion: '',
+        schemaVersion: ''
+      };
+      if (!key) {
+        updatePixelInfoPanelMarkup(fallbackRecord, key, 'Sin datos');
+        updateStandalonePixelInfoTab(fallbackRecord, key, 'Sin datos');
+        return null;
+      }
+      const cached = window.state.pixelInfoCache.get(key);
+      const now = Date.now();
+      if (!forceFetch && cached && (now - cached.fetchedAt) < PREFERRED_PIXEL_INFO_CACHE_MS) {
+        updatePixelInfoPanelMarkup(cached.record, key, cached.status || 'cache');
+        updateStandalonePixelInfoTab(cached.record, key, cached.status || 'cache');
+        return cached.record;
+      }
+      updatePixelInfoPanelLoading(`Cargando información del pixel ${key}...`);
+      if (!window.db) {
+        updatePixelInfoPanelMarkup(fallbackRecord, key, 'Sin conexión a Firebase');
+        updateStandalonePixelInfoTab(fallbackRecord, key, 'Sin conexión a Firebase');
+        return null;
+      }
+      try {
+        const candidatePaths = [
+          `${BOARD_PATH}/${key}`,
+          `${BOARD_META_PATH}/${key}`,
+          `pixels/${key}`,
+          `pixel_info/${key}`,
+          `pixel-meta/${key}`
+        ];
+        const snaps = await Promise.all(candidatePaths.map(path => window.db.ref(path).once('value').catch(() => null)));
+        const rawSnap = snaps[0];
+        const metaSnap = snaps[1];
+        const extraSnaps = snaps.slice(2);
+        const raw = rawSnap?.val?.() ?? null;
+        const meta = metaSnap?.val?.() ?? null;
+        let record = mergePixelRecordWithMeta(raw, meta || {}, key);
+        record.key = key;
+        record.legacy = typeof raw === 'string' ? true : isLegacyPixelRecordFromMerged(record, meta || {});
+        if (!record.changeCount || Number(record.changeCount) < 1) {
+          record.changeCount = Number(meta?.changeCount || raw?.changeCount || 0) || 0;
+        }
+        extraSnaps.forEach(snap => {
+          const extra = snap?.val?.() || null;
+          if (!extra || typeof extra !== 'object') return;
+          record = mergePixelRecordWithMeta(record, extra, key);
+        });
+        window.state.pixelInfoCache.set(key, { record, fetchedAt: Date.now(), status: 'Firebase' });
+        updatePixelInfoPanelMarkup(record, key, 'Firebase');
+        updateStandalonePixelInfoTab(record, key, 'Firebase');
+        return record;
+      } catch (err) {
+        console.warn('No se pudo cargar la información del pixel:', err);
+        updatePixelInfoPanelMarkup(fallbackRecord, key, 'Error de carga');
+        updateStandalonePixelInfoTab(fallbackRecord, key, 'Error de carga');
+        return null;
+      }
+    }
+
+
+    window.updatePixelInfoForKey = updatePixelInfoForKey;
+    if (!window.state?.pixelInfoPanelRepairIntervalId) {
+      window.state = window.state || {};
+      window.state.pixelInfoPanelRepairIntervalId = setInterval(() => {
+        try {
+          if (!window.state?.pixelInfoVisible || !window.el?.pixelInfoBody || !window.el?.pixelInfoPanel) return;
+          const body = window.el.pixelInfoBody;
+          const hasContent = String(body.textContent || '').replace(/\s+/g, ' ').trim().length > 0 || body.children.length > 0;
+          if (!hasContent) {
+            ensurePixelInfoBodySeed('panel-repair');
+            if (!String(body.textContent || '').replace(/\s+/g, ' ').trim().length) {
+              const currentKey = window.state.pixelInfoPinnedKey || window.state.pixelInfoCurrentKey || 'Sin pixel';
+              body.innerHTML = renderPixelInfoPanelHtml(window.state.pixelInfoLastRecord || { color: '#ffffff', username: 'Sin datos', legacy: true }, currentKey, 'Recuperando', 'panel', 'El panel se vació y fue reconstruido automáticamente.');
+            }
+          }
+        } catch {}
+      }, 500);
+    }
+    window.updatePixelInfoForKey = updatePixelInfoForKey;
+    function refreshPixelInfoForCurrentTarget(forceFetch = false) {
+      const target = getActivePixelTarget();
+      const key = getPixelKeyFromTarget(target);
+      if (!key) {
+        updatePixelInfoPanelMarkup({ color: '#ffffff' }, '', 'Mueve el cursor sobre el lienzo');
+        return Promise.resolve(null);
+      }
+      window.state.pixelInfoCurrentKey = key;
+      if (!window.state.pixelInfoPinnedKey) window.state.lastSelectedPixel = target;
+      return (typeof window.updatePixelInfoForKey === 'function') ? window.updatePixelInfoForKey(key, forceFetch) : Promise.resolve(null);
+    }
+
+    function updateCoordsOverlay(clientX, clientY) {
+      const result = typeof original.updateCoordsOverlay === 'function' ? original.updateCoordsOverlay(clientX, clientY) : null;
+      if (result && Number.isFinite(Number(result.x)) && Number.isFinite(Number(result.y))) {
+        window.state.lastSelectedPixel = { x: Number(result.x), y: Number(result.y) };
+        if (window.state?.pixelInfoVisible && !window.state.pixelInfoPinnedKey) {
+          const key = `${Number(result.x)}_${Number(result.y)}`;
+          if (key !== window.state.pixelInfoCurrentKey) {
+            window.state.pixelInfoCurrentKey = key;
+            if (typeof window.updatePixelInfoForKey === 'function') window.updatePixelInfoForKey(key, true);
+          } else {
+            if (typeof window.updatePixelInfoForKey === 'function') window.updatePixelInfoForKey(key, false);
+          }
+        }
+      } else if (window.state?.pixelInfoVisible && !window.state.pixelInfoPinnedKey) {
+        updatePixelInfoPanelMarkup({ color: '#ffffff' }, '', 'Mueve el cursor sobre el lienzo');
+      }
+      return result;
+    }
+
+    async function cleanupOldMessages() {
+      if (!window.db) return;
+      const cutoff = Date.now() - SEVEN_DAYS_MS;
+      try {
+        const snap = await window.db.ref('messages').orderByChild('time').endAt(cutoff).once('value');
+        const data = snap.val() || {};
+        const removals = [];
+        Object.keys(data).forEach(key => {
+          removals.push(window.db.ref(`${'messages'}/${key}`).remove());
+        });
+        if (removals.length) await Promise.allSettled(removals);
+      } catch (err) {
+        console.warn('No se pudieron limpiar mensajes antiguos:', err);
+      }
+    }
+
+    async function downloadHeatmap() {
+      console.log('[NF] descarga de heatmap iniciada');
+      console.log('[NF] heatmap: entrando a downloadHeatmap()');
+      if (typeof window.refreshUiRefs === 'function') window.refreshUiRefs();
+      const btn = window.el?.heatmapDownloadBtn || document.getElementById('heatmap-download-btn');
+      const prevBtnText = btn?.textContent || '';
+      const prevBtnDisabled = !!btn?.disabled;
+
+      if (window.state?.heatmapDownloadBusy) {
+        const progressNode = window.el?.heatmapDownloadProgress || document.getElementById('heatmap-download-progress');
+        const progressVisible = !!progressNode && progressNode.classList.contains('visible') && getComputedStyle(progressNode).display !== 'none';
+        console.warn('[NF] heatmap estaba marcado como ocupado', { progressVisible });
+        if (!progressVisible) {
+          console.warn('[NF] estado ocupado obsoleto: se libera para permitir la descarga');
+          window.state.heatmapDownloadBusy = false;
+        } else {
+          return;
+        }
+      }
+      if (window.state) window.state.heatmapDownloadBusy = true;
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Preparando...';
+      }
+      setHeatmapDownloadProgress(1, 'Iniciando descarga del heatmap...', true);
+      await yieldToBrowser();
+      setHeatmapDownloadProgress(4, 'Preparando heatmap...', true);
+
+      const finishUi = (message = 'Listo para descargar.') => {
+        if (btn) {
+          btn.disabled = prevBtnDisabled;
+          btn.textContent = prevBtnText || 'Descargar heatmap';
+        }
+        setHeatmapDownloadProgress(100, message, true);
+        setTimeout(() => {
+          hideHeatmapDownloadProgress(message);
+          if (window.state) window.state.heatmapDownloadBusy = false;
+        }, 1400);
+      };
+
+      try {
+        await yieldToBrowser();
+
+        const width = boardWidth();
+        const height = boardHeight();
+        if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) {
+          throw new Error('Dimensiones del lienzo inválidas.');
+        }
+        setHeatmapDownloadProgress(6, `Leyendo lienzo ${width}×${height}...`, true);
+
+        let rawData = window.state?.boardData || {};
+        let metaData = {};
+
+        if (!rawData || !Object.keys(rawData).length) {
+          rawData = {};
+        }
+
+        if ((!rawData || !Object.keys(rawData).length) && window.db) {
+          setHeatmapDownloadProgress(14, 'Consultando Firebase...', true);
+          await yieldToBrowser();
+          try {
+            const [boardSnap, metaSnap] = await Promise.all([
+              window.db.ref('board').once('value'),
+              window.db.ref(BOARD_META_PATH).once('value').catch(() => ({ val: () => ({}) }))
+            ]);
+            rawData = boardSnap?.val?.() || {};
+            metaData = metaSnap?.val?.() || {};
+          } catch (err) {
+            console.warn('No se pudo leer Firebase para el heatmap, usando datos en memoria:', err);
+          }
+        } else if (window.db) {
+          setHeatmapDownloadProgress(14, 'Consultando metadatos...', true);
+          await yieldToBrowser();
+          try {
+            const metaSnap = await window.db.ref(BOARD_META_PATH).once('value').catch(() => ({ val: () => ({}) }));
+            metaData = metaSnap?.val?.() || {};
+          } catch (err) {
+            console.warn('No se pudo leer Firebase para el heatmap, usando metadatos en memoria:', err);
+          }
+        }
+
+        const normalized = normalizeBoardDataMap(rawData);
+        Object.entries(metaData || {}).forEach(([key, meta]) => {
+          const merged = mergePixelRecordWithMeta(normalized[key] || {}, meta, key);
+          merged.legacy = isLegacyPixelRecordFromMerged(merged, meta);
+          normalized[key] = merged;
+        });
+
+        const getChangeCountForHeatmap = (key) => {
+          const rawRecord = rawData?.[key];
+          const metaRecord = metaData?.[key];
+          const rawValue = Number(rawRecord?.changeCount);
+          if (Number.isFinite(rawValue) && rawValue >= 0) return Math.floor(rawValue);
+          const metaValue = Number(metaRecord?.changeCount);
+          if (Number.isFinite(metaValue) && metaValue >= 0) return Math.floor(metaValue);
+          const normalizedValue = Number(normalized?.[key]?.changeCount);
+          if (Number.isFinite(normalizedValue) && normalizedValue >= 0) return Math.floor(normalizedValue);
+          return 0;
+        };
+
+        const totalCells = width * height;
+        const counts = new Array(totalCells);
+        let maxCount = 0;
+        const minCount = 0;
+        const HEATMAP_PIXEL_SCALE = 8;
+        const canvas = document.createElement('canvas');
+        canvas.width = width * HEATMAP_PIXEL_SCALE;
+        canvas.height = height * HEATMAP_PIXEL_SCALE;
+        const ctx = canvas.getContext('2d', { alpha: false });
+        if (!ctx) {
+          throw new Error('No se pudo crear el contexto del canvas.');
+        }
+        ctx.imageSmoothingEnabled = false;
+        ctx.webkitImageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+        ctx.msImageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        function hslToRgb(h, s, l) {
+          h = ((h % 360) + 360) % 360;
+          s = clamp(Number(s) || 0, 0, 100) / 100;
+          l = clamp(Number(l) || 0, 0, 100) / 100;
+          const c = (1 - Math.abs(2 * l - 1)) * s;
+          const hp = h / 60;
+          const x = c * (1 - Math.abs((hp % 2) - 1));
+          let r1 = 0;
+          let g1 = 0;
+          let b1 = 0;
+          if (hp >= 0 && hp < 1) { r1 = c; g1 = x; b1 = 0; }
+          else if (hp < 2) { r1 = x; g1 = c; b1 = 0; }
+          else if (hp < 3) { r1 = 0; g1 = c; b1 = x; }
+          else if (hp < 4) { r1 = 0; g1 = x; b1 = c; }
+          else if (hp < 5) { r1 = x; g1 = 0; b1 = c; }
+          else { r1 = c; g1 = 0; b1 = x; }
+          const m = l - c / 2;
+          return {
+            r: Math.round((r1 + m) * 255),
+            g: Math.round((g1 + m) * 255),
+            b: Math.round((b1 + m) * 255)
+          };
+        }
+
+        function heatColor(count) {
+          const safeMax = Math.max(1, maxCount);
+          const normalizedCount = Number.isFinite(count) ? count : 0;
+          const t = normalizedCount <= 0
+            ? 0
+            : clamp((normalizedCount - minCount) / Math.max(1, safeMax - minCount), 0, 1);
+          const hue = window.lerp(225, 0, Math.pow(t, 0.92));
+          const saturation = window.lerp(78, 98, Math.sqrt(t));
+          const lightness = window.lerp(94, 43, Math.pow(t, 0.7));
+          return hslToRgb(hue, saturation, lightness);
+        }
+
+        const countChunk = Math.max(128, Math.floor(totalCells / 60));
+        for (let index = 0; index < totalCells; index += countChunk) {
+          const end = Math.min(totalCells, index + countChunk);
+          for (let cursor = index; cursor < end; cursor++) {
+            const x = cursor % width;
+            const y = Math.floor(cursor / width);
+            const key = `${x}_${y}`;
+            const count = getChangeCountForHeatmap(key);
+            counts[cursor] = count;
+            if (count > maxCount) maxCount = count;
+          }
+          const progress = 18 + ((end / totalCells) * 36);
+          setHeatmapDownloadProgress(progress, `Calculando intensidad... ${Math.round((end / totalCells) * 100)}%`, true);
+          await yieldToBrowser();
+        }
+
+        const paintChunk = Math.max(96, Math.floor(totalCells / 60));
+        for (let index = 0; index < totalCells; index += paintChunk) {
+          const end = Math.min(totalCells, index + paintChunk);
+          for (let cursor = index; cursor < end; cursor++) {
+            const count = counts[cursor] ?? 0;
+            const { r, g, b } = heatColor(count);
+            const x = (cursor % width) * HEATMAP_PIXEL_SCALE;
+            const y = Math.floor(cursor / width) * HEATMAP_PIXEL_SCALE;
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            ctx.fillRect(x, y, HEATMAP_PIXEL_SCALE, HEATMAP_PIXEL_SCALE);
+          }
+          const progress = 54 + ((end / totalCells) * 36);
+          setHeatmapDownloadProgress(progress, `Renderizando mapa... ${Math.round((end / totalCells) * 100)}%`, true);
+          await yieldToBrowser();
+        }
+
+        setHeatmapDownloadProgress(92, 'Generando archivo PNG...', true);
+        await yieldToBrowser();
+
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        if (!blob) {
+          throw new Error('No se pudo convertir el canvas en PNG.');
+        }
+
+        const filename = `heatmap_${width}x${height}_px8_${Date.now()}.png`;
+        setHeatmapDownloadProgress(96, 'Preparando la descarga...', true);
+
+        const saveWithPicker = async () => {
+          if (!window.showSaveFilePicker) return false;
+          try {
+            const handle = await window.showSaveFilePicker({
+              suggestedName: filename,
+              types: [{
+                description: 'Imagen PNG',
+                accept: { 'image/png': ['.png'] }
+              }]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            return true;
+          } catch (err) {
+            return false;
+          }
+        };
+
+        let downloaded = false;
+        downloaded = await saveWithPicker();
+        if (!downloaded) {
+          const url = URL.createObjectURL(blob);
+          try {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.rel = 'noopener';
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            downloaded = true;
+          } finally {
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+          }
+        }
+
+        finishUi(downloaded ? 'Heatmap descargado.' : 'No se pudo completar la descarga.');
+      } catch (err) {
+        console.error('No se pudo generar o descargar el heatmap:', err);
+        if (btn) {
+          btn.disabled = prevBtnDisabled;
+          btn.textContent = prevBtnText || 'Descargar heatmap';
+        }
+        hideHeatmapDownloadProgress('No se pudo descargar el heatmap.');
+        if (window.state) window.state.heatmapDownloadBusy = false;
+        alert('No se pudo descargar el heatmap.');
+      }
+    }
+
+    window.downloadHeatmap = downloadHeatmap;
+
+    function openAdminLogin() {
+      if (typeof original.openAdminLogin === 'function') original.openAdminLogin();
+      window.state.adminDashboardOpen = false;
+    }
+
+    function openAdminDashboard() {
+      if (typeof original.openAdminDashboard === 'function') original.openAdminDashboard();
+      window.state.isAuthorized = true;
+      window.state.adminDashboardOpen = true;
+      if (window.el?.modalDashboard) {
+        window.el.modalDashboard.classList.add('visible');
+      }
+      if (window.el?.adminBadgeName) {
+        window.el.adminBadgeName.textContent = window.state.username || 'Autenticado';
+      }
+      if (window.el?.toggleTracking) {
+        window.el.toggleTracking.disabled = false;
+      }
+      if (window.el?.statTracking?.closest('.stats-row')) {
+        window.el.statTracking.closest('.stats-row').style.display = window.state.settings?.trackingEnabled ? 'flex' : 'none';
+      }
+      if (window.el?.toggleTimestamp?.closest('.toggle-row')) {
+        window.el.toggleTimestamp.closest('.toggle-row').style.display = 'flex';
+      }
+      if (window.el?.statTs?.closest('.stats-row')) {
+        window.el.statTs.closest('.stats-row').style.display = 'none';
+      }
+      if (typeof window.updateTopStats === 'function') window.updateTopStats();
+    }
+
+    function closeAdminDashboard() {
+      if (typeof original.closeAdminDashboard === 'function') original.closeAdminDashboard();
+      window.state.adminDashboardOpen = false;
+    }
+
+    function hideAllModals() {
+      if (typeof original.hideAllModals === 'function') original.hideAllModals();
+      window.state.adminDashboardOpen = false;
+    }
+
+    async function performAdminLogin() {
+      const entered = normalizeActivityTextSafe(window.el?.adminKeyInput?.value || '', 64);
+      if (!entered) {
+        if (window.el?.adminKeyInput) window.el.adminKeyInput.focus();
+        return;
+      }
+      const secret = normalizeActivityTextSafe(window.state?.settings?.adminKey || window.state?.settings?.adminPassword || localStorage.getItem('nf_admin_key') || window.ADMIN_KEY || window.ADMIN_PASSWORD || '', 64);
+      if (secret && entered !== secret) {
+        if (window.el?.adminKeyInput) {
+          window.el.adminKeyInput.value = '';
+          window.el.adminKeyInput.focus();
+        }
+        if (window.el?.tlStatus) window.el.tlStatus.textContent = 'Clave de administrador incorrecta.';
+        return;
+      }
+      if (!secret) {
+        try { localStorage.setItem('nf_admin_key', entered); } catch {}
+      }
+      window.state.isAuthorized = true;
+      window.state.adminDashboardOpen = true;
+      hideAllModals();
+      if (window.el?.modalDashboard) window.el.modalDashboard.classList.add('visible');
+      if (window.el?.adminBadgeName) window.el.adminBadgeName.textContent = window.state.username || 'Autenticado';
+      if (window.el?.toggleTracking) window.el.toggleTracking.disabled = false;
+      if (typeof window.updateTopStats === 'function') window.updateTopStats();
+      if (typeof window.updateSettingsDisplay === 'function') window.updateSettingsDisplay();
+    }
+
+    function updateTopStats() {
+      const activeUsers = typeof window.getActiveUsersCountForUI === 'function' ? window.getActiveUsersCountForUI() : (window.state.activeUserCount || 0);
+      const totalPlaced = Number.isFinite(Number(window.state.totalPixelsPlaced)) ? Number(window.state.totalPixelsPlaced) : 0;
+      const contributors = Number.isFinite(Number(window.state.contributorCount)) ? Number(window.state.contributorCount) : 0;
+      const rate = Number(window.state.pixelRate || 0);
+      if (window.el.statMine) window.el.statMine.textContent = formatNumber(window.state.myPixels);
+      if (window.el.statTotal) window.el.statTotal.textContent = formatNumber(totalPlaced);
+      if (window.el.statOnline) window.el.statOnline.textContent = formatNumber(activeUsers);
+      if (window.el.statUnique) window.el.statUnique.textContent = formatNumber(contributors);
+      if (window.el.statRate) window.el.statRate.textContent = formatNumber(rate);
+      if (window.el.mobileStatOnline) window.el.mobileStatOnline.textContent = formatNumber(activeUsers);
+      if (window.el.mobileStatTotal) window.el.mobileStatTotal.textContent = formatNumber(totalPlaced);
+      if (window.el.mobileStatRate) window.el.mobileStatRate.textContent = `${formatNumber(rate)}/min`;
+      if (window.el.mobileStatUnique) window.el.mobileStatUnique.textContent = formatNumber(contributors);
+      if (window.el.mobileSessionClock) window.el.mobileSessionClock.textContent = window.el.sessionClock?.textContent || '00:00:00';
+      if (window.el.boardSizeInfo) window.el.boardSizeInfo.textContent = boardDims();
+      if (window.el.boardSizeStats) window.el.boardSizeStats.textContent = boardDims();
+      if (window.el.tlFramesInfo) window.el.tlFramesInfo.textContent = `Video ${boardWidth() * 10}×${boardHeight() * 10}`;
+      if (window.el.minimapZoom) window.el.minimapZoom.textContent = `${Number(window.state.scale || 1).toFixed(1)}×`;
+      if (window.el.statTracking) {
+        window.el.statTracking.textContent = window.state.settings?.trackingEnabled ? 'Activo' : 'Desactivado';
+        window.el.statTracking.className = window.state.settings?.trackingEnabled ? 'good' : 'warn';
+      }
+      if (window.el.statTs && window.el.statTs.closest('.stats-row')) {
+        window.el.statTs.closest('.stats-row').style.display = 'none';
+      }
+      if (window.el.toggleTracking) window.el.toggleTracking.disabled = !window.state.isAuthorized;
+      const trackingToggleRow = window.el.toggleTracking?.closest('.toggle-row');
+      if (trackingToggleRow) trackingToggleRow.style.display = window.state.isAuthorized ? 'flex' : 'none';
+      const trackingStatsRow = window.el.statTracking?.closest('.stats-row');
+      if (trackingStatsRow) trackingStatsRow.style.display = (window.state.isAuthorized && !!window.state.settings?.trackingEnabled) ? 'flex' : 'none';
+      renderMostChangedPixelSummary();
+    }
+
+    function updateSettingsDisplay() {
+      if (window.el.toggleTimestamp) window.el.toggleTimestamp.checked = !!window.state.settings?.timestampEnabled;
+      if (window.el.toggleTracking) {
+        window.el.toggleTracking.checked = !!window.state.settings?.trackingEnabled;
+        window.el.toggleTracking.disabled = !window.state.isAuthorized;
+      }
+      if (window.el.tlFreqInput) window.el.tlFreqInput.value = String(window.state.settings?.timelapseIntervalSec || 5);
+      if (window.el.tlFpsInput) window.el.tlFpsInput.value = String(window.state.settings?.timelapseFps || 12);
+      if (window.el.snapshotIntervalInput) window.el.snapshotIntervalInput.value = String(clamp(Math.round(Number(window.state.settings?.snapshotIntervalSec) || 12), 1, 120));
+      if (window.el.toggleTimelapsePixels) window.el.toggleTimelapsePixels.checked = !!window.state.settings?.timelapseShowPixels;
+      if (window.el.toggleTimelapseContributors) window.el.toggleTimelapseContributors.checked = !!window.state.settings?.timelapseShowContributors;
+      if (window.el.toggleTimelapseActiveUsers) window.el.toggleTimelapseActiveUsers.checked = !!window.state.settings?.timelapseShowActiveUsers;
+      if (window.el.toggleTimelapsePixelRate) window.el.toggleTimelapsePixelRate.checked = !!window.state.settings?.timelapseShowPixelRate;
+      if (window.el.boardWidthInput) window.el.boardWidthInput.value = String(window.state.boardWidth || window.state.settings?.boardWidth || boardWidth());
+      if (window.el.boardHeightInput) window.el.boardHeightInput.value = String(window.state.boardHeight || window.state.settings?.boardHeight || boardHeight());
+      if (window.el.boardSizeInfo) window.el.boardSizeInfo.textContent = boardDims();
+      if (window.el.boardSizeStats) window.el.boardSizeStats.textContent = boardDims();
+      if (window.el.tlFramesInfo) window.el.tlFramesInfo.textContent = `Video ${boardWidth() * 10}×${boardHeight() * 10}`;
+      if (window.el.statTs && window.el.statTs.closest('.stats-row')) {
+        window.el.statTs.closest('.stats-row').style.display = 'none';
+      }
+      if (window.el.toggleTimestamp?.closest('.toggle-row')) {
+        window.el.toggleTimestamp.closest('.toggle-row').style.display = 'flex';
+      }
+      if (window.el.statTracking) {
+        window.el.statTracking.textContent = window.state.settings?.trackingEnabled ? 'Activo' : 'Desactivado';
+        window.el.statTracking.className = window.state.settings?.trackingEnabled ? 'good' : 'warn';
+      }
+      if (window.el.toggleTracking) window.el.toggleTracking.disabled = !window.state.isAuthorized;
+      const trackingToggleRow = window.el.toggleTracking?.closest('.toggle-row');
+      if (trackingToggleRow) trackingToggleRow.style.display = window.state.isAuthorized ? 'flex' : 'none';
+      const trackingStatsRow = window.el.statTracking?.closest('.stats-row');
+      if (trackingStatsRow) trackingStatsRow.style.display = (window.state.isAuthorized && !!window.state.settings?.trackingEnabled) ? 'flex' : 'none';
+      if (window.el.tlStatus && window.state.boardLoaded) {
+        window.el.tlStatus.textContent = `Ajustes sincronizados · tracking ${window.state.settings?.trackingEnabled ? 'activo' : 'inactivo'} · snapshot cada ${clamp(Math.round(Number(window.state.settings?.snapshotIntervalSec) || 12), 1, 120)}s.`;
+      }
+    }
+
+    function syncSettings() {
+      updateSettingsDisplay();
+      updateTopStats();
+    }
+
+    async function persistPixelMetaRecord(key, record, extra = {}) {
+      if (!window.db || !key || !record) return false;
+      const parts = String(key).split('_').map(Number);
+      const x = Number.isFinite(Number(extra.x)) ? Number(extra.x) : Number(parts[0]);
+      const y = Number.isFinite(Number(extra.y)) ? Number(extra.y) : Number(parts[1]);
+      const payload = {
+        key,
+        x: Number.isFinite(x) ? x : 0,
+        y: Number.isFinite(y) ? y : 0,
+        color: window.normalizeColorHexSafe(record.color || extra.color || '#ffffff'),
+        username: window.normalizeUsernameSafe(record.username || extra.username || ''),
+        uid: normalizeActivityTextSafe(record.uid || extra.uid || '', 64),
+        ts: Number(record.ts || extra.ts || Date.now()) || Date.now(),
+        source: normalizeActivityTextSafe(record.source || extra.source || '', 32),
+        changeCount: Math.max(0, Number(record.changeCount || extra.changeCount || 0) || 0),
+        placedAt: Number(record.placedAt || extra.placedAt || record.ts || extra.ts || Date.now()) || Date.now(),
+        updatedAt: Number(record.updatedAt || extra.updatedAt || record.ts || extra.ts || Date.now()) || Date.now(),
+        placedBy: window.normalizeUsernameSafe(record.placedBy || extra.placedBy || record.username || extra.username || ''),
+        updatedBy: window.normalizeUsernameSafe(record.updatedBy || extra.updatedBy || record.username || extra.username || ''),
+        changedAt: Number(record.changedAt || extra.changedAt || record.updatedAt || extra.updatedAt || record.ts || extra.ts || Date.now()) || Date.now(),
+        previousColor: window.normalizeColorHexSafe(record.previousColor || extra.previousColor || '#ffffff'),
+        metaVersion: VERSION,
+        schemaVersion: VERSION
+      };
+      try {
+        await window.db.ref(`${BOARD_META_PATH}/${key}`).set(payload);
+        return true;
+      } catch (err) {
+        console.warn('No se pudo guardar metadata del pixel:', err);
+        return false;
+      }
+    }
+
+    async function commitPixelAt(clientX, clientY, source = 'manual') {
+      if (window.state.banned) return;
+      if (!window.state.username) {
+        if (typeof window.showModal === 'function') window.showModal(window.el.modalUsername);
+        return;
+      }
+      const coords = typeof window.getCanvasCoords === 'function' ? window.getCanvasCoords(clientX, clientY) : null;
+      if (!coords) return;
+      const { x, y } = coords;
+      if (x < 0 || x >= boardWidth() || y < 0 || y >= boardHeight()) return;
+
+      const color = window.normalizeColorHexSafe(window.state.activeColor);
+      const currentColor = getCurrentPixelHex(x, y);
+      if (currentColor === color) return;
+
+      const key = `${x}_${y}`;
+      const ts = Date.now();
+      const user = window.state.username;
+      const uid = window.ensureUid ? window.ensureUid() : (window.state.uid || `uid_${Date.now()}`);
+      const currentRecord = normalizeBoardPixelRecord(window.state.boardData?.[key] || {}, key);
+      const currentChangeCount = Math.max(0, Number(currentRecord.changeCount || currentRecord.changes || currentRecord.change_count || currentRecord.timesChanged || 0) || 0);
+      const nextChangeCount = currentChangeCount + 1;
+      const nextRecord = {
+        key,
+        color,
+        username: user,
+        uid,
+        ts,
+        source,
+        changeCount: nextChangeCount,
+        placedAt: currentRecord.placedAt || ts,
+        updatedAt: ts,
+        placedBy: currentRecord.placedBy || user,
+        updatedBy: user,
+        changedAt: ts,
+        previousColor: currentRecord.color || '',
+        metaVersion: window.VERSION || VERSION,
+        schemaVersion: window.VERSION || VERSION
+      };
+
+      if (!window.state.popQueue) window.state.popQueue = new Map();
+      window.state.popQueue.set(key, { username: user, color, ts, changeCount: nextChangeCount, uid });
+      if (!window.state.boardData) window.state.boardData = {};
+      window.state.boardData[key] = nextRecord;
+      if (window.state.knownBoardKeys) window.state.knownBoardKeys.add(key);
+      if (typeof window.setPixel === 'function') window.setPixel(x, y, color);
+      if (typeof window.scheduleCanvasFlush === 'function') window.scheduleCanvasFlush();
+      if (typeof window.requestMinimapRefresh === 'function') window.requestMinimapRefresh();
+
+      const pixelRef = window.db?.ref(`${BOARD_PATH}/${key}`);
+      let transactionResult = { committed: false, snapshot: null };
+      try {
+        transactionResult = await new Promise((resolve, reject) => {
+          if (!pixelRef) {
+            resolve({ committed: false, snapshot: null });
+            return;
+          }
+          try {
+            pixelRef.transaction(current => {
+              const previous = normalizeBoardPixelRecord(current || window.state.boardData?.[key] || {}, key);
+              return {
+                key,
+                color,
+                username: user,
+                uid,
+                ts,
+                source,
+                changeCount: Math.max(0, Number(previous.changeCount || previous.changes || previous.change_count || previous.timesChanged || 0) || 0) + 1,
+                placedAt: previous.placedAt || ts,
+                updatedAt: ts,
+                placedBy: previous.placedBy || user,
+                updatedBy: user,
+                changedAt: ts,
+                previousColor: previous.color || '',
+                metaVersion: window.VERSION || VERSION,
+                schemaVersion: window.VERSION || VERSION
+              };
+            }, (error, committed, snapshot) => {
+              if (error) {
+                reject(error);
+                return;
+              }
+              resolve({ committed, snapshot });
+            }, false);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      } catch (err) {
+        console.error('No se pudo colocar pixel:', err);
+      }
+
+      if (!transactionResult || !transactionResult.committed) {
+        window.state.popQueue.delete(key);
+        return;
+      }
+
+      const savedRecord = normalizeBoardPixelRecord(transactionResult.snapshot?.val?.() || nextRecord, key);
+      window.state.boardData[key] = savedRecord;
+      if (typeof window.setPixel === 'function') window.setPixel(x, y, savedRecord.color);
+      if (typeof window.scheduleCanvasFlush === 'function') window.scheduleCanvasFlush();
+      if (typeof window.requestMinimapRefresh === 'function') window.requestMinimapRefresh();
+      if (window.db) {
+        persistPixelMetaRecord(key, savedRecord, {
+          x,
+          y,
+          username: user,
+          uid,
+          ts,
+          source,
+          changeCount: savedRecord.changeCount,
+          previousColor: savedRecord.previousColor || currentRecord.color || ''
+        }).catch(() => {});
+      }
+
+      const eventRef = window.logPixelEvent ? window.logPixelEvent(ts, {
+        uid,
+        username: user,
+        x,
+        y,
+        color,
+        source,
+        changeCount: savedRecord.changeCount,
+        placedBy: savedRecord.placedBy,
+        placedAt: savedRecord.placedAt,
+        updatedAt: savedRecord.updatedAt,
+        updatedBy: savedRecord.updatedBy
+      }) : null;
+      if (eventRef?.key && window.state.pendingPixelEventKeys) {
+        window.state.pendingPixelEventKeys.add(eventRef.key);
+        setTimeout(() => window.state.pendingPixelEventKeys?.delete?.(eventRef.key), 15000);
+      }
+      if (typeof window.registerRecentEvent === 'function') window.registerRecentEvent(ts, { persist: false });
+      if (window.db) {
+        window.db.ref(`${USER_STATS_PATH}/${uid}/pixels`).transaction(v => (Number(v) || 0) + 1).catch(() => {});
+        window.db.ref(`${GLOBAL_STATS_PATH}/totalPixelsPlaced`).transaction(v => (Number(v) || 0) + 1).catch(() => {});
+        window.db.ref(`${USER_STATS_PATH}/${uid}/lastPixelAt`).set(ts).catch(() => {});
+        window.db.ref(`${USER_STATS_PATH}/${uid}/username`).set(user).catch(() => {});
+        window.db.ref(`${USERS_PATH}/${uid}/username`).set(user).catch(() => {});
+        window.db.ref(`${USERS_PATH}/${uid}/lastSeen`).set(ts).catch(() => {});
+        window.db.ref(`${USERS_PATH}/${uid}/online`).set(true).catch(() => {});
+      }
+      if (Number.isFinite(Number(window.state.myPixels))) {
+        window.state.myPixels += 1;
+        try { localStorage.setItem('nf_my_pixels', String(window.state.myPixels)); } catch {}
+        if (window.el?.statMine) window.el.statMine.textContent = formatNumber(window.state.myPixels);
+      }
+      if (typeof window.logActivity === 'function') {
+        window.logActivity({
+          type: 'pixel',
+          username: user,
+          color,
+          x,
+          y,
+          ts,
+          scope: source,
+          changeCount: savedRecord.changeCount,
+          placedBy: savedRecord.placedBy,
+          placedAt: savedRecord.placedAt,
+          updatedAt: savedRecord.updatedAt,
+          updatedBy: savedRecord.updatedBy
+        });
+      }
+      if (typeof window.updateTopStats === 'function') window.updateTopStats();
+      if (typeof window.triggerCooldown === 'function') window.triggerCooldown();
+      if (window.state?.pixelInfoVisible && window.state?.pixelInfoCurrentKey === key) {
+        if (typeof window.updatePixelInfoForKey === 'function') window.updatePixelInfoForKey(key, true);
+      }
+      return savedRecord;
+    }
+
+    function updateCoordsOverlayPatched(clientX, clientY) {
+      const result = typeof original.updateCoordsOverlay === 'function' ? original.updateCoordsOverlay(clientX, clientY) : null;
+      if (result && Number.isFinite(Number(result.x)) && Number.isFinite(Number(result.y))) {
+        window.state.lastSelectedPixel = { x: Number(result.x), y: Number(result.y) };
+        if (window.state?.pixelInfoVisible) {
+          const key = `${Number(result.x)}_${Number(result.y)}`;
+          if (key !== window.state.pixelInfoCurrentKey) {
+            window.state.pixelInfoCurrentKey = key;
+            if (typeof window.updatePixelInfoForKey === 'function') window.updatePixelInfoForKey(key, true);
+          }
+        }
+      }
+      return result;
+    }
+
+
+
+    function ensurePixelInfoHotkeyFallback() {
+      if (window.__nfPixelInfoHotkeyFallbackBound) return;
+      window.__nfPixelInfoHotkeyFallbackBound = true;
+
+      const isTypingTarget = (target) => {
+        return !!target && (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable
+        );
+      };
+
+      const normalizeShortcutKey = (e) => {
+        const key = String(e?.key || '').trim().toLowerCase();
+        const code = String(e?.code || '').trim().toLowerCase();
+        const keyCode = Number(e?.keyCode || e?.which || 0) || 0;
+        return { key, code, keyCode };
+      };
+
+      const isPixelInfoShortcut = (e, expected) => {
+        const { key, code, keyCode } = normalizeShortcutKey(e);
+        if (expected === 'c') {
+          return false;
+        }
+        if (expected === 'i') {
+          return key === 'i' || code === 'keyi' || keyCode === 73;
+        }
+        if (expected === 'escape') {
+          return key === 'escape' || key === 'esc' || code === 'escape' || keyCode === 27;
+        }
+        return false;
+      };
+
+      const handleShortcut = (e) => {
+        if (!e) return;
+        if (isTypingTarget(e.target)) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+
+        if (isPixelInfoShortcut(e, 'i')) {
+          e.preventDefault();
+          e.stopPropagation();
+          window.state.pixelInfoPinnedKey = '';
+          const next = !(window.state && typeof window.state.pixelInfoVisible === 'boolean' ? window.state.pixelInfoVisible : false);
+          setPixelInfoVisible(next);
+          if (next) refreshPixelInfoForCurrentTarget(true);
+          return;
+        }
+
+        if (isPixelInfoShortcut(e, 'escape') && window.state?.pixelInfoVisible) {
+          e.preventDefault();
+          e.stopPropagation();
+          setPixelInfoVisible(false);
+        }
+      };
+
+      const targets = [window, document, document.documentElement, document.body].filter(Boolean);
+      targets.forEach(target => {
+        target.addEventListener('keydown', handleShortcut, true);
+        target.addEventListener('keyup', handleShortcut, true);
+      });
+    }
+
+    function wirePixelInfoControls() {
+      const closeBtn = window.el?.pixelInfoClose;
+      if (closeBtn && !closeBtn.dataset.boundPixelInfo) {
+        closeBtn.dataset.boundPixelInfo = '1';
+        closeBtn.addEventListener('click', () => setPixelInfoVisible(false));
+      }
+
+      const backdrop = window.el?.pixelInfoPanel?.querySelector?.('[data-pixel-info-close="1"]');
+      if (backdrop && !backdrop.dataset.boundPixelInfo) {
+        backdrop.dataset.boundPixelInfo = '1';
+        backdrop.addEventListener('click', () => setPixelInfoVisible(false));
+      }
+
+      if (!window.__nfPixelInfoKeyBound) {
+        window.__nfPixelInfoKeyBound = true;
+
+        const isTypingTarget = (target) => {
+          return !!target && (
+            target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable
+          );
+        };
+
+        const normalizeShortcutKey = (e) => {
+          const key = String(e?.key || '').trim().toLowerCase();
+          const code = String(e?.code || '').trim().toLowerCase();
+          const keyCode = Number(e?.keyCode || e?.which || 0) || 0;
+          return { key, code, keyCode };
+        };
+
+        const isPixelInfoShortcut = (e, expected) => {
+          const { key, code, keyCode } = normalizeShortcutKey(e);
+          if (expected === 'c') {
+            return false;
+          }
+          if (expected === 'i') {
+            return key === 'i' || code === 'keyi' || keyCode === 73;
+          }
+          if (expected === 'escape') {
+            return key === 'escape' || key === 'esc' || code === 'escape' || keyCode === 27;
+          }
+          return false;
+        };
+
+        const handleKeyDown = (e) => {
+          if (isTypingTarget(e.target)) return;
+          if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+          if (isPixelInfoShortcut(e, 'i')) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.state.pixelInfoPinnedKey = '';
+            const next = !(window.state && typeof window.state.pixelInfoVisible === 'boolean' ? window.state.pixelInfoVisible : false);
+            setPixelInfoVisible(next);
+            if (next) refreshPixelInfoForCurrentTarget(true);
+            return;
+          }
+
+          if (isPixelInfoShortcut(e, 'escape') && window.state?.pixelInfoVisible) {
+            e.preventDefault();
+            e.stopPropagation();
+            setPixelInfoVisible(false);
+            return;
+          }
+        };
+
+        const handleKeyUp = (e) => {
+          if (isTypingTarget(e.target)) return;
+          if (e.ctrlKey || e.metaKey || e.altKey) return;
+        };
+
+        const keyboardTargets = [window, document, document.documentElement, document.body].filter(Boolean);
+        keyboardTargets.forEach(target => {
+          target.addEventListener('keydown', handleKeyDown, true);
+          target.addEventListener('keyup', handleKeyUp, true);
+          target.addEventListener('keypress', handleKeyDown, true);
+        });
+      }
+
+      if (!window.__nfPixelInfoMiddleClickBound && window.el?.viewport) {
+        window.__nfPixelInfoMiddleClickBound = true;
+
+        const isTypingTargetForPixelInfo = (target) => {
+          return !!target && (
+            target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable ||
+            target.closest?.('input, textarea, [contenteditable="true"]')
+          );
+        };
+
+        const isMiddleClick = (e) => {
+          const button = Number(e?.button);
+          const which = Number(e?.which);
+          const buttons = Number(e?.buttons);
+          return button === 1 || which === 2 || buttons === 4;
+        };
+
+        const handleMiddleClick = (e) => {
+          if (!e) return;
+          if (isTypingTargetForPixelInfo(e.target)) return;
+          if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+          if (!isMiddleClick(e)) return;
+
+          const isCanvasArea = !!(e.target?.closest?.('#viewport, #canvas') || e.target === window.el.viewport || e.target === window.el.canvas);
+          if (!isCanvasArea) return;
+
+          console.log('[NF] clic central detectado en pixel', {
+            type: e.type,
+            button: e.button,
+            which: e.which,
+            buttons: e.buttons,
+            x: e.clientX,
+            y: e.clientY,
+            target: e.target?.id || e.target?.className || e.target?.tagName || ''
+          });
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+
+          let opened = false;
+          try {
+            if (typeof window.openPixelInfoFromPointer === 'function') {
+              opened = !!window.openPixelInfoFromPointer(e.clientX, e.clientY, `middle-click:${e.type}`);
+            }
+          } catch (err) {
+            console.error('[NF] error al abrir el marco de información con clic central', err);
+          }
+
+          console.log(opened ? '[NF] marco de información abierto tras clic central' : '[NF] no se pudo abrir el marco de información tras clic central', {
+            x: e.clientX,
+            y: e.clientY,
+            type: e.type
+          });
+        };
+
+        const middleClickTargets = [
+          window.el.viewport,
+          window.el.canvas,
+          document
+        ].filter(Boolean);
+
+        middleClickTargets.forEach(node => {
+          node.addEventListener('pointerdown', handleMiddleClick, true);
+          node.addEventListener('mousedown', handleMiddleClick, true);
+          node.addEventListener('mouseup', handleMiddleClick, true);
+          node.addEventListener('auxclick', handleMiddleClick, true);
+        });
+      }
+
+      if (window.el?.heatmapDownloadBtn && !window.el.heatmapDownloadBtn.dataset.boundHeatmap) {
+        window.el.heatmapDownloadBtn.dataset.boundHeatmap = '1';
+        window.el.heatmapDownloadBtn.type = 'button';
+        const handler = (e) => {
+          if (e) {
+            e.preventDefault?.();
+            e.stopPropagation?.();
+            if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+          }
+          console.log('[NF] clic en botón de heatmap');
+          if (typeof window.refreshUiRefs === 'function') window.refreshUiRefs();
+          try { ensureHeatmapDebugOverlay(); } catch {}
+          if (window.state?.heatmapDownloadBusy) {
+            const progressNode = window.el?.heatmapDownloadProgress || document.getElementById('heatmap-download-progress');
+            const progressVisible = !!progressNode && progressNode.classList.contains('visible') && getComputedStyle(progressNode).display !== 'none';
+            console.warn('[NF] heatmap busy antes del click', { progressVisible });
+            if (!progressVisible && window.state) window.state.heatmapDownloadBusy = false;
+            if (window.state?.heatmapDownloadBusy) return false;
+          }
+          setHeatmapDownloadProgress(1, 'Iniciando descarga del heatmap...', true);
+          setTimeout(() => {
+            downloadHeatmap().catch(err => {
+              console.error(err);
+              alert('No se pudo descargar el heatmap.');
+            });
+          }, 0);
+          return false;
+        };
+        const preHandler = (e) => {
+          console.log('[NF] interacción con botón de heatmap', {
+            type: e?.type || 'unknown',
+            button: e?.button,
+            buttons: e?.buttons,
+            clientX: e?.clientX,
+            clientY: e?.clientY
+          });
+        };
+        window.el.heatmapDownloadBtn.addEventListener('pointerdown', preHandler, true);
+        window.el.heatmapDownloadBtn.addEventListener('mousedown', preHandler, true);
+        window.el.heatmapDownloadBtn.addEventListener('pointerup', handler, true);
+        window.el.heatmapDownloadBtn.addEventListener('click', handler);
+        window.el.heatmapDownloadBtn.onclick = handler;
+      }
+
+      if (!window.__nfGlobalActionDebugBound) {
+        window.__nfGlobalActionDebugBound = true;
+        const rawMiddleClickDebug = (e) => {
+          const button = Number(e?.button);
+          const which = Number(e?.which);
+          const buttons = Number(e?.buttons);
+          const isMiddle = button === 1 || which === 2 || buttons === 4;
+          if (!isMiddle) return;
+          console.log('[NF] evento bruto de clic central', {
+            type: e.type,
+            button: e.button,
+            which: e.which,
+            buttons: e.buttons,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            target: e.target?.id || e.target?.className || e.target?.tagName || ''
+          });
+        };
+        document.addEventListener('pointerdown', rawMiddleClickDebug, true);
+        document.addEventListener('mousedown', rawMiddleClickDebug, true);
+        document.addEventListener('mouseup', rawMiddleClickDebug, true);
+        document.addEventListener('auxclick', rawMiddleClickDebug, true);
+        document.addEventListener('contextmenu', rawMiddleClickDebug, true);
+        document.addEventListener('pointerdown', (e) => {
+          const centerBtn = e.target?.closest?.('#center-btn, #quick-center');
+          const heatmapBtn = e.target?.closest?.('#heatmap-download-btn');
+          if (centerBtn) {
+            console.log('[NF] interacción con botón de centrar', {
+              type: e.type,
+              button: e.button,
+              buttons: e.buttons,
+              clientX: e.clientX,
+              clientY: e.clientY
+            });
+          }
+          if (heatmapBtn) {
+            console.log('[NF] interacción con botón de heatmap', {
+              type: e.type,
+              button: e.button,
+              buttons: e.buttons,
+              clientX: e.clientX,
+              clientY: e.clientY
+            });
+          }
+        }, true);
+        document.addEventListener('click', (e) => {
+          const centerBtn = e.target?.closest?.('#center-btn, #quick-center');
+          const heatmapBtn = e.target?.closest?.('#heatmap-download-btn');
+          if (centerBtn) {
+            console.log('[NF] clic en centrar lienzo (delegado)');
+          }
+          if (heatmapBtn) {
+            console.log('[NF] clic en botón de heatmap (delegado)');
+          }
+        }, true);
+      }
+    }
+    async function confirmUsername() {
+      const name = window.normalizeUsernameSafe(window.el?.usernameInput?.value || '');
+      if (!name) {
+        if (window.el?.usernameInput) {
+          window.el.usernameInput.focus();
+          window.el.usernameInput.style.borderColor = 'var(--bad)';
+        }
+        return;
+      }
+
+      const uid = window.ensureUid ? window.ensureUid() : (window.state.uid || `uid_${Date.now()}`);
+      const duplicateChecks = [];
+      try {
+        if (window.state.usersSnapshot && Object.values(window.state.usersSnapshot).some(item => window.normalizeUsernameSafe(item?.username || item?.displayName || '') === name && String(item?.uid || '') !== uid)) {
+          duplicateChecks.push('usersSnapshot');
+        }
+      } catch {}
+      try {
+        if (window.state.accountHistory && window.state.accountHistory.some(item => window.normalizeUsernameSafe(item?.username || '') === name && String(item?.uid || '') !== uid)) {
+          duplicateChecks.push('accountHistory');
+        }
+      } catch {}
+
+      const [usersSnap, statsSnap] = await Promise.allSettled([
+        window.db.ref('users').orderByChild('username').equalTo(name).once('value'),
+        window.db.ref('user_stats').orderByChild('username').equalTo(name).once('value')
+      ]);
+
+      const isDuplicateInUsers = usersSnap.status === 'fulfilled' && !!usersSnap.value?.exists?.() && Object.entries(usersSnap.value.val() || {}).some(([k, item]) => String(item?.uid || k) !== uid);
+      const isDuplicateInStats = statsSnap.status === 'fulfilled' && !!statsSnap.value?.exists?.() && Object.entries(statsSnap.value.val() || {}).some(([k, item]) => String(item?.uid || k) !== uid);
+
+      if (duplicateChecks.length || isDuplicateInUsers || isDuplicateInStats) {
+        if (window.el?.tlStatus) window.el.tlStatus.textContent = 'Ese nombre ya pertenece a un contribuidor existente. Elige otro.';
+        if (window.el?.usernameInput) {
+          window.el.usernameInput.focus();
+          window.el.usernameInput.select();
+          window.el.usernameInput.style.borderColor = 'var(--bad)';
+        }
+        return;
+      }
+
+      window.state.username = name;
+      try { localStorage.setItem('nf_username', name); } catch {}
+      if (typeof window.rememberAccount === 'function') window.rememberAccount(uid, name);
+      if (typeof window.updateUsernameBadge === 'function') window.updateUsernameBadge();
+      if (window.el?.modalUsername) window.el.modalUsername.classList.remove('visible');
+      if (window.el?.chatInput) window.el.chatInput.disabled = false;
+      if (window.el?.chatSendBtn) window.el.chatSendBtn.disabled = false;
+      if (window.el?.chatInput) window.el.chatInput.focus();
+      if (window.state.settings?.usernameRequired && window.el?.tlStatus) window.el.tlStatus.textContent = `Usuario configurado como ${name}.`;
+
+      try {
+        const banned = await (typeof window.verifyBanStatusForIdentity === 'function' ? window.verifyBanStatusForIdentity(uid, name) : Promise.resolve(false));
+        if (banned) return;
+      } catch (err) {
+        console.warn('No se pudo verificar la sanción del usuario:', err);
+      }
+
+      try {
+        await window.db.ref(`${'users'}/${uid}`).update({ username: name, createdAt: Date.now(), lastSeen: Date.now(), online: true });
+      } catch (err) {
+        console.warn('No se pudo registrar el usuario en Firebase:', err);
+      }
+
+      try { if (typeof window.syncUsers === 'function') window.syncUsers(); } catch {}
+      try { if (typeof window.syncPresence === 'function') window.syncPresence(); } catch {}
+      try { if (typeof window.updateSessionLoginModal === 'function') window.updateSessionLoginModal(); } catch {}
+      try {
+        if (typeof window.logActivity === 'function') {
+          window.logActivity({
+            type: 'join',
+            username: name,
+            ts: Date.now(),
+            scope: 'sesión'
+          });
+        }
+      } catch {}
+    }
+
+    function registerRecentEvent(ts, meta = {}) {
+      const value = Number(ts) || Date.now();
+      if (!window.state.recentEventTimes) window.state.recentEventTimes = [];
+      window.state.recentEventTimes.push(value);
+      const cutoff = Date.now() - 60000;
+      window.state.recentEventTimes = window.state.recentEventTimes.filter(t => t >= cutoff);
+      window.state.pixelRate = window.state.recentEventTimes.length;
+      if (meta.persist !== false) window.state.lastPixelRateAt = value;
+      if (window.el?.statRate) window.el.statRate.textContent = formatNumber(window.state.pixelRate || 0);
+      if (window.el?.mobileStatRate) window.el.mobileStatRate.textContent = `${formatNumber(window.state.pixelRate || 0)}/min`;
+    }
+
+    function updateUsernameBadge() {
+      if (window.el?.statUser) window.el.statUser.textContent = window.state.username || 'Sin asignar';
+      if (window.el?.sessionAccountName) window.el.sessionAccountName.textContent = window.state.username || 'Sin asignar';
+      if (window.el?.adminBadgeName && window.state.isAuthorized) window.el.adminBadgeName.textContent = window.state.username || 'Autenticado';
+      if (window.el?.chatInput) {
+        window.el.chatInput.disabled = !window.state.username || window.state.banned;
+        window.el.chatInput.placeholder = window.state.username ? `Enviar mensaje como ${window.state.username}...` : 'Debes crear un usuario primero';
+      }
+      if (window.el?.headerSubtitle) window.el.headerSubtitle.textContent = window.state.username ? `Conectado como ${window.state.username}` : 'Lienzo colaborativo en tiempo real';
+    }
+
+    function syncUiWithUsername() {
+      updateUsernameBadge();
+    }
+
+    function setPalettePage(page, persist = true) {
+      if (typeof original.setPalettePage === 'function') {
+        original.setPalettePage(page, persist);
+      }
+      buildPalette();
+    }
+
+    function setMobilePaletteVisible(visible, persist = true) {
+      if (typeof original.setMobilePaletteVisible === 'function') original.setMobilePaletteVisible(visible, persist);
+      syncPaletteVisibilityFix();
+    }
+
+    function setDesktopPaletteVisible(visible, persist = true) {
+      if (typeof original.setDesktopPaletteVisible === 'function') original.setDesktopPaletteVisible(visible, persist);
+      syncPaletteVisibilityFix();
+    }
+
+    function toggleMobilePalette() {
+      if (typeof original.toggleMobilePalette === 'function') original.toggleMobilePalette();
+      else setMobilePaletteVisible(!window.state.paletteVisibleMobile);
+      syncPaletteVisibilityFix();
+    }
+
+    function toggleDesktopPalette() {
+      if (typeof original.toggleDesktopPalette === 'function') original.toggleDesktopPalette();
+      else setDesktopPaletteVisible(!(window.state && typeof window.state.paletteVisibleDesktop === 'boolean' ? window.state.paletteVisibleDesktop : true));
+      syncPaletteVisibilityFix();
+    }
+
+    function syncPaletteVisibilityFix() {
+      const mobile = window.isMobileLayout ? window.isMobileLayout() : false;
+      const paletteVisibleMobile = typeof window.state?.paletteVisibleMobile === 'boolean' ? window.state.paletteVisibleMobile : true;
+      const paletteVisibleDesktop = typeof window.state?.paletteVisibleDesktop === 'boolean' ? window.state.paletteVisibleDesktop : true;
+      const visible = mobile ? paletteVisibleMobile : paletteVisibleDesktop;
+      if (window.el?.uiBottom) {
+        window.el.uiBottom.classList.toggle('mobile-hidden', mobile && !paletteVisibleMobile);
+        window.el.uiBottom.classList.toggle('hidden-desktop', !mobile && !paletteVisibleDesktop);
+      }
+      if (window.el?.paletteToggleBtn) {
+        window.el.paletteToggleBtn.classList.toggle('active', visible);
+        window.el.paletteToggleBtn.setAttribute('aria-pressed', String(visible));
+      }
+      if (window.el?.quickPalette) {
+        window.el.quickPalette.classList.toggle('active', visible);
+        window.el.quickPalette.setAttribute('aria-pressed', String(visible));
+      }
+    }
+
+    function patchToggleTrackingButtonVisibility() {
+      if (window.el?.toggleTracking) {
+        window.el.toggleTracking.disabled = !window.state.isAuthorized;
+        const row = window.el.toggleTracking.closest('.toggle-row');
+        if (row) row.style.display = window.state.isAuthorized ? 'flex' : 'none';
+      }
+    }
+
+    function applyBoardDimensionsFromSettings(width, height, opts = {}) {
+      if (typeof window.applyBoardDimensionsFromSettings === 'function' && window.applyBoardDimensionsFromSettings !== applyBoardDimensionsFromSettings) {
+        try { return window.applyBoardDimensionsFromSettings(width, height, opts); } catch {}
+      }
+      const nextWidth = clamp(Math.round(Number(width) || 125), 25, 1000);
+      const nextHeight = clamp(Math.round(Number(height) || nextWidth || 125), 25, 1000);
+      window.state.boardWidth = nextWidth;
+      window.state.boardHeight = nextHeight;
+      window.state.boardSize = Math.max(nextWidth, nextHeight);
+      if (window.el?.boardWidthInput) window.el.boardWidthInput.value = String(nextWidth);
+      if (window.el?.boardHeightInput) window.el.boardHeightInput.value = String(nextHeight);
+      if (window.el?.boardSizeInfo) window.el.boardSizeInfo.textContent = `${nextWidth}×${nextHeight} px`;
+      if (window.el?.boardSizeStats) window.el.boardSizeStats.textContent = `${nextWidth}×${nextHeight} px`;
+      syncMinimapFrameAspectRatio(nextWidth, nextHeight);
+      if (window.el?.minimap) {
+        window.el.minimap.width = nextWidth;
+        window.el.minimap.height = nextHeight;
+      }
+      if (window.el?.canvas) {
+        window.el.canvas.width = nextWidth;
+        window.el.canvas.height = nextHeight;
+        window.el.canvas.style.width = `${nextWidth}px`;
+        window.el.canvas.style.height = `${nextHeight}px`;
+      }
+      if (window.el?.tlFramesInfo) window.el.tlFramesInfo.textContent = `Video ${nextWidth * 10}×${nextHeight * 10}`;
+      if (window.el?.modalDashboard && opts.recenter !== false && typeof window.centerCanvas === 'function') {
+        window.centerCanvas();
+      }
+      syncMinimapFrameAspectRatio(nextWidth, nextHeight);
+      if (typeof window.requestMinimapRefresh === 'function') window.requestMinimapRefresh(true);
+      if (typeof window.requestGridRefresh === 'function') window.requestGridRefresh(true);
+      return { width: nextWidth, height: nextHeight };
+    }
+
+    async function cleanupBoardCacheAndMessages() {
+      await cleanupOldMessages();
+    }
+
+    function ensureSessionTimestampRowHidden() {
+      if (window.el?.statTs) {
+        const row = window.el.statTs.closest('.stats-row');
+        if (row) row.style.display = 'none';
+      }
+    }
+
+    function refreshAllFixedUi() {
+      ensureStyleVersion();
+      ensureUiInjected();
+      refreshUiRefs();
+      ensureSessionTimestampRowHidden();
+      syncPaletteVisibilityFix();
+      updateActivitySummaryRows();
+      renderMostChangedPixelSummary();
+      patchToggleTrackingButtonVisibility();
+      updateUsernameBadge();
+      syncMinimapFrameAspectRatio(boardWidth(), boardHeight());
+      if (window.el?.viewport) {
+        if (window.state?.pixelInfoVisible && getPixelKeyFromTarget(getActivePixelTarget())) {
+          refreshPixelInfoForCurrentTarget(true);
+        } else if (window.el.pixelInfoPanel) {
+          window.el.pixelInfoPanel.style.display = 'flex';
+          ensurePixelInfoBodySeed('refreshAllFixedUi');
+        }
+      }
+      try {
+        if (window.state?.pixelInfoVisible) syncPixelInfoDebugOverlay(true);
+        else hidePixelInfoDebugOverlay();
+      } catch {}
+    }
+
+    function patchRuntime() {
+      if (!window.state || !window.el) return;
+
+      window.hideAllModals = hideAllModals;
+      window.openAdminLogin = openAdminLogin;
+      window.openAdminDashboard = openAdminDashboard;
+      window.closeAdminDashboard = closeAdminDashboard;
+      window.performAdminLogin = performAdminLogin;
+      window.updateTopStats = updateTopStats;
+      window.updateSettingsDisplay = updateSettingsDisplay;
+      window.syncSettings = syncSettings;
+      window.renderBoardFromData = renderBoardFromData;
+      window.applyPendingBoardWrites = applyPendingBoardWrites;
+      window.processBoardSnapshot = processBoardSnapshot;
+      window.refreshBoardFromServer = refreshBoardFromServer;
+      window.applyRealtimeBoardChange = applyRealtimeBoardChange;
+      window.commitPixelAt = commitPixelAt;
+      window.updateCoordsOverlay = updateCoordsOverlayPatched;
+      window.getCurrentPixelHex = getCurrentPixelHex;
+      window.logActivity = logActivity;
+      window.formatActivityText = formatActivityText;
+      window.renderActivityEntry = renderActivityEntry;
+      window.updateLiveSummary = updateLiveSummary;
+      window.clearRecentActivity = clearRecentActivity;
+      window.selectColor = selectColor;
+      window.sampleColorAt = sampleColorAt;
+      window.toggleGrid = toggleGrid;
+      window.buildPalette = buildPalette;
+      window.setPalettePage = setPalettePage;
+      window.setMobilePaletteVisible = setMobilePaletteVisible;
+      window.setDesktopPaletteVisible = setDesktopPaletteVisible;
+      window.toggleMobilePalette = toggleMobilePalette;
+      window.toggleDesktopPalette = toggleDesktopPalette;
+      window.showTrackingPixelPopup = showTrackingPixelPopup;
+      window.consumePixelEvent = consumePixelEvent;
+      window.registerRecentEvent = registerRecentEvent;
+      window.updateUsernameBadge = updateUsernameBadge;
+      window.syncUiWithUsername = syncUiWithUsername;
+      window.applyBoardDimensionsFromSettings = applyBoardDimensionsFromSettings;
+      window.applyAdminRuntimeBindings = function () {
+        ensureSessionTimestampRowHidden();
+        patchToggleTrackingButtonVisibility();
+        if (window.state.isAuthorized && window.el?.toggleTracking) {
+          window.el.toggleTracking.disabled = false;
+        }
+        updateTopStats();
+        updateSettingsDisplay();
+      };
+
+      if (window.el?.statTs) {
+        const row = window.el.statTs.closest('.stats-row');
+        if (row) row.style.display = 'none';
+      }
+
+      if (window.el?.adminEntry) {
+        window.el.adminEntry.title = 'Administrador';
+      }
+
+      updateUsernameBadge();
+      ensureSessionTimestampRowHidden();
+      patchToggleTrackingButtonVisibility();
+      syncPaletteVisibilityFix();
+      renderMostChangedPixelSummary();
+      if (typeof window.updateTopStats === 'function') window.updateTopStats();
+      if (typeof window.updateSettingsDisplay === 'function') window.updateSettingsDisplay();
+      syncMinimapFrameAspectRatio(boardWidth(), boardHeight());
+      if (window.el?.canvas) {
+        window.el.canvas.style.transform = window.el.canvas.style.transform || 'translate3d(0,0,0) scale(1)';
+      }
+
+      if (!window.state.activitySummaryReady) updateActivitySummaryRows();
+
+      cleanupBoardCacheAndMessages().catch(() => {});
+    }
+
+    function patchInitialBoardCache() {
+      if (!window.state) return;
+      if (window.state.boardData && typeof window.state.boardData === 'object') {
+        window.state.boardData = normalizeBoardDataMap(window.state.boardData);
+      }
+      if (window.state.boardData) {
+        renderMostChangedPixelSummary();
+      }
+    }
+
+    function hookKeyboardAndButtons() {
+      wirePixelInfoControls();
+      ensurePixelInfoHotkeyFallback();
+      focusAppForHotkeys();
+
+      document.addEventListener('pointerdown', focusAppForHotkeys, true);
+      document.addEventListener('mousedown', focusAppForHotkeys, true);
+      document.addEventListener('touchstart', focusAppForHotkeys, true);
+
+      if (window.el?.viewport && !window.el.viewport.dataset.hotkeyFocusBound) {
+        window.el.viewport.dataset.hotkeyFocusBound = '1';
+        window.el.viewport.addEventListener('pointerdown', focusAppForHotkeys, true);
+        window.el.viewport.addEventListener('mousedown', focusAppForHotkeys, true);
+        window.el.viewport.addEventListener('touchstart', focusAppForHotkeys, true);
+      }
+
+      const paletteSideTools = document.querySelector('.palette-side-tools');
+      if (paletteSideTools) {
+        paletteSideTools.style.justifyContent = 'center';
+        paletteSideTools.style.alignItems = 'center';
+      }
+    }
+
+    function refreshPixelInfoIfVisible() {
+      if (!window.state?.pixelInfoVisible) return;
+      refreshPixelInfoForCurrentTarget(true);
+    }
+
+    function patchPaletteAndGrid() {
+      if (window.el?.palettePrevBtn && !window.el.palettePrevBtn.dataset.boundV53) {
+        window.el.palettePrevBtn.dataset.boundV53 = '1';
+        window.el.palettePrevBtn.addEventListener('click', () => {
+          const page = (window.isMobileLayout && window.isMobileLayout() ? window.state.palettePageMobile : window.state.palettePageDesktop) - 1;
+          setPalettePage(page);
+        });
+      }
+      if (window.el?.paletteNextBtn && !window.el.paletteNextBtn.dataset.boundV53) {
+        window.el.paletteNextBtn.dataset.boundV53 = '1';
+        window.el.paletteNextBtn.addEventListener('click', () => {
+          const page = (window.isMobileLayout && window.isMobileLayout() ? window.state.palettePageMobile : window.state.palettePageDesktop) + 1;
+          setPalettePage(page);
+        });
+      }
+      if (window.el?.gridToggleBtn && !window.el.gridToggleBtn.dataset.boundV53) {
+        window.el.gridToggleBtn.dataset.boundV53 = '1';
+        window.el.gridToggleBtn.addEventListener('click', () => toggleGrid());
+      }
+      if (window.el?.eyedropperBtn && !window.el.eyedropperBtn.dataset.boundV53) {
+        window.el.eyedropperBtn.dataset.boundV53 = '1';
+        window.el.eyedropperBtn.addEventListener('click', () => {
+          if (typeof window.setEyedropperMode === 'function') {
+            window.setEyedropperMode(!window.state.eyedropperMode);
+          } else if (typeof window.toggleEyedropperMode === 'function') {
+            window.toggleEyedropperMode();
+          }
+        });
+      }
+      buildPalette();
+      syncPaletteVisibilityFix();
+    }
+
+
+    async function initEnhancedV53() {
+      ensureStyleVersion();
+      ensureUiInjected();
+      refreshUiRefs();
+      ensureStateFields();
+      patchInitialBoardCache();
+      migrateBoardPixelMetadata().catch(() => {});
+      focusAppForHotkeys();
+      hookKeyboardAndButtons();
+      patchRuntime();
+      if (typeof window.buildPalette === 'function') window.buildPalette();
+      if (typeof window.updateTopStats === 'function') window.updateTopStats();
+      if (typeof window.updateSettingsDisplay === 'function') window.updateSettingsDisplay();
+      if (typeof window.syncUiWithUsername === 'function') window.syncUiWithUsername();
+      ensureSessionTimestampRowHidden();
+      refreshAllFixedUi();
+      if (window.state?.pixelInfoVisible) refreshPixelInfoForCurrentTarget(true);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        initEnhancedV53().catch(err => console.error('Error inicializando v5.3:', err));
+      }, { once: true });
+    } else {
+      initEnhancedV53().catch(err => console.error('Error inicializando v5.3:', err));
+    }
+
+  })();
   </script>
 
 </body>
