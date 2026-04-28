@@ -4,17 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#0a0a0a" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%230a0a0a/%3E%3Cpath d=%22M18 46V18h11.8c9.2 0 16.2 5.8 16.2 14s-6.9 14-16.2 14H18zm10.2-7.9c4.8 0 7.8-2.8 7.8-6.1 0-3.4-3-6.1-7.8-6.1H26v12.2h2.2z%22 fill=%232979ff/%3E%3C/svg%3E" />
   <title>Nota_Final.png</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script>
-    const VERSION = 'v5.4';
+    const VERSION = 'v5.3';
     window.VERSION = VERSION;
     function isMobileLayout() {
       return window.matchMedia('(max-width: 768px)').matches;
@@ -281,25 +280,39 @@
       updateLoadingUI();
       ensureWhiteCanvas();
 
-      for (let i = 0; i < entries.length; i++) {
-        const [key, raw] = entries[i];
-        const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
-        const [x, y] = String(key).split('_').map(Number);
-        if (Number.isFinite(x) && Number.isFinite(y)) {
-          setPixel(x, y, color);
-          state.knownBoardKeys.add(key);
-        }
-      }
+      const chunkSize = 120;
+      let index = 0;
 
-      state.boardCount = state.knownBoardKeys.size;
-      state.loadingDone = state.loadingTotal;
-      updateLoadingUI();
-      scheduleCanvasFlush();
-      updateTopStats();
-      requestMinimapRefresh(true);
-      persistBoardCache(data);
-      state.lastBoardSyncAt = Date.now();
-      finishBoardLoading();
+      const processChunk = () => {
+        const end = Math.min(index + chunkSize, entries.length);
+        const startIndex = index;
+
+        for (; index < end; index++) {
+          const [key, raw] = entries[index];
+          const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
+          const [x, y] = key.split('_').map(Number);
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            setPixel(x, y, color);
+            state.knownBoardKeys.add(key);
+          }
+        }
+
+        state.boardCount = state.knownBoardKeys.size;
+        addLoadingDone(index - startIndex);
+        scheduleCanvasFlush();
+        updateTopStats();
+        requestMinimapRefresh(true);
+
+        if (index < entries.length) {
+          setTimeout(processChunk, 24);
+        } else {
+          persistBoardCache(data);
+          state.lastBoardSyncAt = Date.now();
+          finishBoardLoading();
+        }
+      };
+
+      requestAnimationFrame(processChunk);
     }
 
     window.downloadHeatmap = window.downloadHeatmap || function () {
@@ -652,7 +665,7 @@
     }
 
   </script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   
   <style>
     :root{
@@ -1507,7 +1520,7 @@
       <div class="brand-title-wrap">
         <div class="brand-title-line">
           <h1>Nota_Final.png</h1>
-          <span id="app-version">v5.4</span>
+          <span id="app-version">v5.3</span>
         </div>
         <small id="header-subtitle">Lienzo colaborativo en tiempo real</small>
       </div>
@@ -1522,7 +1535,7 @@
         <span id="session-clock">00:00:00</span>
       </div>
 
-      <span id="app-version-mobile">v5.4</span>
+      <span id="app-version-mobile">v5.3</span>
 
       <div class="top-actions">
         <button class="top-btn" id="chat-btn" title="Abrir chat">
@@ -1753,7 +1766,7 @@
   <div id="modal-microsoft-auth" class="modal-overlay visible">
     <div class="modal-content">
       <h2>Inicia sesión con Microsoft</h2>
-      <p>El acceso es obligatorio para pintar y chatear. Solo se permitirá entrar a las cuentas autorizadas.</p>
+      <p>El acceso es obligatorio para pintar y chatear. Solo se permitirá entrar a los correos que añadas en la lista de correos autorizados.</p>
 
       <div class="field-label">
         <span>Estado</span>
@@ -2070,22 +2083,20 @@
     const auth = firebase.auth();
     const microsoftProvider = new firebase.auth.OAuthProvider('microsoft.com');
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
-    const allowedEmails = [];
+    const allowedEmails = [
+      "barco.garcia.isaias@alumnadoccc.es"
+    ];
     window.allowedEmails = allowedEmails;
 
     function normalizeEmailAddress(value) {
       return String(value || '').trim().toLowerCase();
     }
 
-    function getAllowedEmailList() {
-      const list = Array.isArray(window.allowedEmails) ? window.allowedEmails : allowedEmails;
-      return list.map(normalizeEmailAddress).filter(Boolean);
-    }
-
     function isMicrosoftEmailAllowed(email) {
       const normalized = normalizeEmailAddress(email);
       if (!normalized) return false;
-      return getAllowedEmailList().includes(normalized);
+      const list = Array.isArray(window.allowedEmails) ? window.allowedEmails : allowedEmails;
+      return Array.isArray(list) && list.map(normalizeEmailAddress).includes(normalized);
     }
 
     function setMicrosoftAuthStatus(message, tone = 'info') {
@@ -2133,7 +2144,19 @@
       }
     }
 
+    function isMicrosoftAuthEnvSupported() {
+      const protocol = String(window.location?.protocol || '');
+      return protocol === 'http:' || protocol === 'https:' || protocol === 'chrome-extension:';
+    }
+
     async function signInWithMicrosoftAccount() {
+      if (!isMicrosoftAuthEnvSupported()) {
+        const message = 'Abre esta página desde http://, https:// o chrome-extension:// para iniciar sesión con Microsoft.';
+        setMicrosoftAuthStatus(message, 'warn');
+        showMicrosoftAuthModal(message);
+        return;
+      }
+
       try {
         await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
       } catch (err) {
@@ -2147,14 +2170,8 @@
           window.el.microsoftLoginBtn.textContent = 'Abriendo...';
         }
 
-        const useRedirect = window.matchMedia?.('(max-width: 768px)')?.matches;
-        if (useRedirect) {
-          await auth.signInWithRedirect(microsoftProvider);
-          return;
-        }
-
-        const result = await auth.signInWithPopup(microsoftProvider);
-        return result;
+        await auth.signInWithPopup(microsoftProvider);
+        return;
       } catch (err) {
         console.warn('No se pudo iniciar sesión con Microsoft:', err);
         if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user')) {
@@ -2193,7 +2210,7 @@
       appState.authEmail = email;
       if (window.el?.microsoftAuthEmail) window.el.microsoftAuthEmail.textContent = email || 'Sin correo';
       if (!email || !isMicrosoftEmailAllowed(email)) {
-        const denialReason = email ? `El correo ${email} no está en allowedEmails.` : 'La cuenta no incluye un correo válido.';
+        const denialReason = email ? `El correo ${email} no está autorizado.` : 'La cuenta no incluye un correo válido.';
         appState.microsoftAuthDeniedReason = denialReason;
         appState.microsoftAccessGranted = false;
         clearMicrosoftLocalSession();
@@ -2471,8 +2488,6 @@
       snapshotViewerFit: document.getElementById('snapshot-viewer-fit'),
       quickPalette: document.getElementById('quick-palette')
     };
-
-    window.el = el;
 
     const ctx = el.canvas?.getContext ? el.canvas.getContext('2d', { alpha: false }) : null;
     const gridCtx = el.gridCanvas?.getContext ? el.gridCanvas.getContext('2d', { alpha: true }) : null;
@@ -6841,32 +6856,45 @@
     }
 
     function processBoardSnapshot(boardSnap) {
-      const data = applyPendingBoardWrites(boardSnap?.val?.() || {});
+      const data = boardSnap.val() || {};
       const entries = Object.entries(data);
       state.boardData = { ...(data || {}) };
       state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
       updateLoadingUI();
       ensureWhiteCanvas();
 
-      for (let i = 0; i < entries.length; i++) {
-        const [key, raw] = entries[i];
-        const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
-        const [x, y] = String(key).split('_').map(Number);
-        if (Number.isFinite(x) && Number.isFinite(y)) {
-          setPixel(x, y, color);
-          state.knownBoardKeys.add(key);
-        }
-      }
+      const chunkSize = 120;
+      let index = 0;
 
-      state.boardCount = state.knownBoardKeys.size;
-      state.loadingDone = state.loadingTotal;
-      updateLoadingUI();
-      scheduleCanvasFlush();
-      updateTopStats();
-      requestMinimapRefresh(true);
-      persistBoardCache(data);
-      state.lastBoardSyncAt = Date.now();
-      finishBoardLoading();
+      const processChunk = () => {
+        const end = Math.min(index + chunkSize, entries.length);
+        const startIndex = index;
+
+        for (; index < end; index++) {
+          const [key, raw] = entries[index];
+          const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
+          const [x, y] = key.split('_').map(Number);
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            setPixel(x, y, color);
+            state.knownBoardKeys.add(key);
+          }
+        }
+
+        state.boardCount = state.knownBoardKeys.size;
+        addLoadingDone(index - startIndex);
+        scheduleCanvasFlush();
+        updateTopStats();
+
+        if (index < entries.length) {
+          setTimeout(processChunk, 24);
+        } else {
+          persistBoardCache(data);
+          state.lastBoardSyncAt = Date.now();
+          finishBoardLoading();
+        }
+      };
+
+      requestAnimationFrame(processChunk);
     }
 
     function attachBoardListeners() {
@@ -8138,7 +8166,7 @@ function startSession() {
 
   <script>
   (function () {
-    const VERSION = 'v5.4';
+    const VERSION = 'v5.3';
     const ONE_DAY_MS = 24 * 60 * 60 * 1000;
     const SEVEN_DAYS_MS = 7 * ONE_DAY_MS;
     const MESSAGE_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -8564,8 +8592,8 @@ function startSession() {
       if (typeof raw === 'string') return true;
       const obj = raw && typeof raw === 'object' ? raw : {};
       const metaVersion = getPixelMetaVersion(obj);
-      if (metaVersion === 'v5.4') return false;
-      if (record && String(record.metaVersion || '').trim().toLowerCase() === 'v5.4') return false;
+      if (metaVersion === 'v5.3') return false;
+      if (record && String(record.metaVersion || '').trim().toLowerCase() === 'v5.3') return false;
       return true;
     }
 
@@ -8590,7 +8618,7 @@ function startSession() {
       const obj = raw && typeof raw === 'object' ? raw : {};
       const version = String(obj.metaVersion || obj.schemaVersion || obj.version || '').trim().toLowerCase();
       if (!version) return '';
-      if (version === '5.3' || version === 'v5.4') return 'v5.4';
+      if (version === '5.3' || version === 'v5.3') return 'v5.3';
       return version;
     }
 
@@ -8635,11 +8663,11 @@ function startSession() {
 
     function isLegacyPixelRecordFromMerged(record, rawMeta = null) {
       if (!record) return true;
-      if (String(record.metaVersion || '').trim().toLowerCase() === 'v5.4') return false;
-      if (String(record.schemaVersion || '').trim().toLowerCase() === 'v5.4') return false;
+      if (String(record.metaVersion || '').trim().toLowerCase() === 'v5.3') return false;
+      if (String(record.schemaVersion || '').trim().toLowerCase() === 'v5.3') return false;
       if (rawMeta && typeof rawMeta === 'object') {
         const metaVersion = getPixelMetaVersion(rawMeta);
-        if (metaVersion === 'v5.4') return false;
+        if (metaVersion === 'v5.3') return false;
       }
       return true;
     }
@@ -8792,8 +8820,8 @@ function startSession() {
       const latestText = latestAt > 0 ? formatShortTime(latestAt) : 'Sin datos';
       const firstText = firstAt > 0 ? formatShortTime(firstAt) : 'Sin datos';
       const legacyMessage = context === 'tab'
-        ? 'Este pixel se colocó previamente a la v5.4. No existe información histórica individual para este pixel.'
-        : 'Este pixel se colocó previamente a la v5.4.';
+        ? 'Este pixel se colocó previamente a la v5.3. No existe información histórica individual para este pixel.'
+        : 'Este pixel se colocó previamente a la v5.3.';
 
       if (!record) {
         return buildPixelInfoFallbackMarkup({
@@ -8816,7 +8844,7 @@ function startSession() {
             </div>
           </div>
           <div class="pixel-info-legacy-box">
-            <strong>Pixel previo a v5.4</strong>
+            <strong>Pixel previo a v5.3</strong>
             <span>${escapeHtmlText(legacyMessage)}</span>
           </div>
           <div class="pixel-info-grid">
@@ -8944,7 +8972,7 @@ function startSession() {
     function updateStandalonePixelInfoTab(record, key, status = '') {
       if (!window.state || !window.el?.pixelInfoPanel) return;
       if (!window.state.pixelInfoVisible) return;
-      const safeRecord = record ? { ...record, metaVersion: record.metaVersion || 'v5.4', schemaVersion: record.schemaVersion || 'v5.4' } : record;
+      const safeRecord = record ? { ...record, metaVersion: record.metaVersion || 'v5.3', schemaVersion: record.schemaVersion || 'v5.3' } : record;
       updatePixelInfoPanelMarkup(safeRecord, key, status);
       try { syncPixelInfoDebugOverlay(true); } catch {}
     }
@@ -8995,8 +9023,8 @@ function startSession() {
               source: record.source || 'migration',
               changedAt: record.changedAt || record.updatedAt || record.ts || Date.now(),
               previousColor: record.previousColor || '',
-              metaVersion: 'v5.4',
-              schemaVersion: 'v5.4'
+              metaVersion: 'v5.3',
+              schemaVersion: 'v5.3'
             };
             updates[`board/${key}`] = migrated;
             updates[`${BOARD_META_PATH}/${key}`] = {
@@ -9675,7 +9703,7 @@ function startSession() {
       if (isLocalEcho) {
         window.state.popQueue.delete(key);
       }
-      if (window.db && normalized && String(normalized.metaVersion || '').toLowerCase() === 'v5.4') {
+      if (window.db && normalized && String(normalized.metaVersion || '').toLowerCase() === 'v5.3') {
         persistPixelMetaRecord(key, normalized, { x, y, source: normalized.source || 'realtime', previousColor: normalized.previousColor || '' }).catch(() => {});
       }
       renderMostChangedPixelSummary();
@@ -9708,30 +9736,39 @@ function startSession() {
     function processBoardSnapshot(boardSnap) {
       const data = applyPendingBoardWrites(boardSnap?.val?.() || {});
       const entries = Object.entries(data);
-      state.boardData = { ...(data || {}) };
-      state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
-      updateLoadingUI();
-      ensureWhiteCanvas();
-
-      for (let i = 0; i < entries.length; i++) {
-        const [key, raw] = entries[i];
-        const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
-        const [x, y] = String(key).split('_').map(Number);
-        if (Number.isFinite(x) && Number.isFinite(y)) {
-          setPixel(x, y, color);
-          state.knownBoardKeys.add(key);
+      window.state.boardData = data;
+      window.state.loadingTotal = Math.max(window.state.loadingTotal, entries.length + 4);
+      if (typeof window.updateLoadingUI === 'function') window.updateLoadingUI();
+      if (typeof window.ensureWhiteCanvas === 'function') window.ensureWhiteCanvas();
+      const chunkSize = 120;
+      let index = 0;
+      const processChunk = () => {
+        const end = Math.min(index + chunkSize, entries.length);
+        const startIndex = index;
+        for (; index < end; index++) {
+          const [key, raw] = entries[index];
+          const record = normalizeBoardPixelRecord(raw, key);
+          const [x, y] = String(key).split('_').map(Number);
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            if (typeof window.setPixel === 'function') window.setPixel(x, y, record.color);
+            window.state.knownBoardKeys.add(key);
+          }
         }
-      }
-
-      state.boardCount = state.knownBoardKeys.size;
-      state.loadingDone = state.loadingTotal;
-      updateLoadingUI();
-      scheduleCanvasFlush();
-      updateTopStats();
-      requestMinimapRefresh(true);
-      persistBoardCache(data);
-      state.lastBoardSyncAt = Date.now();
-      finishBoardLoading();
+        window.state.boardCount = window.state.knownBoardKeys.size;
+        if (typeof window.addLoadingDone === 'function') window.addLoadingDone(index - startIndex);
+        if (typeof window.scheduleCanvasFlush === 'function') window.scheduleCanvasFlush();
+        if (typeof window.updateTopStats === 'function') window.updateTopStats();
+        if (typeof window.requestMinimapRefresh === 'function') window.requestMinimapRefresh(true);
+        if (index < entries.length) {
+          setTimeout(processChunk, 24);
+        } else {
+          if (typeof window.persistBoardCache === 'function') window.persistBoardCache(data);
+          window.state.lastBoardSyncAt = Date.now();
+          if (typeof window.finishBoardLoading === 'function') window.finishBoardLoading();
+          renderMostChangedPixelSummary();
+        }
+      };
+      requestAnimationFrame(processChunk);
     }
 
     function showTrackingPixelPopup(payload) {
@@ -11263,10 +11300,10 @@ function startSession() {
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
-        initEnhancedV53().catch(err => console.error('Error inicializando v5.4:', err));
+        initEnhancedV53().catch(err => console.error('Error inicializando v5.3:', err));
       }, { once: true });
     } else {
-      initEnhancedV53().catch(err => console.error('Error inicializando v5.4:', err));
+      initEnhancedV53().catch(err => console.error('Error inicializando v5.3:', err));
     }
 
   })();
