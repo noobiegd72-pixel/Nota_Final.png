@@ -11,8 +11,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script>
-    const VERSION = 'v5.3';
+    const VERSION = 'v5.4';
     window.VERSION = VERSION;
     function isMobileLayout() {
       return window.matchMedia('(max-width: 768px)').matches;
@@ -1056,6 +1057,35 @@
     .split-line{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);margin:14px 0}
     .small-note{font-size:.68rem;color:var(--dim);line-height:1.5}
 
+    #modal-microsoft-auth .username-badge{
+      justify-content:flex-start;
+      gap:8px;
+      white-space:normal;
+      margin-bottom:14px;
+    }
+    #modal-microsoft-auth .username-badge strong{
+      font-family:"Courier New",monospace;
+      font-size:.72rem;
+    }
+    .auth-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:4px 10px;
+      border-radius:999px;
+      background:rgba(41,121,255,.12);
+      border:1px solid rgba(41,121,255,.22);
+      color:#dce9ff;
+      font-size:.65rem;
+      font-weight:800;
+      letter-spacing:.35px;
+    }
+    .auth-pill.warn{
+      background:rgba(255,82,82,.12);
+      border-color:rgba(255,82,82,.25);
+      color:#ffd8d8;
+    }
+
     #mobile-quickbar{
       display:none;position:fixed;left:12px;top:50%;transform:translateY(-50%);
       z-index:2400;gap:8px;pointer-events:auto;flex-direction:column
@@ -1490,7 +1520,7 @@
       <div class="brand-title-wrap">
         <div class="brand-title-line">
           <h1>Nota_Final.png</h1>
-          <span id="app-version">v5.3</span>
+          <span id="app-version">v5.4</span>
         </div>
         <small id="header-subtitle">Lienzo colaborativo en tiempo real</small>
       </div>
@@ -1505,7 +1535,7 @@
         <span id="session-clock">00:00:00</span>
       </div>
 
-      <span id="app-version-mobile">v5.3</span>
+      <span id="app-version-mobile">v5.4</span>
 
       <div class="top-actions">
         <button class="top-btn" id="chat-btn" title="Abrir chat">
@@ -1733,7 +1763,31 @@
     </svg>
   </div>
 
-  <div id="modal-username" class="modal-overlay visible">
+  <div id="modal-microsoft-auth" class="modal-overlay visible">
+    <div class="modal-content">
+      <h2>Inicia sesión con Microsoft</h2>
+      <p>El acceso es obligatorio para pintar y chatear. Solo se permitirá entrar a las cuentas autorizadas.</p>
+
+      <div class="field-label">
+        <span>Estado</span>
+        <span id="microsoft-auth-state">Pendiente</span>
+      </div>
+
+      <div class="username-badge">
+        <span>Correo detectado:</span> <strong id="microsoft-auth-email">Sin iniciar sesión</strong>
+      </div>
+
+      <div class="btn-stack">
+        <button class="action-btn btn-main" id="microsoft-login-btn">Entrar con Microsoft</button>
+      </div>
+
+      <div id="microsoft-auth-status" class="mini-help">
+        Debes iniciar sesión para continuar. Si el correo no está autorizado, el acceso se denegará.
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-username" class="modal-overlay">
     <div class="modal-content">
       <h2>Nombre de usuario obligatorio</h2>
       <p>Necesitas un nombre visible para escribir en el chat y para que los avisos de pixel muestren tu nombre en este cliente.</p>
@@ -1968,6 +2022,14 @@
         <span>local</span>
       </div>
       <div id="session-account-list" class="account-list"></div>
+
+      <div class="split-line"></div>
+      <div class="field-label">
+        <span>Cerrar sesión</span>
+        <span>Microsoft</span>
+      </div>
+      <button class="action-btn btn-danger" id="microsoft-signout-btn" type="button">Cerrar sesión Microsoft</button>
+      <div class="mini-help">La sesión de Microsoft se guarda localmente hasta que cierres sesión de forma voluntaria.</div>
     </div>
   </div>
 
@@ -2018,6 +2080,229 @@
     const db = firebase.database();
     const ServerValue = firebase.database.ServerValue;
 
+    const auth = firebase.auth();
+    const microsoftProvider = new firebase.auth.OAuthProvider('microsoft.com');
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+    const allowedEmails = [
+      "barco.garcia.isaias@alumnadoccc.es"
+    ];
+    window.allowedEmails = allowedEmails;
+
+    function normalizeEmailAddress(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function getAllowedEmailList() {
+      const list = Array.isArray(window.allowedEmails) ? window.allowedEmails : allowedEmails;
+      return list.map(normalizeEmailAddress).filter(Boolean);
+    }
+
+    function isMicrosoftEmailAllowed(email) {
+      const normalized = normalizeEmailAddress(email);
+      if (!normalized) return false;
+      return getAllowedEmailList().includes(normalized);
+    }
+
+    function setMicrosoftAuthStatus(message, tone = 'info') {
+      if (window.el?.microsoftAuthStatus) window.el.microsoftAuthStatus.textContent = message || '';
+      if (window.el?.microsoftAuthState) {
+        const label = tone === 'warn' ? 'Bloqueado' : tone === 'good' ? 'Conectado' : tone === 'error' ? 'Error' : 'Pendiente';
+        window.el.microsoftAuthState.textContent = label;
+        window.el.microsoftAuthState.className = tone === 'warn' || tone === 'error' ? 'auth-pill warn' : 'auth-pill';
+      }
+    }
+
+    function showMicrosoftAuthModal(message = '') {
+      if (window.el?.modalMicrosoftAuth) window.el.modalMicrosoftAuth.classList.add('visible');
+      if (window.el?.modalUsername) window.el.modalUsername.classList.remove('visible');
+      if (window.el?.microsoftAuthEmail) {
+        window.el.microsoftAuthEmail.textContent = window.state?.authEmail || 'Sin iniciar sesión';
+      }
+      if (message) setMicrosoftAuthStatus(message, 'warn');
+    }
+
+    function hideMicrosoftAuthModal() {
+      if (window.el?.modalMicrosoftAuth) window.el.modalMicrosoftAuth.classList.remove('visible');
+    }
+
+    function clearMicrosoftLocalSession() {
+      try { localStorage.removeItem('nf_auth_email'); } catch {}
+      try { localStorage.removeItem('nf_auth_uid'); } catch {}
+      try { localStorage.removeItem('nf_uid'); } catch {}
+      const appState = window.state || (window.state = {});
+      appState.username = '';
+      appState.uid = '';
+      appState.authEmail = '';
+      appState.authUser = null;
+      appState.microsoftAccessGranted = false;
+      appState.microsoftAuthDeniedReason = '';
+      if (window.el?.usernameInput) window.el.usernameInput.value = '';
+      if (window.el?.chatInput) window.el.chatInput.disabled = true;
+      if (window.el?.chatSendBtn) window.el.chatSendBtn.disabled = true;
+      if (window.el?.statUser) window.el.statUser.textContent = 'Sin asignar';
+      if (window.el?.sessionAccountName) window.el.sessionAccountName.textContent = 'Sin asignar';
+      if (window.el?.microsoftAuthEmail) window.el.microsoftAuthEmail.textContent = 'Sin iniciar sesión';
+      if (window.el?.microsoftAuthState) {
+        window.el.microsoftAuthState.textContent = 'Pendiente';
+        window.el.microsoftAuthState.className = 'auth-pill';
+      }
+    }
+
+    async function signInWithMicrosoftAccount() {
+      try {
+        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      } catch (err) {
+        console.warn('No se pudo fijar la persistencia local de Firebase Auth:', err);
+      }
+
+      try {
+        setMicrosoftAuthStatus('Abriendo Microsoft...', 'info');
+        if (window.el?.microsoftLoginBtn) {
+          window.el.microsoftLoginBtn.disabled = true;
+          window.el.microsoftLoginBtn.textContent = 'Abriendo...';
+        }
+
+        const useRedirect = window.matchMedia?.('(max-width: 768px)')?.matches;
+        if (useRedirect) {
+          await auth.signInWithRedirect(microsoftProvider);
+          return;
+        }
+
+        const result = await auth.signInWithPopup(microsoftProvider);
+        return result;
+      } catch (err) {
+        console.warn('No se pudo iniciar sesión con Microsoft:', err);
+        if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user')) {
+          setMicrosoftAuthStatus('El acceso con popup fue bloqueado o cerrado. Vuelve a intentarlo.', 'warn');
+        } else if (err && err.code) {
+          setMicrosoftAuthStatus(`Error de acceso: ${err.code}`, 'warn');
+        } else {
+          setMicrosoftAuthStatus('No se pudo iniciar sesión con Microsoft.', 'warn');
+        }
+        throw err;
+      } finally {
+        if (window.el?.microsoftLoginBtn) {
+          window.el.microsoftLoginBtn.disabled = false;
+          window.el.microsoftLoginBtn.textContent = 'Entrar con Microsoft';
+        }
+      }
+    }
+
+    async function signOutMicrosoftAccount() {
+      try {
+        setMicrosoftAuthStatus('Cerrando sesión...', 'info');
+        await auth.signOut();
+      } catch (err) {
+        console.warn('No se pudo cerrar la sesión de Microsoft:', err);
+      } finally {
+        clearMicrosoftLocalSession();
+        showMicrosoftAuthModal('Has cerrado sesión. Debes volver a iniciar sesión para continuar.');
+      }
+    }
+
+    function applyMicrosoftAuthUser(user) {
+      const appState = window.state || (window.state = {});
+      const email = normalizeEmailAddress(user?.email || user?.providerData?.find?.(item => item && item.email)?.email || '');
+      appState.microsoftAuthReady = true;
+      appState.authUser = user || null;
+      appState.authEmail = email;
+      if (window.el?.microsoftAuthEmail) window.el.microsoftAuthEmail.textContent = email || 'Sin correo';
+      if (!email || !isMicrosoftEmailAllowed(email)) {
+        const denialReason = email ? `El correo ${email} no está en allowedEmails.` : 'La cuenta no incluye un correo válido.';
+        appState.microsoftAuthDeniedReason = denialReason;
+        appState.microsoftAccessGranted = false;
+        clearMicrosoftLocalSession();
+        appState.microsoftAuthReady = true;
+        appState.authEmail = email;
+        appState.microsoftAuthDeniedReason = denialReason;
+        if (window.el?.microsoftAuthEmail) window.el.microsoftAuthEmail.textContent = email || 'Sin correo';
+        setMicrosoftAuthStatus(denialReason, 'warn');
+        showMicrosoftAuthModal(denialReason);
+        auth.signOut().catch(() => {});
+        return false;
+      }
+
+      appState.microsoftAccessGranted = true;
+      appState.microsoftAuthDeniedReason = '';
+      appState.uid = String(user.uid || '').trim();
+      if (appState.uid) {
+        try { localStorage.setItem('nf_uid', appState.uid); } catch {}
+        try { localStorage.setItem('nf_auth_uid', appState.uid); } catch {}
+      }
+      if (email) {
+        try { localStorage.setItem('nf_auth_email', email); } catch {}
+      }
+      if (window.el?.microsoftAuthState) {
+        window.el.microsoftAuthState.textContent = 'Conectado';
+        window.el.microsoftAuthState.className = 'auth-pill';
+      }
+      setMicrosoftAuthStatus(email ? `Autenticado como ${email}.` : 'Autenticado correctamente.', 'good');
+      hideMicrosoftAuthModal();
+      if (typeof window.updateUsernameBadge === 'function') window.updateUsernameBadge();
+      if (typeof window.syncUiWithUsername === 'function') window.syncUiWithUsername();
+      if (typeof window.updateSessionLoginModal === 'function') window.updateSessionLoginModal();
+      return true;
+    }
+
+    function initMicrosoftAuthGate() {
+      if (!window.__microsoftAuthListenerRegistered) {
+        window.__microsoftAuthListenerRegistered = true;
+        auth.onAuthStateChanged(async user => {
+          const appState = window.state || (window.state = {});
+          appState.microsoftAuthReady = true;
+          if (!user) {
+            const pendingReason = appState.microsoftAuthDeniedReason || 'Debes iniciar sesión con Microsoft para continuar.';
+            clearMicrosoftLocalSession();
+            if (pendingReason) appState.microsoftAuthDeniedReason = pendingReason;
+            setMicrosoftAuthStatus(pendingReason, 'warn');
+            showMicrosoftAuthModal(pendingReason);
+            if (typeof window.initUsernameBoot === 'function') window.initUsernameBoot();
+            if (typeof window.updateTopStats === 'function') window.updateTopStats();
+            return;
+          }
+
+          const allowed = applyMicrosoftAuthUser(user);
+          if (!allowed) {
+            return;
+          }
+
+          if (appState.username) {
+            if (window.el?.modalUsername) window.el.modalUsername.classList.remove('visible');
+          } else {
+            if (typeof window.initUsernameBoot === 'function') window.initUsernameBoot();
+          }
+
+          if (typeof window.syncUsers === 'function') window.syncUsers();
+          if (typeof window.syncPresence === 'function') window.syncPresence();
+          if (typeof window.updateTopStats === 'function') window.updateTopStats();
+        });
+      }
+
+      if (window.el?.microsoftLoginBtn && !window.el.microsoftLoginBtn.dataset.boundMicrosoftAuth) {
+        window.el.microsoftLoginBtn.dataset.boundMicrosoftAuth = '1';
+        window.el.microsoftLoginBtn.addEventListener('click', () => {
+          signInWithMicrosoftAccount().catch(() => {});
+        });
+      }
+
+      if (window.el?.microsoftSignOutBtn && !window.el.microsoftSignOutBtn.dataset.boundMicrosoftAuth) {
+        window.el.microsoftSignOutBtn.dataset.boundMicrosoftAuth = '1';
+        window.el.microsoftSignOutBtn.addEventListener('click', () => {
+          signOutMicrosoftAccount();
+        });
+      }
+
+      if (window.state?.microsoftAccessGranted) {
+        setMicrosoftAuthStatus(window.state.authEmail ? `Autenticado como ${window.state.authEmail}.` : 'Autenticado correctamente.', 'good');
+      } else {
+        setMicrosoftAuthStatus('Debes iniciar sesión con Microsoft para continuar.', 'warn');
+      }
+    }
+
+    window.signInWithMicrosoftAccount = signInWithMicrosoftAccount;
+    window.signOutMicrosoftAccount = signOutMicrosoftAccount;
+    window.initMicrosoftAuthGate = initMicrosoftAuthGate;
+    window.isMicrosoftEmailAllowed = isMicrosoftEmailAllowed;
     const DEFAULT_BOARD_SIZE = 125;
     const EXPORT_SCALE = 10;
     function getTimelapseRes() {
@@ -2111,6 +2396,12 @@
       cooldownText: document.getElementById('cooldown-text'),
       cooldownValue: document.getElementById('cooldown-value'),
       paletteStatus: document.getElementById('palette-status'),
+      modalMicrosoftAuth: document.getElementById('modal-microsoft-auth'),
+      microsoftAuthState: document.getElementById('microsoft-auth-state'),
+      microsoftAuthEmail: document.getElementById('microsoft-auth-email'),
+      microsoftAuthStatus: document.getElementById('microsoft-auth-status'),
+      microsoftLoginBtn: document.getElementById('microsoft-login-btn'),
+      microsoftSignOutBtn: document.getElementById('microsoft-signout-btn'),
       modalUsername: document.getElementById('modal-username'),
       modalLogin: document.getElementById('modal-login'),
       modalDashboard: document.getElementById('modal-dashboard'),
@@ -2277,8 +2568,13 @@
       pinchDistance: null,
       paintReady: true,
       activeColor: "#000000",
-      username: localStorage.getItem('nf_username') || '',
-      uid: localStorage.getItem('nf_uid') || '',
+      username: '',
+      uid: '',
+      authEmail: localStorage.getItem('nf_auth_email') || '',
+      authUser: null,
+      microsoftAuthReady: false,
+      microsoftAccessGranted: false,
+      microsoftAuthDeniedReason: '',
       myPixels: Number(localStorage.getItem('nf_my_pixels') || 0),
       boardCount: 0,
       onlineCount: 0,
@@ -2391,6 +2687,8 @@
     };
 
     window.state = state;
+
+    if (typeof initMicrosoftAuthGate === 'function') initMicrosoftAuthGate();
 
     initBoardImageData();
 
@@ -2642,11 +2940,12 @@
         const lastSeen = Number(item.lastSeen) || Number(item.ts) || 0;
         if (lastSeen && (now - lastSeen) > ACTIVE_USER_WINDOW_MS) return;
         const name = normalizeUsername(item.username || item.name || item.displayName || `USR_${String(uid).slice(-4)}`);
-        if (!name) return;
-        const key = `${uid}:${name}`.toLowerCase();
+        const email = normalizeEmailAddress(item.email || item.authEmail || item.loginEmail || '');
+        if (!name && !email) return;
+        const key = `${uid}:${name}:${email}`.toLowerCase();
         if (seen.has(key)) return;
         seen.add(key);
-        users.push({ uid, username: name, lastSeen });
+        users.push({ uid, username: name || email || 'Anónimo', email, lastSeen });
       });
       users.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0) || a.username.localeCompare(b.username));
       return users;
@@ -2669,7 +2968,8 @@
       users.forEach(user => {
         const item = document.createElement('div');
         item.className = 'active-user-item';
-        item.innerHTML = `<strong>${escapeHtmlText(user.username)}</strong><span>UID ${escapeHtmlText(String(user.uid).slice(-8))}</span>`;
+        const secondary = user.email ? user.email : `UID ${String(user.uid).slice(-8)}`;
+        item.innerHTML = `<strong>${escapeHtmlText(user.username)}</strong><span>${escapeHtmlText(secondary)}</span>`;
         el.activeUsersList.appendChild(item);
       });
     }
@@ -2850,7 +3150,7 @@
     function showModal(node) { node.classList.add('visible'); }
     function hideModal(node) { node.classList.remove('visible'); }
 
-    function hideAllModals() { [el.modalUsername, el.modalLogin, el.modalDashboard, el.modalImagesPanel].forEach(node => { if (node) hideModal(node); }); }
+    function hideAllModals() { [el.modalMicrosoftAuth, el.modalUsername, el.modalLogin, el.modalDashboard, el.modalImagesPanel].forEach(node => { if (node) hideModal(node); }); }
 
     function hexToRgba(hex){
       const n = hex.replace('#','').trim();
@@ -3160,10 +3460,12 @@
     }
 
     function updateUsernameBadge() {
-      el.statUser.textContent = state.username || 'Sin asignar';
-      el.headerSubtitle.textContent = state.username ? `Conectado como ${state.username}` : 'Lienzo colaborativo en tiempo real';
-      el.chatInput.disabled = !state.username;
-      el.chatInput.placeholder = state.username ? `Enviar mensaje como ${state.username}...` : 'Debes crear un usuario primero';
+      const authReady = !!state.microsoftAuthReady && !!state.microsoftAccessGranted;
+      const visibleName = authReady ? (state.username || 'Sin asignar') : 'Sin acceso';
+      el.statUser.textContent = visibleName;
+      el.headerSubtitle.textContent = authReady && state.username ? `Conectado como ${state.username}` : 'Inicia sesión con Microsoft para pintar';
+      el.chatInput.disabled = !(authReady && state.username);
+      el.chatInput.placeholder = authReady && state.username ? `Enviar mensaje como ${state.username}...` : 'Debes iniciar sesión con Microsoft primero';
       updateSessionLoginModal();
     }
 
@@ -3898,11 +4200,17 @@
     }
 
     function syncPresence() {
+      if (!state.microsoftAuthReady || !state.microsoftAccessGranted) return;
       const uid = ensureUid();
+      const authEmail = normalizeEmailAddress(state.authEmail || localStorage.getItem('nf_auth_email') || '');
       const ref = db.ref(`${PRESENCE_PATH}/${uid}`);
       ref.set({
         uid,
         username: state.username || 'Anónimo',
+        email: authEmail,
+        authEmail,
+        authUid: uid,
+        authProvider: 'microsoft.com',
         lastSeen: Date.now(),
         online: true,
         boardWidth: getBoardWidth(),
@@ -3944,10 +4252,12 @@
     }
 
     function syncUsers() {
+      if (!state.microsoftAuthReady || !state.microsoftAccessGranted) return;
       const uid = ensureUid();
+      const authEmail = normalizeEmailAddress(state.authEmail || localStorage.getItem('nf_auth_email') || '');
       const ref = db.ref(`${USERS_PATH}/${uid}`);
       const heartbeat = () => {
-        ref.update({ username: state.username || 'Anónimo', lastSeen: Date.now(), online: true, sessionStartedAt: state.sessionStartedAt });
+        ref.update({ username: state.username || 'Anónimo', email: authEmail, authEmail, authUid: uid, authProvider: 'microsoft.com', lastSeen: Date.now(), online: true, sessionStartedAt: state.sessionStartedAt });
       };
       heartbeat();
       ref.onDisconnect().update({ online: false, lastSeen: Date.now() });
@@ -4302,9 +4612,16 @@
 
     function wireGlobalUpdates() {
       const heartbeat = () => {
-        const ref = db.ref(`${USERS_PATH}/${ensureUid()}`);
+        if (!state.microsoftAuthReady || !state.microsoftAccessGranted) return;
+        const uid = ensureUid();
+        const authEmail = normalizeEmailAddress(state.authEmail || localStorage.getItem('nf_auth_email') || '');
+        const ref = db.ref(`${USERS_PATH}/${uid}`);
         ref.update({
           username: state.username || 'Anónimo',
+          email: authEmail,
+          authEmail,
+          authUid: uid,
+          authProvider: 'microsoft.com',
           lastSeen: Date.now(),
           online: true
         }).catch(() => {});
@@ -4430,13 +4747,24 @@
     });
 
     function initUsernameBoot() {
-      if (state.username) {
-        el.usernameInput.value = state.username;
-        confirmUsername();
+      if (!state.microsoftAuthReady || !state.microsoftAccessGranted) {
         hideModal(el.modalUsername);
+        showMicrosoftAuthModal('Inicia sesión con Microsoft para continuar.');
+        return;
+      }
+      const savedName = normalizeUsername(localStorage.getItem('nf_username') || '');
+      if (savedName) {
+        state.username = savedName;
+        el.usernameInput.value = savedName;
+        hideModal(el.modalUsername);
+        updateUsernameBadge();
+        updateTopStats();
       } else {
         showModal(el.modalUsername);
-        el.usernameInput.focus();
+        if (el.usernameInput) {
+          el.usernameInput.focus();
+          el.usernameInput.select?.();
+        }
       }
     }
 
@@ -5977,6 +6305,10 @@
 
     var normalizeBoardPixelRecord = window.normalizeBoardPixelRecord = window.normalizeBoardPixelRecord || normalizeBoardPixelRecordBridge;
     function commitPixelAt(clientX, clientY, source = 'manual') {
+      if (!state.microsoftAuthReady || !state.microsoftAccessGranted) {
+        showMicrosoftAuthModal('Debes iniciar sesión con Microsoft para pintar.');
+        return;
+      }
       if (state.banned) return;
       if (!state.username) { showModal(el.modalUsername); return; }
       const { x, y } = getCanvasCoords(clientX, clientY);
@@ -6076,6 +6408,10 @@
     }
 
     async function confirmUsername() {
+      if (!state.microsoftAuthReady || !state.microsoftAccessGranted) {
+        showMicrosoftAuthModal('Debes iniciar sesión con Microsoft para elegir un nombre.');
+        return;
+      }
       const name = normalizeUsername(el.usernameInput.value);
       if (!name) {
         el.usernameInput.focus();
@@ -6121,6 +6457,10 @@
     }
 
     async function sendChatMessage() {
+      if (!state.microsoftAuthReady || !state.microsoftAccessGranted) {
+        showMicrosoftAuthModal('Debes iniciar sesión con Microsoft para chatear.');
+        return;
+      }
       if (state.banned) return;
       if (!state.username) { showModal(el.modalUsername); return; }
       if (el.chatInput.disabled) return;
@@ -6242,11 +6582,17 @@
 
 
     function syncPresence() {
+      if (!state.microsoftAuthReady || !state.microsoftAccessGranted) return;
       const uid = ensureUid();
+      const authEmail = normalizeEmailAddress(state.authEmail || localStorage.getItem('nf_auth_email') || '');
       const ref = db.ref(`${PRESENCE_PATH}/${uid}`);
       ref.set({
         uid,
         username: state.username || 'Anónimo',
+        email: authEmail,
+        authEmail,
+        authUid: uid,
+        authProvider: 'microsoft.com',
         lastSeen: Date.now(),
         online: true,
         boardWidth: getBoardWidth(),
@@ -6320,10 +6666,12 @@
     }
 
     function syncUsers() {
+      if (!state.microsoftAuthReady || !state.microsoftAccessGranted) return;
       const uid = ensureUid();
+      const authEmail = normalizeEmailAddress(state.authEmail || localStorage.getItem('nf_auth_email') || '');
       const ref = db.ref(`${USERS_PATH}/${uid}`);
       const heartbeat = () => {
-        ref.update({ username: state.username || 'Anónimo', lastSeen: Date.now(), online: true, sessionStartedAt: state.sessionStartedAt });
+        ref.update({ username: state.username || 'Anónimo', email: authEmail, authEmail, authUid: uid, authProvider: 'microsoft.com', lastSeen: Date.now(), online: true, sessionStartedAt: state.sessionStartedAt });
       };
       heartbeat();
       ref.onDisconnect().update({ online: false, lastSeen: Date.now() });
@@ -6455,14 +6803,15 @@
     }
 
     function updateUsernameBadge() {
-      el.statUser.textContent = state.username || 'Sin asignar';
-      el.headerSubtitle.textContent = state.username ? `Conectado como ${state.username}` : 'Lienzo colaborativo en tiempo real';
-      el.chatInput.disabled = !state.username || state.banned;
+      const authReady = !!state.microsoftAuthReady && !!state.microsoftAccessGranted;
+      el.statUser.textContent = authReady ? (state.username || 'Sin asignar') : 'Sin acceso';
+      el.headerSubtitle.textContent = authReady && state.username ? `Conectado como ${state.username}` : 'Inicia sesión con Microsoft para pintar';
+      el.chatInput.disabled = !(authReady && state.username) || state.banned;
       el.chatInput.placeholder = state.banned
         ? 'Acceso suspendido'
-        : state.username
+        : authReady && state.username
           ? `Enviar mensaje como ${state.username}...`
-          : 'Debes crear un usuario primero';
+          : 'Debes iniciar sesión con Microsoft primero';
     }
 
     async function refreshLeaderboard() {
@@ -6750,7 +7099,7 @@ function startSession() {
     }
 
     function hideAllModals() {
-      [el.modalUsername, el.modalLogin, el.modalDashboard, el.modalBanned, el.modalSessionLogin].forEach(modal => {
+      [el.modalMicrosoftAuth, el.modalUsername, el.modalLogin, el.modalDashboard, el.modalBanned, el.modalSessionLogin].forEach(modal => {
         if (modal) modal.classList.remove('visible');
       });
     }
@@ -7815,7 +8164,7 @@ function startSession() {
 
   <script>
   (function () {
-    const VERSION = 'v5.3';
+    const VERSION = 'v5.4';
     const ONE_DAY_MS = 24 * 60 * 60 * 1000;
     const SEVEN_DAYS_MS = 7 * ONE_DAY_MS;
     const MESSAGE_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -8241,8 +8590,8 @@ function startSession() {
       if (typeof raw === 'string') return true;
       const obj = raw && typeof raw === 'object' ? raw : {};
       const metaVersion = getPixelMetaVersion(obj);
-      if (metaVersion === 'v5.3') return false;
-      if (record && String(record.metaVersion || '').trim().toLowerCase() === 'v5.3') return false;
+      if (metaVersion === 'v5.4') return false;
+      if (record && String(record.metaVersion || '').trim().toLowerCase() === 'v5.4') return false;
       return true;
     }
 
@@ -8267,7 +8616,7 @@ function startSession() {
       const obj = raw && typeof raw === 'object' ? raw : {};
       const version = String(obj.metaVersion || obj.schemaVersion || obj.version || '').trim().toLowerCase();
       if (!version) return '';
-      if (version === '5.3' || version === 'v5.3') return 'v5.3';
+      if (version === '5.3' || version === 'v5.4') return 'v5.4';
       return version;
     }
 
@@ -8312,11 +8661,11 @@ function startSession() {
 
     function isLegacyPixelRecordFromMerged(record, rawMeta = null) {
       if (!record) return true;
-      if (String(record.metaVersion || '').trim().toLowerCase() === 'v5.3') return false;
-      if (String(record.schemaVersion || '').trim().toLowerCase() === 'v5.3') return false;
+      if (String(record.metaVersion || '').trim().toLowerCase() === 'v5.4') return false;
+      if (String(record.schemaVersion || '').trim().toLowerCase() === 'v5.4') return false;
       if (rawMeta && typeof rawMeta === 'object') {
         const metaVersion = getPixelMetaVersion(rawMeta);
-        if (metaVersion === 'v5.3') return false;
+        if (metaVersion === 'v5.4') return false;
       }
       return true;
     }
@@ -8469,8 +8818,8 @@ function startSession() {
       const latestText = latestAt > 0 ? formatShortTime(latestAt) : 'Sin datos';
       const firstText = firstAt > 0 ? formatShortTime(firstAt) : 'Sin datos';
       const legacyMessage = context === 'tab'
-        ? 'Este pixel se colocó previamente a la v5.3. No existe información histórica individual para este pixel.'
-        : 'Este pixel se colocó previamente a la v5.3.';
+        ? 'Este pixel se colocó previamente a la v5.4. No existe información histórica individual para este pixel.'
+        : 'Este pixel se colocó previamente a la v5.4.';
 
       if (!record) {
         return buildPixelInfoFallbackMarkup({
@@ -8493,7 +8842,7 @@ function startSession() {
             </div>
           </div>
           <div class="pixel-info-legacy-box">
-            <strong>Pixel previo a v5.3</strong>
+            <strong>Pixel previo a v5.4</strong>
             <span>${escapeHtmlText(legacyMessage)}</span>
           </div>
           <div class="pixel-info-grid">
@@ -8621,7 +8970,7 @@ function startSession() {
     function updateStandalonePixelInfoTab(record, key, status = '') {
       if (!window.state || !window.el?.pixelInfoPanel) return;
       if (!window.state.pixelInfoVisible) return;
-      const safeRecord = record ? { ...record, metaVersion: record.metaVersion || 'v5.3', schemaVersion: record.schemaVersion || 'v5.3' } : record;
+      const safeRecord = record ? { ...record, metaVersion: record.metaVersion || 'v5.4', schemaVersion: record.schemaVersion || 'v5.4' } : record;
       updatePixelInfoPanelMarkup(safeRecord, key, status);
       try { syncPixelInfoDebugOverlay(true); } catch {}
     }
@@ -8672,8 +9021,8 @@ function startSession() {
               source: record.source || 'migration',
               changedAt: record.changedAt || record.updatedAt || record.ts || Date.now(),
               previousColor: record.previousColor || '',
-              metaVersion: 'v5.3',
-              schemaVersion: 'v5.3'
+              metaVersion: 'v5.4',
+              schemaVersion: 'v5.4'
             };
             updates[`board/${key}`] = migrated;
             updates[`${BOARD_META_PATH}/${key}`] = {
@@ -9352,7 +9701,7 @@ function startSession() {
       if (isLocalEcho) {
         window.state.popQueue.delete(key);
       }
-      if (window.db && normalized && String(normalized.metaVersion || '').toLowerCase() === 'v5.3') {
+      if (window.db && normalized && String(normalized.metaVersion || '').toLowerCase() === 'v5.4') {
         persistPixelMetaRecord(key, normalized, { x, y, source: normalized.source || 'realtime', previousColor: normalized.previousColor || '' }).catch(() => {});
       }
       renderMostChangedPixelSummary();
@@ -10541,6 +10890,10 @@ function startSession() {
       }
     }
     async function confirmUsername() {
+      if (!window.state?.microsoftAuthReady || !window.state?.microsoftAccessGranted) {
+        if (typeof window.showMicrosoftAuthModal === 'function') window.showMicrosoftAuthModal('Debes iniciar sesión con Microsoft para elegir un nombre.');
+        return;
+      }
       const name = window.normalizeUsernameSafe(window.el?.usernameInput?.value || '');
       if (!name) {
         if (window.el?.usernameInput) {
@@ -10632,14 +10985,19 @@ function startSession() {
     }
 
     function updateUsernameBadge() {
-      if (window.el?.statUser) window.el.statUser.textContent = window.state.username || 'Sin asignar';
-      if (window.el?.sessionAccountName) window.el.sessionAccountName.textContent = window.state.username || 'Sin asignar';
+      const authReady = !!window.state?.microsoftAuthReady && !!window.state?.microsoftAccessGranted;
+      if (window.el?.statUser) window.el.statUser.textContent = authReady ? (window.state.username || 'Sin asignar') : 'Sin acceso';
+      if (window.el?.sessionAccountName) window.el.sessionAccountName.textContent = authReady ? (window.state.username || 'Sin asignar') : 'Sin acceso';
       if (window.el?.adminBadgeName && window.state.isAuthorized) window.el.adminBadgeName.textContent = window.state.username || 'Autenticado';
       if (window.el?.chatInput) {
-        window.el.chatInput.disabled = !window.state.username || window.state.banned;
-        window.el.chatInput.placeholder = window.state.username ? `Enviar mensaje como ${window.state.username}...` : 'Debes crear un usuario primero';
+        window.el.chatInput.disabled = !(authReady && window.state.username) || window.state.banned;
+        window.el.chatInput.placeholder = window.state.banned
+          ? 'Acceso suspendido'
+          : authReady && window.state.username
+            ? `Enviar mensaje como ${window.state.username}...`
+            : 'Debes iniciar sesión con Microsoft primero';
       }
-      if (window.el?.headerSubtitle) window.el.headerSubtitle.textContent = window.state.username ? `Conectado como ${window.state.username}` : 'Lienzo colaborativo en tiempo real';
+      if (window.el?.headerSubtitle) window.el.headerSubtitle.textContent = authReady && window.state.username ? `Conectado como ${window.state.username}` : 'Inicia sesión con Microsoft para pintar';
     }
 
     function syncUiWithUsername() {
@@ -10940,10 +11298,10 @@ function startSession() {
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
-        initEnhancedV53().catch(err => console.error('Error inicializando v5.3:', err));
+        initEnhancedV53().catch(err => console.error('Error inicializando v5.4:', err));
       }, { once: true });
     } else {
-      initEnhancedV53().catch(err => console.error('Error inicializando v5.3:', err));
+      initEnhancedV53().catch(err => console.error('Error inicializando v5.4:', err));
     }
 
   })();
