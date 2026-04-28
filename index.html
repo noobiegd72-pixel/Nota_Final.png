@@ -281,39 +281,25 @@
       updateLoadingUI();
       ensureWhiteCanvas();
 
-      const chunkSize = 120;
-      let index = 0;
-
-      const processChunk = () => {
-        const end = Math.min(index + chunkSize, entries.length);
-        const startIndex = index;
-
-        for (; index < end; index++) {
-          const [key, raw] = entries[index];
-          const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
-          const [x, y] = key.split('_').map(Number);
-          if (Number.isFinite(x) && Number.isFinite(y)) {
-            setPixel(x, y, color);
-            state.knownBoardKeys.add(key);
-          }
+      for (let i = 0; i < entries.length; i++) {
+        const [key, raw] = entries[i];
+        const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
+        const [x, y] = String(key).split('_').map(Number);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          setPixel(x, y, color);
+          state.knownBoardKeys.add(key);
         }
+      }
 
-        state.boardCount = state.knownBoardKeys.size;
-        addLoadingDone(index - startIndex);
-        scheduleCanvasFlush();
-        updateTopStats();
-        requestMinimapRefresh(true);
-
-        if (index < entries.length) {
-          setTimeout(processChunk, 24);
-        } else {
-          persistBoardCache(data);
-          state.lastBoardSyncAt = Date.now();
-          finishBoardLoading();
-        }
-      };
-
-      requestAnimationFrame(processChunk);
+      state.boardCount = state.knownBoardKeys.size;
+      state.loadingDone = state.loadingTotal;
+      updateLoadingUI();
+      scheduleCanvasFlush();
+      updateTopStats();
+      requestMinimapRefresh(true);
+      persistBoardCache(data);
+      state.lastBoardSyncAt = Date.now();
+      finishBoardLoading();
     }
 
     window.downloadHeatmap = window.downloadHeatmap || function () {
@@ -2485,6 +2471,8 @@
       snapshotViewerFit: document.getElementById('snapshot-viewer-fit'),
       quickPalette: document.getElementById('quick-palette')
     };
+
+    window.el = el;
 
     const ctx = el.canvas?.getContext ? el.canvas.getContext('2d', { alpha: false }) : null;
     const gridCtx = el.gridCanvas?.getContext ? el.gridCanvas.getContext('2d', { alpha: true }) : null;
@@ -6853,45 +6841,32 @@
     }
 
     function processBoardSnapshot(boardSnap) {
-      const data = boardSnap.val() || {};
+      const data = applyPendingBoardWrites(boardSnap?.val?.() || {});
       const entries = Object.entries(data);
       state.boardData = { ...(data || {}) };
       state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
       updateLoadingUI();
       ensureWhiteCanvas();
 
-      const chunkSize = 120;
-      let index = 0;
-
-      const processChunk = () => {
-        const end = Math.min(index + chunkSize, entries.length);
-        const startIndex = index;
-
-        for (; index < end; index++) {
-          const [key, raw] = entries[index];
-          const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
-          const [x, y] = key.split('_').map(Number);
-          if (Number.isFinite(x) && Number.isFinite(y)) {
-            setPixel(x, y, color);
-            state.knownBoardKeys.add(key);
-          }
+      for (let i = 0; i < entries.length; i++) {
+        const [key, raw] = entries[i];
+        const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
+        const [x, y] = String(key).split('_').map(Number);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          setPixel(x, y, color);
+          state.knownBoardKeys.add(key);
         }
+      }
 
-        state.boardCount = state.knownBoardKeys.size;
-        addLoadingDone(index - startIndex);
-        scheduleCanvasFlush();
-        updateTopStats();
-
-        if (index < entries.length) {
-          setTimeout(processChunk, 24);
-        } else {
-          persistBoardCache(data);
-          state.lastBoardSyncAt = Date.now();
-          finishBoardLoading();
-        }
-      };
-
-      requestAnimationFrame(processChunk);
+      state.boardCount = state.knownBoardKeys.size;
+      state.loadingDone = state.loadingTotal;
+      updateLoadingUI();
+      scheduleCanvasFlush();
+      updateTopStats();
+      requestMinimapRefresh(true);
+      persistBoardCache(data);
+      state.lastBoardSyncAt = Date.now();
+      finishBoardLoading();
     }
 
     function attachBoardListeners() {
@@ -9733,39 +9708,30 @@ function startSession() {
     function processBoardSnapshot(boardSnap) {
       const data = applyPendingBoardWrites(boardSnap?.val?.() || {});
       const entries = Object.entries(data);
-      window.state.boardData = data;
-      window.state.loadingTotal = Math.max(window.state.loadingTotal, entries.length + 4);
-      if (typeof window.updateLoadingUI === 'function') window.updateLoadingUI();
-      if (typeof window.ensureWhiteCanvas === 'function') window.ensureWhiteCanvas();
-      const chunkSize = 120;
-      let index = 0;
-      const processChunk = () => {
-        const end = Math.min(index + chunkSize, entries.length);
-        const startIndex = index;
-        for (; index < end; index++) {
-          const [key, raw] = entries[index];
-          const record = normalizeBoardPixelRecord(raw, key);
-          const [x, y] = String(key).split('_').map(Number);
-          if (Number.isFinite(x) && Number.isFinite(y)) {
-            if (typeof window.setPixel === 'function') window.setPixel(x, y, record.color);
-            window.state.knownBoardKeys.add(key);
-          }
+      state.boardData = { ...(data || {}) };
+      state.loadingTotal = Math.max(state.loadingTotal, entries.length + 4);
+      updateLoadingUI();
+      ensureWhiteCanvas();
+
+      for (let i = 0; i < entries.length; i++) {
+        const [key, raw] = entries[i];
+        const color = typeof raw === 'string' ? raw : (raw && typeof raw.color === 'string' ? raw.color : '#ffffff');
+        const [x, y] = String(key).split('_').map(Number);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          setPixel(x, y, color);
+          state.knownBoardKeys.add(key);
         }
-        window.state.boardCount = window.state.knownBoardKeys.size;
-        if (typeof window.addLoadingDone === 'function') window.addLoadingDone(index - startIndex);
-        if (typeof window.scheduleCanvasFlush === 'function') window.scheduleCanvasFlush();
-        if (typeof window.updateTopStats === 'function') window.updateTopStats();
-        if (typeof window.requestMinimapRefresh === 'function') window.requestMinimapRefresh(true);
-        if (index < entries.length) {
-          setTimeout(processChunk, 24);
-        } else {
-          if (typeof window.persistBoardCache === 'function') window.persistBoardCache(data);
-          window.state.lastBoardSyncAt = Date.now();
-          if (typeof window.finishBoardLoading === 'function') window.finishBoardLoading();
-          renderMostChangedPixelSummary();
-        }
-      };
-      requestAnimationFrame(processChunk);
+      }
+
+      state.boardCount = state.knownBoardKeys.size;
+      state.loadingDone = state.loadingTotal;
+      updateLoadingUI();
+      scheduleCanvasFlush();
+      updateTopStats();
+      requestMinimapRefresh(true);
+      persistBoardCache(data);
+      state.lastBoardSyncAt = Date.now();
+      finishBoardLoading();
     }
 
     function showTrackingPixelPopup(payload) {
